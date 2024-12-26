@@ -1,0 +1,6 @@
+port: 3000
+root_note_name: "Welcome"
+lang: "zh-CN"
+name: "MarkdownBrain"
+description: "MarkdownBrain"
+api_key: "1234567890"

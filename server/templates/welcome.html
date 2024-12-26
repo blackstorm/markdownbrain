@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MarkdownBrain Self Hosted</title>
+    <meta name="description" content="MarkdownBrain Self Hosted" />
+    <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico" />
+    <style>
+      .header-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 9999px;
+        background-color: #22c55e;
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      .status-dot.error {
+        background-color: #ef4444; /* Red color */
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      .url-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .code-block {
+        background-color: #f3f4f6;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+      .copy-button {
+        padding: 4px 8px;
+        background-color: #e5e7eb;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .copy-button:hover {
+        background-color: #d1d5db;
+      }
+      .inline {
+        display: inline-block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header-container">
+      <h1>MarkdownBrain</h1>
+      <div class="status-dot"></div>
+    </div>
+    <p id="sync-note-tip">Please config your server, and sync your notes.</p>
+    <h2>Server Details</h2>
+    <div class="url-container">
+      <p>Server: <code id="currentUrl" class="code-block"></code></p>
+      <button class="copy-button" onclick="copyUrl()">Copy</button>
+    </div>
+    <div id="root-note-name-container" class="header-container">
+      <h2>Root note name</h2>
+      <div class="status-dot"></div>
+    </div>
+    <p>
+      If your already configured, please ensure your root note name correct.
+    </p>
+    <p><code id="root-note-name" class="code-block">{{ root_note_name }}</code></p>
+    <script>
+      const isNotesEmpty = {{ is_notes_empty }};
+      if (isNotesEmpty) {
+        const syncNoteTip = document.getElementById("sync-note-tip");
+        syncNoteTip.style.color = "#f59e0b"; // Yellow color
+        syncNoteTip.style.fontWeight = "bold";
+      }
+      const currentUrl = window.location.origin;
+      document.getElementById("currentUrl").textContent = currentUrl;
+
+      // Check root note name and update status dot
+      const rootNoteName = document
+        .getElementById("root-note-name")
+        .textContent.trim();
+      if (!rootNoteName) {
+        const rootNoteNameContainer = document.getElementById(
+          "root-note-name-container"
+        );
+        const statusDot = rootNoteNameContainer.querySelector(".status-dot");
+        statusDot.classList.add("error");
+      }
+
+      function copyUrl() {
+        navigator.clipboard
+          .writeText(currentUrl)
+          .then(() => {
+            const button = document.querySelector(".copy-button");
+            button.textContent = "Copied!";
+            setTimeout(() => {
+              button.textContent = "Copy";
+            }, 2000);
+          })
+          .catch((err) => {
+            console.error("Failed to copy:", err);
+          });
+      }
+    </script>
+  </body>
+</html>

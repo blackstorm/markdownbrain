@@ -1,0 +1,9 @@
+<div
+    class="note grow shrink-0 overflow-y-auto top-0 sticky p-4 w-full md:w-[625px] md:max-w-[625px] md:p-8 bg-white"
+    id="note-{{ note.ID }}"
+>
+    <article class="prose">
+        <h1>{{ note.Title }}</h1>
+        {{ note.HTMLContent | safe }}
+    </article>
+</div>

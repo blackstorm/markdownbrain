@@ -1,0 +1,5 @@
+source: "~/Library/Mobile Documents/com~apple~CloudDocs/obsidian/example"
+server: "http://localhost:3000"
+api_key: "1234567890"
+ignores:
+  - "Templates"
