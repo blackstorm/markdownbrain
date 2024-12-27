@@ -26,9 +26,10 @@ CREATE TABLE IF NOT EXISTS notes (
 `
 
 type DB struct {
-	Path string
-	pool *sqlx.DB
-	mu   sync.RWMutex
+	Path    string
+	connStr string
+	pool    *sqlx.DB
+	mu      sync.RWMutex
 }
 
 func NewDBWithTempDir() (*DB, error) {
@@ -67,8 +68,9 @@ func NewDB(path string, readonly bool) (*DB, error) {
 	}
 
 	return &DB{
-		Path: path,
-		pool: db,
+		Path:    path,
+		pool:    db,
+		connStr: connStr,
 	}, nil
 }
 
@@ -100,7 +102,7 @@ func (db *DB) FromBytes(bytes []byte) error {
 	}
 
 	// Recreate pool with new file
-	newPool, err := sqlx.Connect("sqlite3", fmt.Sprintf("file:%s?cache=shared&mode=rwc", db.Path))
+	newPool, err := sqlx.Connect("sqlite3", db.connStr)
 	if err != nil {
 		return err
 	}

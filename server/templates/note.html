@@ -9,8 +9,8 @@
 
   {% if note.LinkToThis %}
   <div class="p-4 mt-4 md:mt-8">
-    <div class="p-4 bg-gray-50 rounded-lg">
-      <h2 class="text-lg font-bold text-gray-500">Link to this note</h2>
+    <div class="p-2 py-4 bg-gray-50 rounded-lg">
+      <h2 class="px-2 text-lg font-bold text-gray-500">Link to this note</h2>
       <div class="grid grid-cols-2 gap-2">
         {% for n in note.LinkToThis %}
         <div class="p-2 hover:bg-gray-100 rounded-md">
@@ -22,8 +22,8 @@
             hx-swap="afterend"
             class="note-link"
           >
-            <p class="text-sm mb-2">{{ n.Title }}</p>
-            <p class="text-sm text-gray-500">{{ n.Description }}</p>
+            <p class="text-xs mb-2">{{ n.Title }}</p>
+            <p class="text-xs text-gray-500">{{ n.Description }}</p>
           </a>
         </div>
         {% endfor %}
