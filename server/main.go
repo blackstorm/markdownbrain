@@ -2,11 +2,12 @@ package main
 
 import (
 	"embed"
-	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,10 +16,11 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/favicon"
 	"github.com/gofiber/template/django/v3"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type Args struct {
-	WWW string
+	DataPath string
 }
 
 type AppState struct {
@@ -31,16 +33,30 @@ type AppState struct {
 var templatesAssets embed.FS
 
 func main() {
-	var args Args
-	flag.StringVar(&args.WWW, "config", ".", "CLI config path.")
-	flag.Parse()
+	devMode := os.Getenv("DEV_MODE") == "true"
 
-	config, err := loadConfig(args.WWW)
+	workspace := "/markdownbrain"
+	if devMode {
+		currentDir, err := os.Getwd()
+		if err != nil {
+			panic(err)
+		}
+		workspace = filepath.Join(currentDir, "www")
+	}
+
+	configPath := filepath.Join(workspace, "config.yml")
+	dbPath := filepath.Join(workspace, "/data/notes.db")
+
+	log.Printf("Workspace path: %s", workspace)
+	log.Printf("Config path: %s", configPath)
+	log.Printf("Database path: %s", dbPath)
+
+	config, err := loadConfig(configPath)
 	if err != nil {
 		panic(err)
 	}
 
-	db, err := common.NewDB(filepath.Join(args.WWW, "/data/notes.db"), true)
+	db, err := common.NewDB(dbPath, true)
 	if err != nil {
 		panic(err)
 	}
@@ -58,11 +74,11 @@ func main() {
 	})
 
 	app.Use(favicon.New(favicon.Config{
-		File: filepath.Join(args.WWW, "/static/favicon.ico"),
+		File: filepath.Join(workspace, "/static/favicon.ico"),
 		URL:  "/favicon.ico",
 	}))
 
-	app.Static("/static", filepath.Join(args.WWW, "static"))
+	app.Static("/static", filepath.Join(workspace, "static"))
 	app.Get("/", withAppState(state, home))
 	app.Post("/api/sync", withAuthorization(state, sync))
 	app.Get("/:id", withAppState(state, note))
@@ -72,10 +88,9 @@ func main() {
 }
 
 // loadConfig loads the application configuration from the specified www path
-func loadConfig(wwwPath string) (*config.Config, error) {
+func loadConfig(configPath string) (*config.Config, error) {
 	var conf config.Config
-	path := filepath.Join(wwwPath, "config.yml")
-	if err := common.ParseYAMLConfig(path, &conf); err != nil {
+	if err := common.ParseYAMLConfig(configPath, &conf); err != nil {
 		return nil, err
 	}
 	return &conf, nil
