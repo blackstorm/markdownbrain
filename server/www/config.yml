@@ -1,6 +1,8 @@
 port: 3000
 root_note_name: "Welcome"
-lang: "zh-CN"
+lang: "en"
 name: "MarkdownBrain"
 description: "MarkdownBrain"
 api_key: "1234567890"
+# Use CDN 
+# htmx_js_url: "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"

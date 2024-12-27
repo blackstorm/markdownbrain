@@ -111,21 +111,21 @@ func home(state *AppState, c *fiber.Ctx) error {
 			is_notes_empty = "false"
 		}
 
-		return c.Render("welcome", fiber.Map{
+		data := templateValues(state, fiber.Map{
 			"root_note_name": state.config.RootNoteName,
 			"is_notes_empty": is_notes_empty,
 		})
+
+		return c.Render("welcome", data)
 	}
 
-	notes := []common.Note{*note}
-
-	return c.Render("home", fiber.Map{
+	data := templateValues(state, fiber.Map{
 		"title":       state.config.Name,
-		"name":        state.config.Name,
-		"lang":        state.config.Lang,
 		"description": state.config.Description,
-		"notes":       notes,
+		"notes":       []common.Note{*note},
 	})
+
+	return c.Render("home", data)
 }
 
 // note handles single note display requests
@@ -189,14 +189,13 @@ func note(state *AppState, c *fiber.Ctx) error {
 		})
 	}
 
-	notes := []common.Note{*note}
-	return c.Render("home", fiber.Map{
+	data := templateValues(state, fiber.Map{
 		"title":       note.Title,
-		"name":        state.config.Name,
-		"lang":        state.config.Lang,
 		"description": note.Description,
-		"notes":       notes,
+		"notes":       []common.Note{*note},
 	})
+
+	return c.Render("home", data)
 }
 
 // notes handles requests for displaying multiple notes
@@ -240,13 +239,25 @@ func notes(state *AppState, c *fiber.Ctx) error {
 
 	title := fmt.Sprintf("%s - %s", common.Notes(notes).Titles(), state.config.Name)
 
-	return c.Render("home", fiber.Map{
+	data := templateValues(state, fiber.Map{
 		"title":       title,
-		"name":        state.config.Name,
-		"lang":        state.config.Lang,
 		"description": title,
 		"notes":       notes,
 	})
+
+	return c.Render("home", data)
+}
+
+func templateValues(state *AppState, values fiber.Map) fiber.Map {
+	res := fiber.Map{
+		"config": state.config,
+	}
+
+	for key, value := range values {
+		res[key] = value
+	}
+
+	return res
 }
 
 // sync handles database synchronization requests
