@@ -2,6 +2,8 @@ package builder
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -135,6 +137,11 @@ func (b *ObsidianBuilder) processNotes(notes map[string]*NoteData) error {
 			return &Error{"Failed to process note content", err}
 		}
 
+		linkIDsJSON, err := json.Marshal(linkIDs)
+		if err != nil {
+			return errors.New("failed to marshal link IDs")
+		}
+
 		htmlContentStripped := strings.ReplaceAll(strip.StripTags(htmlContent), "\n", "")
 		note := &common.Note{
 			ID:            data.ID,
@@ -143,7 +150,7 @@ func (b *ObsidianBuilder) processNotes(notes map[string]*NoteData) error {
 			HTMLContent:   htmlContent,
 			CreatedAt:     data.CreatedAt,
 			LastUpdatedAt: data.LastUpdatedAt,
-			LinkNoteIDs:   strings.Join(linkIDs, ","),
+			LinkNoteIDs:   string(linkIDsJSON),
 		}
 
 		if err := b.db.InsertNote(note); err != nil {
