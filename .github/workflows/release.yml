@@ -1,0 +1,57 @@
+name: Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23'
+
+      - name: Build Server Binaries
+        run: |
+          # Linux
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o dist/markdownbrain-server-linux-amd64 server/main.go
+          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o dist/markdownbrain-server-linux-arm64 server/main.go
+          # Windows
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -o dist/markdownbrain-server-windows-amd64.exe server/main.go
+          # macOS
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o dist/markdownbrain-server-darwin-amd64 server/main.go
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o dist/markdownbrain-server-darwin-arm64 server/main.go
+
+      - name: Build CLI Binaries
+        run: |
+          # Linux
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o dist/markdownbrain-cli-linux-amd64 cli/main.go
+          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build -o dist/markdownbrain-cli-linux-arm64 cli/main.go
+          # Windows
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -o dist/markdownbrain-cli-windows-amd64.exe cli/main.go
+          # macOS
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -o dist/markdownbrain-cli-darwin-amd64 cli/main.go
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -o dist/markdownbrain-cli-darwin-arm64 cli/main.go
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/markdownbrain-server-linux-amd64
+            dist/markdownbrain-server-linux-arm64
+            dist/markdownbrain-server-windows-amd64.exe
+            dist/markdownbrain-server-darwin-amd64
+            dist/markdownbrain-server-darwin-arm64
+            dist/markdownbrain-cli-linux-amd64
+            dist/markdownbrain-cli-linux-arm64
+            dist/markdownbrain-cli-windows-amd64.exe
+            dist/markdownbrain-cli-darwin-amd64
+            dist/markdownbrain-cli-darwin-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
