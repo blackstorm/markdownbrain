@@ -54,4 +54,4 @@ jobs:
             dist/markdownbrain-cli-darwin-amd64
             dist/markdownbrain-cli-darwin-arm64
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
