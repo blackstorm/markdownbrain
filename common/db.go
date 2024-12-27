@@ -156,12 +156,26 @@ func (db *DB) GetNotesByIDs(ids []string) ([]Note, error) {
 		return nil, err
 	}
 
+	// http://jmoiron.github.io/sqlx/#inQueries
 	// sqlx.In returns queries with the MySQL placeholder (?), we need to rebind it
 	// for SQLite
 	query = db.pool.Rebind(query)
 
-	var notes []Note
+	notes := []Note{}
 	err = db.pool.Select(&notes, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return notes, nil
+}
+
+func (db *DB) GetNotesByLinkTo(id string) ([]Note, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	notes := []Note{}
+	err := db.pool.Select(&notes, "SELECT * FROM notes WHERE EXISTS (SELECT 1 FROM json_each(link_note_ids) WHERE value = ?)", id)
 	if err != nil {
 		return nil, err
 	}

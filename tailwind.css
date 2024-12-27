@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    background-color: #fafafc;
+}
+
+@keyframes fadeInScale {
+    0% {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.note {
+    animation: fadeInScale 0.1s ease-out;
+}
+
+.note-link {
+    @apply text-blue-600 hover:underline;
+}
+
+.last-updated-at {
+    @apply text-xs text-zinc-400;
+}

@@ -19,10 +19,6 @@ import (
 	_ "github.com/joho/godotenv/autoload"
 )
 
-type Args struct {
-	DataPath string
-}
-
 type AppState struct {
 	db         *common.DB
 	config     *config.Config
@@ -181,6 +177,12 @@ func note(state *AppState, c *fiber.Ctx) error {
 			}
 		}
 
+		linkToThis, err := state.db.GetNotesByLinkTo(noteId)
+		if err != nil {
+			return fiber.ErrInternalServerError
+		}
+		note.LinkToThis = linkToThis
+
 		c.Set("HX-Push-Url", pushURL.String())
 		return c.Render("note", fiber.Map{
 			"note": note,
@@ -227,6 +229,14 @@ func notes(state *AppState, c *fiber.Ctx) error {
 		}
 	}
 	notes = orderedNotes
+
+	for i := range notes {
+		linkToThis, err := state.db.GetNotesByLinkTo(notes[i].ID)
+		if err != nil {
+			return fiber.ErrInternalServerError
+		}
+		notes[i].LinkToThis = linkToThis
+	}
 
 	title := fmt.Sprintf("%s - %s", common.Notes(notes).Titles(), state.config.Name)
 

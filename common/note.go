@@ -10,6 +10,7 @@ type Note struct {
 	CreatedAt     string `json:"created_at" db:"created_at"`
 	LastUpdatedAt string `json:"last_updated_at" db:"last_updated_at"`
 	LinkNoteIDs   string `json:"link_note_ids" db:"link_note_ids"`
+	LinkToThis    []Note
 }
 
 type Notes []Note
