@@ -12,6 +12,6 @@ WORKDIR /markdownbrain
 
 RUN apt-get update && apt-get install -y ca-certificates sqlite3 && apt-get clean
 
-COPY --from=builder /markdownbrain/cli/config.yml /markdownbrain/config.yml
+COPY --from=builder /markdownbrain/cli/config.yml.example /markdownbrain/config.yml
 
 CMD ["./markdownbrain-cli", "-config", "/markdownbrain/config.yml"]
