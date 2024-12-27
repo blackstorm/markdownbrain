@@ -36,21 +36,24 @@ func NewDBWithTempDir() (*DB, error) {
 	tempAt := time.Now().Unix()
 	path := filepath.Join(tempDir, fmt.Sprintf("temp_%d.db", tempAt))
 
-	return NewDB(path, true)
+	return NewDB(path, false)
 }
 
-func NewDB(path string, createIfNotExists bool) (*DB, error) {
+func NewDB(path string, readonly bool) (*DB, error) {
 	if path == "" {
 		tempDir := os.TempDir()
 		tempAt := time.Now().Unix()
 		path = filepath.Join(tempDir, fmt.Sprintf("temp_%d.db", tempAt))
 	}
 
-	// SQLite connection string
-	connStr := fmt.Sprintf("file:%s?cache=shared&mode=rwc", path)
-	if !createIfNotExists {
-		connStr += "&_create=0"
+	mode := "rwc"
+	args := ""
+	if readonly {
+		mode = "ro"
+		args = "immutable=1&_query_only=1&_journal_mode=OFF"
 	}
+
+	connStr := fmt.Sprintf("file:%s?cache=shared&mode=%s&%s", path, mode, args)
 
 	db, err := sqlx.Connect("sqlite3", connStr)
 	if err != nil {
