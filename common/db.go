@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "modernc.org/sqlite"
 )
+
+var _DRIVER_NAME = "sqlite"
 
 var _SCHEMA = `
 CREATE TABLE IF NOT EXISTS notes (
@@ -28,8 +30,7 @@ CREATE TABLE IF NOT EXISTS notes (
 type DB struct {
 	Path    string
 	connStr string
-	pool    *sqlx.DB
-	mu      sync.RWMutex
+	pool    atomic.Pointer[sqlx.DB]
 }
 
 func NewDBWithTempDir() (*DB, error) {
@@ -56,66 +57,70 @@ func NewDB(path string, readonly bool) (*DB, error) {
 
 	connStr := fmt.Sprintf("file:%s?cache=shared&mode=%s&%s", path, mode, args)
 
-	db, err := sqlx.Connect("sqlite3", connStr)
+	sqlxDB, err := sqlx.Connect(_DRIVER_NAME, connStr)
 	if err != nil {
 		return nil, err
 	}
 
 	// Create table if not exists
-	_, err = db.Exec(_SCHEMA)
+	_, err = sqlxDB.Exec(_SCHEMA)
 	if err != nil {
 		return nil, err
 	}
 
-	return &DB{
+	db := &DB{
 		Path:    path,
-		pool:    db,
 		connStr: connStr,
-	}, nil
+	}
+	// Store the connection pool
+	db.pool.Store(sqlxDB)
+
+	return db, nil
 }
 
 func (db *DB) Close() error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
-	return db.pool.Close()
+	return db.pool.Load().Close()
 }
 
 func (db *DB) FromBytes(bytes []byte) error {
-	db.mu.Lock()
-	defer db.mu.Unlock()
+	// Get current connection pool
+	oldPool := db.pool.Load()
 
-	// Close existing pool
-	if db.pool != nil {
-		db.pool.Close()
+	// Close old connection pool
+	if oldPool != nil {
+		oldPool.Close()
 	}
 
-	// Remove old db file
+	// Remove old file
 	if _, err := os.Stat(db.Path); err == nil {
 		if err := os.Remove(db.Path); err != nil {
 			return err
 		}
 	}
 
-	// Write new bytes to file
+	// Write new file
 	if err := os.WriteFile(db.Path, bytes, 0644); err != nil {
 		return err
 	}
 
-	// Recreate pool with new file
-	newPool, err := sqlx.Connect("sqlite3", db.connStr)
+	// Create new connection pool
+	newPool, err := sqlx.Connect(_DRIVER_NAME, db.connStr)
 	if err != nil {
 		return err
 	}
-	db.pool = newPool
 
+	// Atomically replace the connection pool
+	db.pool.Store(newPool)
 	return nil
 }
 
-func (db *DB) InsertNote(note *Note) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+// Helper method: get current connection pool
+func (db *DB) getPool() *sqlx.DB {
+	return db.pool.Load()
+}
 
-	_, err := db.pool.NamedExec(`
+func (db *DB) InsertNote(note *Note) error {
+	_, err := db.getPool().NamedExec(`
 		INSERT INTO notes (id, title, description, html_content, created_at, last_updated_at, link_note_ids) 
 		VALUES (:id, :title, :description, :html_content, :created_at, :last_updated_at, :link_note_ids)`,
 		note,
@@ -124,11 +129,8 @@ func (db *DB) InsertNote(note *Note) error {
 }
 
 func (db *DB) GetNote(id string) (*Note, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
 	note := &Note{}
-	err := db.pool.Get(note, "SELECT * FROM notes WHERE id = ?", id)
+	err := db.getPool().Get(note, "SELECT * FROM notes WHERE id = ?", id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -139,10 +141,8 @@ func (db *DB) GetNote(id string) (*Note, error) {
 }
 
 func (db *DB) CountNote() (int64, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
 	var count int64
-	err := db.pool.Get(&count, "SELECT COUNT(*) FROM notes")
+	err := db.getPool().Get(&count, "SELECT COUNT(*) FROM notes")
 	if err != nil {
 		return 0, err
 	}
@@ -150,9 +150,6 @@ func (db *DB) CountNote() (int64, error) {
 }
 
 func (db *DB) GetNotesByIDs(ids []string) ([]Note, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
 	query, args, err := sqlx.In("SELECT * FROM notes WHERE id IN (?)", ids)
 	if err != nil {
 		return nil, err
@@ -161,10 +158,10 @@ func (db *DB) GetNotesByIDs(ids []string) ([]Note, error) {
 	// http://jmoiron.github.io/sqlx/#inQueries
 	// sqlx.In returns queries with the MySQL placeholder (?), we need to rebind it
 	// for SQLite
-	query = db.pool.Rebind(query)
+	query = db.getPool().Rebind(query)
 
 	notes := []Note{}
-	err = db.pool.Select(&notes, query, args...)
+	err = db.getPool().Select(&notes, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -173,11 +170,8 @@ func (db *DB) GetNotesByIDs(ids []string) ([]Note, error) {
 }
 
 func (db *DB) GetNotesByLinkTo(id string) ([]Note, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
 	notes := []Note{}
-	err := db.pool.Select(&notes, "SELECT * FROM notes WHERE EXISTS (SELECT 1 FROM json_each(link_note_ids) WHERE value = ?)", id)
+	err := db.getPool().Select(&notes, "SELECT * FROM notes WHERE EXISTS (SELECT 1 FROM json_each(link_note_ids) WHERE value = ?)", id)
 	if err != nil {
 		return nil, err
 	}
