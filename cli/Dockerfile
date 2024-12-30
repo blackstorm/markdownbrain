@@ -4,7 +4,7 @@ WORKDIR /markdownbrain
 
 COPY . .
 
-RUN CGO_ENABLED=1 go build -o markdownbrain-cli cli/main.go
+RUN go build -o markdownbrain-cli cli/main.go
 
 FROM debian:bookworm
 

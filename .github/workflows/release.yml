@@ -7,16 +7,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            goos: linux
-          - os: windows-latest
-            goos: windows
-          - os: macos-latest
-            goos: darwin
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,74 +17,26 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Install dependencies (Linux)
-        if: matrix.goos == 'linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu gcc
-
-      - name: Install dependencies (Windows)
-        if: matrix.goos == 'windows'
-        run: |
-          choco install mingw
-
-      - name: Build Server Binaries
-        env:
-          GOOS: ${{ matrix.goos }}
+      - name: Build All Binaries
         run: |
           mkdir -p dist
-          if [ "$GOOS" = "linux" ]; then
-            CGO_ENABLED=0 GOARCH=amd64 go build -o dist/markdownbrain-server-linux-amd64 server/main.go
-            CGO_ENABLED=0 GOARCH=arm64 go build -o dist/markdownbrain-server-linux-arm64 server/main.go
-          elif [ "$GOOS" = "windows" ]; then
-            CGO_ENABLED=0 GOARCH=amd64 go build -o dist/markdownbrain-server-windows-amd64.exe server/main.go
-          elif [ "$GOOS" = "darwin" ]; then
-            CGO_ENABLED=1 GOARCH=amd64 go build -o dist/markdownbrain-server-darwin-amd64 server/main.go
-            CGO_ENABLED=1 GOARCH=arm64 go build -o dist/markdownbrain-server-darwin-arm64 server/main.go
-          fi
-
-      - name: Build CLI Binaries
-        env:
-          GOOS: ${{ matrix.goos }}
-        run: |
-          if [ "$GOOS" = "linux" ]; then
-            CGO_ENABLED=1 CC=gcc GOARCH=amd64 go build -o dist/markdownbrain-cli-linux-amd64 cli/main.go
-            CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc GOARCH=arm64 go build -o dist/markdownbrain-cli-linux-arm64 cli/main.go
-          elif [ "$GOOS" = "windows" ]; then
-            CGO_ENABLED=1 GOARCH=amd64 go build -o dist/markdownbrain-cli-windows-amd64.exe cli/main.go
-          elif [ "$GOOS" = "darwin" ]; then
-            CGO_ENABLED=1 GOARCH=amd64 go build -o dist/markdownbrain-cli-darwin-amd64 cli/main.go
-            CGO_ENABLED=1 GOARCH=arm64 go build -o dist/markdownbrain-cli-darwin-arm64 cli/main.go
-          fi
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: binaries-${{ matrix.goos }}
-          path: dist/*
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: dist
+          # Server builds
+          GOOS=linux  GOARCH=amd64 go build -o dist/markdownbrain-server-linux-amd64 server/main.go
+          GOOS=linux  GOARCH=arm64 go build -o dist/markdownbrain-server-linux-arm64 server/main.go
+          GOOS=windows GOARCH=amd64 go build -o dist/markdownbrain-server-windows-amd64.exe server/main.go
+          GOOS=darwin GOARCH=amd64 go build -o dist/markdownbrain-server-darwin-amd64 server/main.go
+          GOOS=darwin GOARCH=arm64 go build -o dist/markdownbrain-server-darwin-arm64 server/main.go
+          
+          # CLI builds
+          GOOS=linux  GOARCH=amd64 go build -o dist/markdownbrain-cli-linux-amd64 cli/main.go
+          GOOS=linux  GOARCH=arm64 go build -o dist/markdownbrain-cli-linux-arm64 cli/main.go
+          GOOS=windows GOARCH=amd64 go build -o dist/markdownbrain-cli-windows-amd64.exe cli/main.go
+          GOOS=darwin GOARCH=amd64 go build -o dist/markdownbrain-cli-darwin-amd64 cli/main.go
+          GOOS=darwin GOARCH=arm64 go build -o dist/markdownbrain-cli-darwin-arm64 cli/main.go
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: |
-            dist/binaries-linux/markdownbrain-server-linux-amd64
-            dist/binaries-linux/markdownbrain-server-linux-arm64
-            dist/binaries-windows/markdownbrain-server-windows-amd64.exe
-            dist/binaries-darwin/markdownbrain-server-darwin-amd64
-            dist/binaries-darwin/markdownbrain-server-darwin-arm64
-            dist/binaries-linux/markdownbrain-cli-linux-amd64
-            dist/binaries-linux/markdownbrain-cli-linux-arm64
-            dist/binaries-windows/markdownbrain-cli-windows-amd64.exe
-            dist/binaries-darwin/markdownbrain-cli-darwin-amd64
-            dist/binaries-darwin/markdownbrain-cli-darwin-arm64
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
