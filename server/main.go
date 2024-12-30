@@ -259,6 +259,7 @@ func templateValues(state *AppState, values fiber.Map) fiber.Map {
 			"lang":        state.config.Lang,
 			"name":        state.config.Name,
 			"description": state.config.Description,
+			"templates":   state.config.Templates,
 		},
 	}
 

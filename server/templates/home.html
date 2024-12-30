@@ -32,5 +32,8 @@
     {% endif %}
     {% include "js.html" %}
     <script src="/static/app.js"></script>
+    {% for template in config.templates %}
+    {{ template|safe }}
+    {% endfor %}
   </body>
 </html>

@@ -3,5 +3,11 @@ lang: "en"
 name: "MarkdownBrain"
 description: "MarkdownBrain"
 api_key: "1234567890"
+
+# Add custom html
+templates: [
+  "<script defer data-domain='domain1.com,domain2.com,domain3.com' src='https://plausible.io/js/script.js'></script>"
+]
+
 # Use CDN 
 # htmx_js_url: "https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"
