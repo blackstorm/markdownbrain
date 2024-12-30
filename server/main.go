@@ -250,7 +250,11 @@ func notes(state *AppState, c *fiber.Ctx) error {
 
 func templateValues(state *AppState, values fiber.Map) fiber.Map {
 	res := fiber.Map{
-		"config": state.config,
+		"config": fiber.Map{
+			"lang":        state.config.Lang,
+			"name":        state.config.Name,
+			"description": state.config.Description,
+		},
 	}
 
 	for key, value := range values {
