@@ -80,7 +80,12 @@ func main() {
 	app.Get("/:id", withAppState(state, note))
 	app.Get("/*", withAppState(state, notes))
 
-	app.Listen(fmt.Sprintf(":%d", config.Port))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	app.Listen(fmt.Sprintf(":%s", port))
 }
 
 // loadConfig loads the application configuration from the specified www path

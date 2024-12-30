@@ -1,7 +1,6 @@
 package config
 
 type Config struct {
-	Port         uint16 `yaml:"port"`
 	Name         string `yaml:"name"`
 	Description  string `yaml:"description"`
 	Lang         string `yaml:"lang"`

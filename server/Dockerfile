@@ -14,4 +14,6 @@ COPY --from=builder /markdownbrain/server/www/static /markdownbrain/static
 COPY --from=builder /markdownbrain/server/www/config.yml /markdownbrain/config.yml
 COPY --from=builder /markdownbrain/markdownbrain /markdownbrain/markdownbrain
 
+EXPOSE ${PORT:-3000}
+
 CMD ["./markdownbrain"]
