@@ -43,12 +43,33 @@ func NewDBWithTempDir() (*DB, error) {
 
 func NewDB(path string, readonly bool) (*DB, error) {
 	if path == "" {
-		tempDir := os.TempDir()
-		tempAt := time.Now().Unix()
-		path = filepath.Join(tempDir, fmt.Sprintf("temp_%d.db", tempAt))
+		return nil, errors.New("path is required")
 	}
 
 	mode := "rwc"
+
+	// Create db file if not exists
+	if _, err := os.Stat(path); err != nil {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return nil, fmt.Errorf("failed to create database directory: %v", err)
+		}
+
+		connStr := fmt.Sprintf("file:%s?cache=shared&mode=%s", path, mode)
+		sqlxDB, err := sqlx.Connect(_DRIVER_NAME, connStr)
+		if err != nil {
+			return nil, errors.New("failed to create readonly db")
+		}
+
+		_, err = sqlxDB.Exec(_SCHEMA)
+		if err != nil {
+			return nil, err
+		}
+
+		if err := sqlxDB.Close(); err != nil {
+			return nil, err
+		}
+	}
+
 	args := ""
 	if readonly {
 		mode = "ro"
@@ -62,17 +83,11 @@ func NewDB(path string, readonly bool) (*DB, error) {
 		return nil, err
 	}
 
-	// Create table if not exists
-	_, err = sqlxDB.Exec(_SCHEMA)
-	if err != nil {
-		return nil, err
-	}
-
 	db := &DB{
 		Path:    path,
 		connStr: connStr,
 	}
-	// Store the connection pool
+
 	db.pool.Store(sqlxDB)
 
 	return db, nil
