@@ -11,11 +11,16 @@
   <body>
     <div id="app" class="h-screen flex flex-col">
       <header
-        class="flex flex-row items-center gap-6 px-4 py-3 md:px-8 border-b bg-white"
+        class="flex items-center justify-between px-4 py-3 md:px-8 border-b bg-white"
       >
-        <h1 class="font-medium">
-          <a href="/">{{ config.name }}</a>
-        </h1>
+        <div class="flex items-center gap-2">
+          <h1 class="font-medium">
+            <a href="/">{{ config.name }}</a>
+          </h1>
+        </div>
+        <div>
+          <small class="text-gray-300 text-sm">Powered by <a class="hover:underline hover:text-blue-700" target="_blank" href="https://github.com/blackstorm/markdownbrain">MarkdownBrain</a></small>
+        </div>
       </header>
       <div class="flex grow overflow-x-auto overflow-y-hidden">
         <div id="notes" class="flex grow divide-x">
