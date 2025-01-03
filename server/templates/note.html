@@ -5,6 +5,7 @@
   <article class="p-4 md:p-8 prose">
     <h1>{{ note.Title }}</h1>
     {{ note.HTMLContent | safe }}
+    <p class="text-xs text-gray-400">Last updated: {{ note.LastUpdatedAt }}.</p>
   </article>
 
   {% if note.LinkToThis %}
