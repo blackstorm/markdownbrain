@@ -11,11 +11,12 @@ function noteWindowSizeAdjust() {
     for (let i = 0; i < allNotes.length - 1; i++) {
       allNotes[i].classList.add("hidden");
     }
-  } else {
-    for (let i = 0; i < allNotes.length - 1; i++) {
+    return;
+  }
+  
+  for (let i = 0; i < allNotes.length - 1; i++) {
       allNotes[i].classList.remove("hidden");
     }
-  }
 
   for (let i = 0; i < allNotes.length - 1; i++) {
     const note = allNotes[i];
