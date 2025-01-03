@@ -2,6 +2,8 @@
 
 Make your digital garden with MarkdownBrain.
 
+![MarkdownBrain](screenshots/markdownbrain.png)
+
 ## Quick Start
 
 ### Client
