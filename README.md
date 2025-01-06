@@ -1,9 +1,31 @@
-# MarkdownBrain
-
-Make your digital garden with MarkdownBrain.
-
-![MarkdownBrain](screenshots/markdownbrain.png)
-
+<p align="center">
+	<a href="https://markdownbrain.com">
+		<picture>
+			<source media="(prefers-color-scheme: dark)" srcset="screenshots/markdownbrain.png">
+			<source media="(prefers-color-scheme: light)" srcset="screenshots/markdownbrain.png">
+			<img src="screenshots/markdownbrain.png" alt="Caddy" width="550">
+		</picture>
+	</a>
+	<br>
+	<h3 align="center">Make your digital garden with MarkdownBrain.</h3>
+</p>
+<hr>
+<h1 align="center">MarkdownBrain</h1>
+<p align="center">
+<a href="https://github.com/blackstorm/markdownbrain/actions/workflows/release.yml">
+  <img src="https://github.com/blackstorm/markdownbrain/actions/workflows/release.yml/badge.svg" alt="MarkdownBrain Build">
+</a>
+<a href="https://github.com/blackstorm/markdownbrain/actions/workflows/release-docker.yml">
+  <img src="https://github.com/blackstorm/markdownbrain/actions/workflows/release-docker.yml/badge.svg" alt="MarkdownBrain Build">
+</a>
+<a href="LICENSE.md">
+  <img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License">
+</a>
+</p>
+<p align="center">
+  <a href="https://github.com/blackstorm/markdownbrain/releases">Releases</a> ·
+  <a href="https://markdownbrain.com">Documentation</a>
+</p>
 ## Quick Start
 
 ### Client
