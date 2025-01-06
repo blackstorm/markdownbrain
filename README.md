@@ -45,3 +45,11 @@ api_key: "1234567890"' > config.yml
 ```bash
 docker run -dit --name markdownbrain -v $(pwd)/config.yml:/markdownbrain/config.yml -p 3000:3000 ghcr.io/blackstorm/markdownbrain-server:latest
 ```
+
+## Documentation
+
+[MarkdownBrain.com](https://markdownbrain.com)
+
+## License
+
+[AGPLv3](LICENSE.md)
