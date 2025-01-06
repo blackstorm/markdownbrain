@@ -1,3 +1,4 @@
+<h1 align="center">MarkdownBrain</h1>
 <p align="center">
 	<a href="https://markdownbrain.com">
 		<picture>
@@ -8,7 +9,6 @@
 	</a>
 	<br>
 </p>
-<h1 align="center">MarkdownBrain</h1>
 <p align="center">Make your digital garden with MarkdownBrain.</p>
 <p align="center">
 <a href="https://github.com/blackstorm/markdownbrain/actions/workflows/release.yml">
