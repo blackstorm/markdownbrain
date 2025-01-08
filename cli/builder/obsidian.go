@@ -30,6 +30,7 @@ func (e *Error) Error() string {
 type NoteData struct {
 	ID            string
 	Title         string
+	Description   string
 	FilePath      string
 	CreatedAt     string
 	LastUpdatedAt string
@@ -145,11 +146,15 @@ func (b *ObsidianBuilder) processNotes(notes map[string]*NoteData) error {
 			return errors.New("failed to marshal link IDs")
 		}
 
-		htmlContentStripped := strings.ReplaceAll(strip.StripTags(htmlContent), "\n", "")
+		if data.Description == "" {
+			htmlContentStripped := strings.ReplaceAll(strip.StripTags(htmlContent), "\n", "")
+			data.Description = string([]rune(htmlContentStripped)[:common.MinInt(len([]rune(htmlContentStripped)), 100)])
+		}
+
 		note := &common.Note{
 			ID:            data.ID,
 			Title:         data.Title,
-			Description:   string([]rune(htmlContentStripped)[:common.MinInt(len([]rune(htmlContentStripped)), 100)]),
+			Description:   data.Description,
 			HTMLContent:   htmlContent,
 			CreatedAt:     data.CreatedAt,
 			LastUpdatedAt: data.LastUpdatedAt,
@@ -240,6 +245,7 @@ func (b *ObsidianBuilder) getNoteMetadata(path string) (*NoteData, error) {
 		if idx := bytes.Index(content[3:], []byte("---")); idx != -1 {
 			var meta struct {
 				Title         string `yaml:"title"`
+				Description   string `yaml:"description"`
 				CreatedAt     string `yaml:"created_at"`
 				LastUpdatedAt string `yaml:"last_updated_at"`
 			}
@@ -247,6 +253,9 @@ func (b *ObsidianBuilder) getNoteMetadata(path string) (*NoteData, error) {
 			if err := yaml.Unmarshal(content[3:idx+3], &meta); err == nil {
 				if meta.Title != "" {
 					note.Title = meta.Title
+				}
+				if meta.Description != "" {
+					note.Description = meta.Description
 				}
 				if meta.CreatedAt != "" {
 					note.CreatedAt = meta.CreatedAt
