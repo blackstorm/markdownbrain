@@ -1,6 +1,8 @@
 package common
 
-import "strings"
+import (
+	"strings"
+)
 
 type Note struct {
 	ID            string `json:"id" db:"id"`
@@ -11,6 +13,15 @@ type Note struct {
 	LastUpdatedAt string `json:"last_updated_at" db:"last_updated_at"`
 	LinkNoteIDs   string `json:"link_note_ids" db:"link_note_ids"`
 	LinkToThis    []Note
+}
+
+func (n *Note) LoadLinkToThisNotes(db *DB) error {
+	linkToThis, err := db.GetNotesByLinkTo(n.ID)
+	if err != nil {
+		return err
+	}
+	n.LinkToThis = linkToThis
+	return nil
 }
 
 type Notes []Note

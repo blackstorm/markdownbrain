@@ -194,6 +194,8 @@ func note(state *AppState, c *fiber.Ctx) error {
 		})
 	}
 
+	note.LoadLinkToThisNotes(state.db)
+
 	data := templateValues(state, fiber.Map{
 		"title":       note.Title,
 		"description": note.Description,
@@ -235,11 +237,7 @@ func notes(state *AppState, c *fiber.Ctx) error {
 	notes = orderedNotes
 
 	for i := range notes {
-		linkToThis, err := state.db.GetNotesByLinkTo(notes[i].ID)
-		if err != nil {
-			return fiber.ErrInternalServerError
-		}
-		notes[i].LinkToThis = linkToThis
+		notes[i].LoadLinkToThisNotes(state.db)
 	}
 
 	title := fmt.Sprintf("%s - %s", common.Notes(notes).Titles(), state.config.Name)
