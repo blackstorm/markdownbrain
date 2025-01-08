@@ -13,6 +13,7 @@ import (
 	"github.com/blackstorm/markdownbrain/common"
 	strip "github.com/grokify/html-strip-tags-go"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 	"gopkg.in/yaml.v3"
 )
@@ -48,8 +49,10 @@ func NewObsidianBuilder(ignores []string, db *common.DB) *ObsidianBuilder {
 	}
 
 	md := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
 		goldmark.WithRendererOptions(
 			html.WithUnsafe(),
+			html.WithHardWraps(),
 		),
 	)
 
