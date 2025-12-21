@@ -31,12 +31,11 @@
                      tenant_id TEXT NOT NULL,
                      name TEXT NOT NULL,
                      domain TEXT UNIQUE,
-                     sync_token TEXT UNIQUE NOT NULL,
-                     domain_record TEXT,
+                     sync_key TEXT UNIQUE NOT NULL,
                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id))"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_vaults_domain ON vaults(domain)"])
+                 ["CREATE INDEX idx_vaults_sync_key ON vaults(sync_key)"])
   (jdbc/execute! conn
                  ["CREATE TABLE documents (
                      id TEXT PRIMARY KEY,
@@ -114,17 +113,17 @@
 (defn get-vault-by-domain [domain]
   (execute-one! ["SELECT * FROM vaults WHERE domain = ?" domain]))
 
-(defn get-vault-by-sync-token [token]
-  (execute-one! ["SELECT * FROM vaults WHERE sync_token = ?" token]))
+(defn get-vault-by-sync-key [key]
+  (execute-one! ["SELECT * FROM vaults WHERE sync_key = ?" key]))
 
 (defn list-vaults-by-tenant [tenant-id]
   (jdbc/execute! *conn* ["SELECT * FROM vaults WHERE tenant_id = ?" tenant-id]
                  {:builder-fn rs/as-unqualified-lower-maps}))
 
-(defn create-vault! [id tenant-id name domain sync-token domain-record]
+(defn create-vault! [id tenant-id name domain sync-key]
   (sql/insert! *conn* :vaults
                {:id id :tenant_id tenant-id :name name :domain domain
-                :sync_token sync-token :domain_record domain-record}
+                :sync_key sync-key}
                {:builder-fn rs/as-unqualified-lower-maps})
   ;; Return the created vault
   (get-vault-by-id id))
@@ -206,9 +205,8 @@
           vault-id (utils/generate-uuid)
           vault-name "My Blog"
           domain "blog.test.com"
-          sync-token (utils/generate-uuid)
-          dns-record "DNS info"
-          result (create-vault! vault-id tenant-id vault-name domain sync-token dns-record)]
+          sync-key (utils/generate-uuid)
+          result (create-vault! vault-id tenant-id vault-name domain sync-key)]
       (is (map? result))
       (is (= vault-id (:id result)))
       (is (= vault-name (:name result)))
@@ -218,8 +216,8 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-id.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-id.com" sync-key)
           result (get-vault-by-id vault-id)]
       (is (map? result))
       (is (= vault-id (:id result)))))
@@ -229,31 +227,31 @@
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "unique.test.com"
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" domain sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" domain sync-key)
           result (get-vault-by-domain domain)]
       (is (map? result))
       (is (= domain (:domain result)))))
 
-  (testing "Get vault by sync token"
+  (testing "Get vault by sync key"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-sync.com" sync-token "dns")
-          result (get-vault-by-sync-token sync-token)]
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-sync.com" sync-key)
+          result (get-vault-by-sync-key sync-key)]
       (is (map? result))
-      (is (= sync-token (:sync-token result)))))
+      (is (= sync-key (:sync-key result)))))
 
   (testing "List vaults by tenant"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id-1 (utils/generate-uuid)
           vault-id-2 (utils/generate-uuid)
-          sync-token-1 (utils/generate-uuid)
-          sync-token-2 (utils/generate-uuid)
-          _ (create-vault! vault-id-1 tenant-id "Blog 1" "blog1.com" sync-token-1 "dns1")
-          _ (create-vault! vault-id-2 tenant-id "Blog 2" "blog2.com" sync-token-2 "dns2")
+          sync-key-1 (utils/generate-uuid)
+          sync-key-2 (utils/generate-uuid)
+          _ (create-vault! vault-id-1 tenant-id "Blog 1" "blog1.com" sync-key-1)
+          _ (create-vault! vault-id-2 tenant-id "Blog 2" "blog2.com" sync-key-2)
           results (list-vaults-by-tenant tenant-id)]
       (is (= 2 (count results)))
       (is (every? map? results)))))
@@ -264,8 +262,8 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-insert.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-insert.com" sync-key)
           doc-id (utils/generate-uuid)
           path "test.md"
           content "# Test"
@@ -280,8 +278,8 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-update.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-update.com" sync-key)
           doc-id (utils/generate-uuid)
           path "test.md"
           _ (upsert-document! doc-id tenant-id vault-id path "# Old" "{}" "old" "2025-12-21T10:00:00Z")
@@ -295,8 +293,8 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-delete.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-delete.com" sync-key)
           doc-id (utils/generate-uuid)
           path "to-delete.md"
           _ (upsert-document! doc-id tenant-id vault-id path "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
@@ -309,8 +307,8 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-list.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-list.com" sync-key)
           _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" "# Doc 1" "{}" "hash1" "2025-12-21T10:00:00Z")
           _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" "# Doc 2" "{}" "hash2" "2025-12-21T11:00:00Z")
           results (list-documents-by-vault vault-id)]
@@ -322,8 +320,8 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "blog-get.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "blog-get.com" sync-key)
           doc-id (utils/generate-uuid)
           path "test.md"
           content "# Test Document"

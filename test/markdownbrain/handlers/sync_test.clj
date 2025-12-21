@@ -20,18 +20,10 @@
 
 ;; Helper function to create sync request with Bearer token
 (defn sync-request-with-header
-  [vault-id sync-token & {:keys [body]}]
+  [sync-key & {:keys [body]}]
   (-> (mock/request :post "/api/sync")
-      (assoc :headers {"authorization" (str "Bearer " vault-id ":" sync-token)})
+      (assoc :headers {"authorization" (str "Bearer " sync-key)})
       (assoc :body-params body)))
-
-;; Helper function to create sync request with body params
-(defn sync-request-with-body
-  [vault-id sync-token & {:keys [body]}]
-  (-> (mock/request :post "/api/sync")
-      (assoc :body-params (merge body
-                                {:vault-id vault-id
-                                 :sync-token sync-token}))))
 
 ;; Sync File - Create/Modify 测试
 (deftest test-sync-file-create
@@ -39,14 +31,15 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-list.com" sync-token "dns")
-          request (sync-request-with-header vault-id sync-token
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "sync-list.com" sync-key)
+          request (sync-request-with-header sync-key
                                            :body {:path "test.md"
                                                  :content "# Test Content"
                                                  :metadata {:tags ["test"]}
                                                  :hash "abc123"
-                                                 :mtime "2025-12-21T10:00:00Z"})
+                                                 :mtime "2025-12-21T10:00:00Z"
+                                                 :action "create"})
           response (sync/sync-file request)]
       (is (= 200 (:status response)))
       (is (get-in response [:body :success]))
@@ -55,39 +48,21 @@
         (is (= "# Test Content" (:content doc)))
         (is (= "abc123" (:hash doc))))))
 
-  (testing "Sync file with valid token (body params)"
-    (let [tenant-id (utils/generate-uuid)
-          _ (db/create-tenant! tenant-id "Test Org")
-          vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-create.com" sync-token "dns")
-          request (sync-request-with-body vault-id sync-token
-                                         :body {:path "doc.md"
-                                               :content "# Document"
-                                               :metadata {}
-                                               :hash "def456"
-                                               :mtime "2025-12-21T11:00:00Z"})
-          response (sync/sync-file request)]
-      (is (= 200 (:status response)))
-      (is (get-in response [:body :success]))
-      ;; Verify document was created
-      (let [doc (db/get-document-by-path vault-id "doc.md")]
-        (is (= "# Document" (:content doc))))))
-
   (testing "Update existing file"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-update.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "sync-update.com" sync-key)
           doc-id (utils/generate-uuid)
           _ (db/upsert-document! doc-id tenant-id vault-id "existing.md" "# Old Content" "{}" "old-hash" "2025-12-21T09:00:00Z")
-          request (sync-request-with-header vault-id sync-token
+          request (sync-request-with-header sync-key
                                            :body {:path "existing.md"
                                                  :content "# Updated Content"
                                                  :metadata {}
                                                  :hash "new-hash"
-                                                 :mtime "2025-12-21T12:00:00Z"})
+                                                 :mtime "2025-12-21T12:00:00Z"
+                                                 :action "modify"})
           response (sync/sync-file request)]
       (is (= 200 (:status response)))
       (is (get-in response [:body :success]))
@@ -96,33 +71,34 @@
         (is (= "# Updated Content" (:content doc)))
         (is (= "new-hash" (:hash doc))))))
 
-  (testing "Sync with invalid vault_id"
-    (let [vault-id "invalid-vault-id"
-          sync-token "invalid-token"
-          request (sync-request-with-header vault-id sync-token
+  (testing "Sync with invalid sync-key"
+    (let [sync-key "invalid-sync-key"
+          request (sync-request-with-header sync-key
                                            :body {:path "test.md"
                                                  :content "# Content"
                                                  :metadata {}
                                                  :hash "hash"
-                                                 :mtime "2025-12-21T10:00:00Z"})
+                                                 :mtime "2025-12-21T10:00:00Z"
+                                                 :action "create"})
           response (sync/sync-file request)]
       (is (= 401 (:status response)))
       (is (false? (get-in response [:body :success])))
-      (is (= "Invalid vault_id or sync_token" (get-in response [:body :error])))))
+      (is (= "Invalid sync-key" (get-in response [:body :error])))))
 
-  (testing "Sync with wrong sync_token"
+  (testing "Sync with wrong sync-key"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          correct-token (utils/generate-uuid)
-          wrong-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-invalid.com" correct-token "dns")
-          request (sync-request-with-header vault-id wrong-token
+          correct-key (utils/generate-uuid)
+          wrong-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "sync-invalid.com" correct-key)
+          request (sync-request-with-header wrong-key
                                            :body {:path "test.md"
                                                  :content "# Content"
                                                  :metadata {}
                                                  :hash "hash"
-                                                 :mtime "2025-12-21T10:00:00Z"})
+                                                 :mtime "2025-12-21T10:00:00Z"
+                                                 :action "create"})
           response (sync/sync-file request)]
       (is (= 401 (:status response)))
       (is (false? (get-in response [:body :success]))))))
@@ -133,11 +109,11 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-delete.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "sync-delete.com" sync-key)
           doc-id (utils/generate-uuid)
           _ (db/upsert-document! doc-id tenant-id vault-id "to-delete.md" "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
-          request (sync-request-with-header vault-id sync-token
+          request (sync-request-with-header sync-key
                                            :body {:path "to-delete.md"
                                                  :action "delete"})
           response (sync/sync-file request)]
@@ -150,9 +126,9 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-missing.com" sync-token "dns")
-          request (sync-request-with-header vault-id sync-token
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "sync-missing.com" sync-key)
+          request (sync-request-with-header sync-key
                                            :body {:path "non-existent.md"
                                                  :action "delete"})
           response (sync/sync-file request)]
@@ -163,11 +139,11 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "sync-duplicate.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "sync-duplicate.com" sync-key)
           doc-id (utils/generate-uuid)
           _ (db/upsert-document! doc-id tenant-id vault-id "file.md" "# Content" "{}" "hash" "2025-12-21T10:00:00Z")
-          request (sync-request-with-header vault-id "wrong-token"
+          request (sync-request-with-header "wrong-key"
                                            :body {:path "file.md"
                                                  :action "delete"})
           response (sync/sync-file request)]

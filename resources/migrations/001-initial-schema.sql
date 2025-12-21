@@ -22,14 +22,14 @@ CREATE TABLE IF NOT EXISTS vaults (
   tenant_id TEXT NOT NULL,
   name TEXT NOT NULL,
   domain TEXT UNIQUE,
-  sync_token TEXT UNIQUE NOT NULL,
-  domain_record TEXT,
+  sync_key TEXT UNIQUE NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
 
--- Create index on domain for fast lookup
+-- Create index on domain and sync_key for fast lookup
 CREATE INDEX IF NOT EXISTS idx_vaults_domain ON vaults(domain);
+CREATE INDEX IF NOT EXISTS idx_vaults_sync_key ON vaults(sync_key);
 
 -- Documents (markdown files)
 CREATE TABLE IF NOT EXISTS documents (

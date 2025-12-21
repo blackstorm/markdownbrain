@@ -11,5 +11,6 @@
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true
   },
-  "include": ["main.ts"]
+  "include": ["*.ts"],
+  "exclude": ["node_modules"]
 }

@@ -90,14 +90,13 @@
   (find-by :users :id id))
 
 ;; Vault 操作
-(defn create-vault! [id tenant-id name domain sync-token domain-record]
+(defn create-vault! [id tenant-id name domain sync-key]
   (insert-with-builder! :vaults
                        {:id id
                         :tenant_id tenant-id
                         :name name
                         :domain domain
-                        :sync_token sync-token
-                        :domain_record domain-record}))
+                        :sync_key sync-key}))
 
 (defn get-vault-by-id [id]
   (find-by :vaults :id id))
@@ -105,8 +104,8 @@
 (defn get-vault-by-domain [domain]
   (find-by :vaults :domain domain))
 
-(defn get-vault-by-sync-token [sync-token]
-  (find-by :vaults :sync_token sync-token))
+(defn get-vault-by-sync-key [sync-key]
+  (find-by :vaults :sync_key sync-key))
 
 (defn list-vaults-by-tenant [tenant-id]
   (find-all-by :vaults :tenant_id tenant-id :order-by :created_at))

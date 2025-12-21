@@ -44,7 +44,7 @@
 (defn list-vaults [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vaults (db/list-vaults-by-tenant tenant-id)]
-    (resp/ok (mapv #(select-keys % [:id :name :domain :sync-token :domain-record :created-at])
+    (resp/ok (mapv #(select-keys % [:id :name :domain :sync-key :created-at])
                    vaults))))
 
 ;; 创建 vault
@@ -54,12 +54,9 @@
     (if (or (nil? name) (nil? domain))
       (resp/bad-request "缺少必填字段")
       (let [vault-id (utils/generate-uuid)
-            sync-token (utils/generate-uuid)
-            server-ip (config/get-config :server-ip)
-            domain-record (utils/generate-dns-record domain server-ip)]
-        (db/create-vault! vault-id tenant-id name domain sync-token domain-record)
+            sync-key (utils/generate-uuid)]
+        (db/create-vault! vault-id tenant-id name domain sync-key)
         (resp/success {:vault {:id vault-id
                                :name name
                                :domain domain
-                               :sync-token sync-token
-                               :domain-record domain-record}})))))
+                               :sync-key sync-key}})))))

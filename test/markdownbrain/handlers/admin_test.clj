@@ -129,8 +129,8 @@
           _ (db/create-user! user-id tenant-id "admin" "hash")
           vault-id-1 (utils/generate-uuid)
           vault-id-2 (utils/generate-uuid)
-          _ (db/create-vault! vault-id-1 tenant-id "Blog 1" "blog1.com" "token1" "dns1")
-          _ (db/create-vault! vault-id-2 tenant-id "Blog 2" "blog2.com" "token2" "dns2")
+          _ (db/create-vault! vault-id-1 tenant-id "Blog 1" "blog1.com" (utils/generate-uuid))
+          _ (db/create-vault! vault-id-2 tenant-id "Blog 2" "blog2.com" (utils/generate-uuid))
           request (authenticated-request :get "/api/admin/vaults" tenant-id user-id)
           response (admin/list-vaults request)]
       (is (= 200 (:status response)))
@@ -165,8 +165,7 @@
       (is (string? (get-in response [:body :vault :id])))
       (is (= "My Blog" (get-in response [:body :vault :name])))
       (is (= "myblog.com" (get-in response [:body :vault :domain])))
-      (is (string? (get-in response [:body :vault :sync-token])))
-      (is (string? (get-in response [:body :vault :domain-record])))))
+      (is (string? (get-in response [:body :vault :sync-key])))))
 
   (testing "Create vault with missing fields"
     (let [tenant-id (utils/generate-uuid)

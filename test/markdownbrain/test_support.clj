@@ -44,18 +44,11 @@
 
 (defn sync-request-with-header
   "构建带 Bearer token 的同步请求 (Authorization header)"
-  [vault-id sync-token & {:keys [body]}]
+  [sync-key & {:keys [body]}]
   (-> (mock/request :post "/api/sync")
-      (assoc :headers {"authorization" (str "Bearer " vault-id ":" sync-token)})
+      (assoc :headers {"authorization" (str "Bearer " sync-key)})
       (assoc :body-params body)))
 
-(defn sync-request-with-body
-  "构建带 vault-id 和 sync-token 的同步请求 (body params)"
-  [vault-id sync-token & {:keys [body]}]
-  (-> (mock/request :post "/api/sync")
-      (assoc :body-params (merge body
-                                {:vault-id vault-id
-                                 :sync-token sync-token}))))
 
 ;; 测试数据创建辅助函数
 
@@ -84,10 +77,10 @@
   "创建测试 vault"
   ([tenant-id name domain]
    (let [vault-id (utils/generate-uuid)
-         sync-token (utils/generate-uuid)]
-     (db/create-vault! vault-id tenant-id name domain sync-token "dns")
+         sync-key (utils/generate-uuid)]
+     (db/create-vault! vault-id tenant-id name domain sync-key)
      {:vault-id vault-id
-      :sync-token sync-token}))
+      :sync-key sync-key}))
   ([tenant-id domain]
    (create-test-vault! tenant-id "Test Vault" domain)))
 

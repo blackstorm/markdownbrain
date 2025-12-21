@@ -20,6 +20,9 @@
                  :post {:middleware [middleware/wrap-auth]
                         :handler admin/create-vault}}]]
 
+    ["/vault"
+     ["/info" {:get sync/vault-info}]]
+
     ["/sync" {:post sync/sync-file}]
 
     ["/documents" {:get frontend/get-documents}]

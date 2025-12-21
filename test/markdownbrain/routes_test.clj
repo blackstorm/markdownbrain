@@ -30,7 +30,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "test.com" (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" "test.com" (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "test.com"}))
           response (test-app request)]
@@ -68,7 +68,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "docs.com" (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" "docs.com" (utils/generate-uuid))
           request (-> (mock/request :get "/api/documents")
                      (assoc :headers {"host" "docs.com"}))
           response (test-app request)]
@@ -133,15 +133,16 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          sync-token (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "blog.com" sync-token "dns")
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "blog.com" sync-key)
           request (-> (mock/request :post "/api/sync")
-                     (assoc :headers {"authorization" (str "Bearer " vault-id ":" sync-token)})
+                     (assoc :headers {"authorization" (str "Bearer " sync-key)})
                      (assoc :body-params {:path "test.md"
                                          :content "# Test"
                                          :metadata {}
                                          :hash "hash"
-                                         :mtime "2025-12-21T10:00:00Z"}))
+                                         :mtime "2025-12-21T10:00:00Z"
+                                         :action "create"}))
           response (test-app request)]
       (is (= 200 (:status response))))))
 
@@ -169,7 +170,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "param.com" (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" "param.com" (utils/generate-uuid))
           doc-id (utils/generate-uuid)
           _ (db/upsert-document! doc-id tenant-id vault-id "test.md" "# Test" "{}" "hash" "2025-12-21T10:00:00Z")
           request (-> (mock/request :get (str "/api/documents/" doc-id))
@@ -191,7 +192,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "get.com" (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" "get.com" (utils/generate-uuid))
           request (-> (mock/request :get "/api/documents")
                      (assoc :headers {"host" "get.com"}))
           response (test-app request)]
@@ -218,7 +219,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "json.com" (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" "json.com" (utils/generate-uuid))
           request (-> (mock/request :get "/api/documents")
                      (assoc :headers {"host" "json.com"})
                      (mock/header "Accept" "application/json"))
@@ -271,17 +272,18 @@
                                                    :domain "myblog.com"}))
               vault-response (test-app vault-request)
               vault-id (get-in vault-response [:body :vault :id])
-              sync-token (get-in vault-response [:body :vault :sync-token])]
+              sync-key (get-in vault-response [:body :vault :sync-key])]
           (is (or (= 200 (:status vault-response)) (= 401 (:status vault-response))))
 
           ;; 4. Sync file
           (let [sync-request (-> (mock/request :post "/api/sync")
-                                (assoc :headers {"authorization" (str "Bearer " vault-id ":" sync-token)})
+                                (assoc :headers {"authorization" (str "Bearer " sync-key)})
                                 (assoc :body-params {:path "test.md"
                                                     :content "# Test Document"
                                                     :metadata {}
                                                     :hash "abc123"
-                                                    :mtime "2025-12-21T10:00:00Z"}))
+                                                    :mtime "2025-12-21T10:00:00Z"
+                                                    :action "create"}))
                 sync-response (test-app sync-request)]
             (is (or (= 200 (:status sync-response)) (= 401 (:status sync-response))))
             (is (or (get-in sync-response [:body :success]) (= 401 (:status sync-response))))))))))
@@ -293,7 +295,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "flow.com"
-          _ (db/create-vault! vault-id tenant-id "Flow Blog" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Flow Blog" domain (utils/generate-uuid))
           doc-id (utils/generate-uuid)
           _ (db/upsert-document! doc-id tenant-id vault-id "article.md" "# Article" "{}" "hash" "2025-12-21T10:00:00Z")]
 

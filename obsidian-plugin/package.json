@@ -4,21 +4,21 @@
   "description": "MarkdownBrain Obsidian sync plugin",
   "main": "main.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:ts\" \"npm run dev:cljs\"",
-    "dev:ts": "tsc --watch",
-    "dev:cljs": "shadow-cljs watch plugin",
-    "build": "npm run build:cljs && npm run build:ts",
-    "build:ts": "tsc",
-    "build:cljs": "shadow-cljs release plugin"
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": ["obsidian", "plugin", "sync"],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.10.2",
-    "obsidian": "^1.7.2",
-    "typescript": "^5.7.2",
-    "shadow-cljs": "^2.28.18",
-    "concurrently": "^9.1.2"
+    "@types/node": "^25.0.3",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "builtin-modules": "^4.0.0",
+    "esbuild": "^0.25.3",
+    "obsidian": "^1.11.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3"
   }
 }

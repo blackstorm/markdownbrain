@@ -1,35 +1,142 @@
-import { Plugin, TFile, Notice, PluginSettingTab, App, Setting } from 'obsidian';
-
-// 导入 ClojureScript 编译的模块
-const sync = require('./sync.js');
+import { Plugin, TFile, Notice, PluginSettingTab, App, Setting, requestUrl } from 'obsidian';
 
 interface MarkdownBrainSettings {
     serverUrl: string;
-    vaultId: string;
-    syncToken: string;
+    syncKey: string;
     autoSync: boolean;
 }
 
 const DEFAULT_SETTINGS: MarkdownBrainSettings = {
     serverUrl: 'https://api.markdownbrain.com',
-    vaultId: '',
-    syncToken: '',
+    syncKey: '',
     autoSync: true
 };
 
+// 同步配置
+interface SyncConfig {
+    serverUrl: string;
+    syncKey: string;
+}
+
+// 同步数据
+interface SyncData {
+    path: string;
+    content?: string;
+    hash?: string;
+    mtime?: string;
+    action: 'create' | 'modify' | 'delete';
+}
+
+// Vault 信息
+interface VaultInfo {
+    id: string;
+    name: string;
+    domain: string;
+    'created-at': string;
+}
+
+// 同步管理器
+class SyncManager {
+    private config: SyncConfig;
+
+    constructor(config: SyncConfig) {
+        this.config = config;
+    }
+
+    updateConfig(config: SyncConfig) {
+        this.config = config;
+    }
+
+    async testConnection(timeout: number = 30000): Promise<{ success: boolean; vaultInfo?: VaultInfo; error?: string }> {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const response = await requestUrl({
+                url: `${this.config.serverUrl}/api/vault/info`,
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${this.config.syncKey}`
+                },
+                throw: false
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.status === 200) {
+                const data = response.json;
+                return {
+                    success: true,
+                    vaultInfo: data.vault
+                };
+            } else {
+                return {
+                    success: false,
+                    error: `HTTP ${response.status}: ${response.text || 'Unknown error'}`
+                };
+            }
+        } catch (error: any) {
+            if (error?.name === 'AbortError') {
+                return {
+                    success: false,
+                    error: '连接超时（30秒）'
+                };
+            }
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    }
+
+    async sync(data: SyncData): Promise<{ success: boolean; error?: string }> {
+        try {
+            const response = await requestUrl({
+                url: `${this.config.serverUrl}/api/sync`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.config.syncKey}`
+                },
+                body: JSON.stringify(data),
+                throw: false
+            });
+
+            if (response.status === 200) {
+                return { success: true };
+            } else {
+                return {
+                    success: false,
+                    error: `HTTP ${response.status}: ${response.text || 'Sync failed'}`
+                };
+            }
+        } catch (error) {
+            console.error('Sync error:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    }
+
+    destroy() {
+        // Cleanup if needed
+    }
+}
+
 export default class MarkdownBrainPlugin extends Plugin {
-    settings: MarkdownBrainSettings;
+    settings!: MarkdownBrainSettings;
+    syncManager!: SyncManager;  // 改为 public，供设置面板使用
 
     async onload() {
         console.log('Loading MarkdownBrain plugin');
 
         await this.loadSettings();
 
-        // 初始化 ClojureScript 同步模块
-        sync.init({
+        // 初始化同步管理器
+        this.syncManager = new SyncManager({
             serverUrl: this.settings.serverUrl,
-            vaultId: this.settings.vaultId,
-            syncToken: this.settings.syncToken
+            syncKey: this.settings.syncKey
         });
 
         // 监听文件创建
@@ -96,8 +203,8 @@ export default class MarkdownBrainPlugin extends Plugin {
             // 获取文件元数据
             const stat = file.stat;
 
-            // 调用 ClojureScript 同步函数
-            const result = await sync.sync({
+            // 调用同步函数
+            const result = await this.syncManager.sync({
                 path: file.path,
                 content: content,
                 hash: this.hashString(content),
@@ -112,7 +219,7 @@ export default class MarkdownBrainPlugin extends Plugin {
             }
         } catch (error) {
             console.error('Sync error:', error);
-            new Notice(`同步错误: ${error.message}`);
+            new Notice(`同步错误: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 
@@ -122,7 +229,7 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
 
         try {
-            const result = await sync.sync({
+            const result = await this.syncManager.sync({
                 path: file.path,
                 action: 'delete'
             });
@@ -168,7 +275,7 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     onunload() {
         console.log('Unloading MarkdownBrain plugin');
-        sync.destroy();
+        this.syncManager.destroy();
     }
 
     async loadSettings() {
@@ -177,11 +284,10 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-        // 更新 ClojureScript 配置
-        sync.init({
+        // 更新同步管理器配置
+        this.syncManager.updateConfig({
             serverUrl: this.settings.serverUrl,
-            vaultId: this.settings.vaultId,
-            syncToken: this.settings.syncToken
+            syncKey: this.settings.syncKey
         });
     }
 }
@@ -213,25 +319,43 @@ class MarkdownBrainSettingTab extends PluginSettingTab {
                 }));
 
         new Setting(containerEl)
-            .setName('Vault ID')
-            .setDesc('从管理后台获取的 Vault ID')
+            .setName('Sync Key')
+            .setDesc('从管理后台获取的同步密钥')
             .addText(text => text
                 .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-                .setValue(this.plugin.settings.vaultId)
+                .setValue(this.plugin.settings.syncKey)
                 .onChange(async (value) => {
-                    this.plugin.settings.vaultId = value;
+                    this.plugin.settings.syncKey = value;
                     await this.plugin.saveSettings();
                 }));
 
+        // 测试连接按钮
         new Setting(containerEl)
-            .setName('Sync Token')
-            .setDesc('从管理后台获取的同步 Token')
-            .addText(text => text
-                .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-                .setValue(this.plugin.settings.syncToken)
-                .onChange(async (value) => {
-                    this.plugin.settings.syncToken = value;
-                    await this.plugin.saveSettings();
+            .setName('测试连接')
+            .setDesc('测试与服务器的连接（30秒超时）')
+            .addButton(button => button
+                .setButtonText('测试')
+                .onClick(async () => {
+                    button.setDisabled(true);
+                    button.setButtonText('测试中...');
+
+                    new Notice('正在测试连接...');
+
+                    const result = await this.plugin.syncManager.testConnection(30000);
+
+                    button.setDisabled(false);
+                    button.setButtonText('测试');
+
+                    if (result.success && result.vaultInfo) {
+                        new Notice(
+                            `✅ 连接成功！\n` +
+                            `Vault: ${result.vaultInfo.name}\n` +
+                            `Domain: ${result.vaultInfo.domain}`,
+                            5000
+                        );
+                    } else {
+                        new Notice(`❌ 连接失败: ${result.error || 'Unknown error'}`, 5000);
+                    }
                 }));
 
         new Setting(containerEl)

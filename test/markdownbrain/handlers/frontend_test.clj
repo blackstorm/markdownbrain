@@ -27,7 +27,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "myblog.com"
-          _ (db/create-vault! vault-id tenant-id "My Blog" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "My Blog" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" domain}))
           response (frontend/home request)]
@@ -40,7 +40,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "localhost"
-          _ (db/create-vault! vault-id tenant-id "Local Blog" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Local Blog" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "localhost:3000"}))
           response (frontend/home request)]
@@ -69,7 +69,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "blog.com"
-          _ (db/create-vault! vault-id tenant-id "Blog" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" domain (utils/generate-uuid))
           _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" "# Doc 1" "{}" "hash1" "2025-12-21T10:00:00Z")
           _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" "# Doc 2" "{}" "hash2" "2025-12-21T11:00:00Z")
           request (-> (mock/request :get "/api/documents")
@@ -84,7 +84,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "empty.com"
-          _ (db/create-vault! vault-id tenant-id "Empty" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Empty" domain (utils/generate-uuid))
           request (-> (mock/request :get "/api/documents")
                      (assoc :headers {"host" domain}))
           response (frontend/get-documents request)]
@@ -105,7 +105,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "blog.com"
-          _ (db/create-vault! vault-id tenant-id "Blog" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Blog" domain (utils/generate-uuid))
           doc-id (utils/generate-uuid)
           content "# Document Content"
           _ (db/upsert-document! doc-id tenant-id vault-id "doc.md" content "{}" "hash" "2025-12-21T10:00:00Z")
@@ -146,7 +146,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "example.com"
-          _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "example.com"}))
           response (frontend/home request)]
@@ -157,7 +157,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "exampleport.com"
-          _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "exampleport.com:8080"}))
           response (frontend/home request)]
@@ -168,7 +168,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "192.168.1.1"
-          _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "192.168.1.1:3000"}))
           response (frontend/home request)]
@@ -179,7 +179,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           domain "localhost"
-          _ (db/create-vault! vault-id tenant-id "Local" domain (utils/generate-uuid) "dns")
+          _ (db/create-vault! vault-id tenant-id "Local" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "localhost:3000"}))
           response (frontend/home request)]
