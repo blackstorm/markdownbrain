@@ -1,3 +1,17 @@
-bin/
+# MarkdownBrain
+
+*.db
+*.db-shm
+*.db-wal
+*.log
+.nrepl-port
+.cpcache/
+.shadow-cljs/
 node_modules/
-dist/
+target/
+.DS_Store
+resources/public/js/htmx.min.js
+resources/public/css/app.css
+markdownbrain.db
+.lsp/
+.clj-kondo/

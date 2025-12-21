@@ -1,15 +1,16 @@
 {
-  "name": "markdownbrain",
-  "version": "0.0.1",
-  "author": "blackstorm",
-  "license": "MIT",
-  "description": "markdownbrain",
+  "name": "markdownbrain-frontend",
+  "version": "1.0.0",
+  "description": "MarkdownBrain frontend assets",
   "scripts": {
-    "dev": "pnpx tailwindcss -i ./tailwind.css -o ./server/www/static/app.css --watch",
-    "build": "pnpx tailwindcss -i ./tailwind.css -o ./server/www/static/app.css --minify"
+    "tailwind:watch": "tailwindcss -i ./tailwind.css -o ./resources/public/css/app.css --watch",
+    "tailwind:build": "tailwindcss -i ./tailwind.css -o ./resources/public/css/app.css --minify",
+    "setup": "cp node_modules/htmx.org/dist/htmx.min.js resources/public/js/"
   },
   "devDependencies": {
-    "@tailwindcss/typography": "^0.5.15",
-    "tailwindcss": "^3.4.15"
+    "tailwindcss": "^4.0.0-beta.7"
+  },
+  "dependencies": {
+    "htmx.org": "^2.0.4"
   }
 }

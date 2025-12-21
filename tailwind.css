@@ -1,31 +1,32 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-body {
-    background-color: #fafafc;
+/* 自定义主题 */
+@theme {
+  --color-primary-50: #f0f9ff;
+  --color-primary-500: #0ea5e9;
+  --color-primary-600: #0284c7;
+  --color-primary-700: #0369a1;
 }
 
-@keyframes fadeInScale {
-    0% {
-        opacity: 0;
-        transform: scale(0.98);
-    }
+/* 组件样式 */
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors;
+  }
 
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700;
+  }
 
-.note {
-    animation: fadeInScale 0.1s ease-out;
-}
+  .btn-secondary {
+    @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
+  }
 
-.note-link {
-    @apply text-blue-600 hover:underline;
-}
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500;
+  }
 
-.last-updated-at {
-    @apply text-xs text-zinc-400;
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
 }

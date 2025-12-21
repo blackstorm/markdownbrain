@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{{ vault.name }} - MarkdownBrain{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-4xl">
+    <header class="mb-8">
+        <h1 class="text-4xl font-bold text-gray-900">{{ vault.name }}</h1>
+        <p class="text-gray-600 mt-2">{{ vault.domain }}</p>
+    </header>
+
+    <div class="card">
+        <h2 class="text-2xl font-semibold text-gray-900 mb-4">文档列表</h2>
+
+        {% if documents %}
+        <div class="space-y-2">
+            {% for doc in documents %}
+            <a href="/documents/{{ doc.id }}"
+               class="block p-4 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="font-medium text-gray-900">{{ doc.path }}</h3>
+                        <p class="text-sm text-gray-500 mt-1">
+                            最后修改: {{ doc.mtime }}
+                        </p>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 text-center py-8">
+            暂无文档。请使用 Obsidian 插件同步您的笔记。
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

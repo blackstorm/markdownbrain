@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MarkdownBrain{% endblock %}</title>
+    <link rel="stylesheet" href="/css/app.css">
+    <script src="/js/htmx.min.js"></script>
+    <script src="/js/helpers.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div id="notification-container"></div>
+
+    {% block content %}{% endblock %}
+</body>
+</html>
