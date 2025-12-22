@@ -71,6 +71,6 @@
       wrap-session-middleware
       keyword-params/wrap-keyword-params
       params/wrap-params
-      json/wrap-json-response
-      (json/wrap-json-body {:keywords? true})
+      ;; 移除 json/wrap-json-body 和 json/wrap-json-response
+      ;; 因为 Reitit 的 muuntaja 中间件会处理 JSON
       wrap-cors))

@@ -3,8 +3,10 @@
             [next.jdbc.sql :as sql]
             [next.jdbc.result-set :as rs]
             [markdownbrain.config :as config]
+            [markdownbrain.utils :as utils]
             [clojure.java.io :as io]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clojure.tools.logging :as log]))
 
 (def datasource
   (delay
@@ -60,13 +62,16 @@
 
 ;; 初始化数据库
 (defn init-db! []
-  (let [schema (slurp (io/resource "migrations/001-initial-schema.sql"))
-        statements (-> schema
-                       (clojure.string/split #";")
-                       (->> (map clojure.string/trim)
-                            (filter #(not (clojure.string/blank? %)))))]
-    (doseq [stmt statements]
-      (jdbc/execute! @datasource [stmt]))))
+  (let [migrations ["migrations/001-initial-schema.sql"]]
+    (doseq [migration migrations]
+      (let [schema (slurp (io/resource migration))
+            statements (-> schema
+                           (clojure.string/split #";")
+                           (->> (map clojure.string/trim)
+                                (filter #(not (clojure.string/blank? %)))))]
+        (println "Running migration:" migration)
+        (doseq [stmt statements]
+          (jdbc/execute! @datasource [stmt]))))))
 
 ;; Tenant 操作
 (defn create-tenant! [id name]
@@ -119,17 +124,21 @@
   (execute-one! ["DELETE FROM vaults WHERE id = ?" id]))
 
 ;; Document 操作
-(defn upsert-document! [id tenant-id vault-id path content metadata hash mtime]
+(defn upsert-document! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!
-    ["INSERT INTO documents (id, tenant_id, vault_id, path, content, metadata, hash, mtime)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(vault_id, path) DO UPDATE SET
+    ["INSERT INTO documents (id, tenant_id, vault_id, path, client_id, content, metadata, hash, mtime)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(vault_id, client_id) DO UPDATE SET
+        path = excluded.path,
         content = excluded.content,
         metadata = excluded.metadata,
         hash = excluded.hash,
         mtime = excluded.mtime,
         updated_at = CURRENT_TIMESTAMP"
-     id tenant-id vault-id path content metadata hash mtime]))
+     id tenant-id vault-id path client-id content metadata hash mtime]))
+
+(defn delete-document-by-client-id! [vault-id client-id]
+  (execute-one! ["DELETE FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
 
 (defn delete-document! [vault-id path]
   (execute-one! ["DELETE FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
@@ -144,3 +153,63 @@
 
 (defn get-document-by-path [vault-id path]
   (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
+
+(defn get-document-by-client-id [vault-id client-id]
+  (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
+
+;; Document Links 操作
+(defn delete-document-links-by-source! [vault-id source-client-id]
+  "删除指定源文档的所有链接"
+  (log/debug "Deleting all links - vault-id:" vault-id "source-client-id:" source-client-id)
+  (let [result (execute-one! ["DELETE FROM document_links WHERE vault_id = ? AND source_client_id = ?"
+                              vault-id source-client-id])]
+    (log/debug "Delete result:" result)
+    result))
+
+(defn delete-document-link-by-target! [vault-id source-client-id target-client-id]
+  "删除指定源文档到指定目标文档的链接"
+  (log/debug "Deleting specific link - source:" source-client-id "target:" target-client-id)
+  (let [result (execute-one! ["DELETE FROM document_links WHERE vault_id = ? AND source_client_id = ? AND target_client_id = ?"
+                              vault-id source-client-id target-client-id])]
+    (log/debug "Delete result:" result)
+    result))
+
+(defn insert-document-link! [vault-id source-client-id target-client-id target-path link-type display-text original]
+  "插入文档链接关系"
+  (log/debug "Inserting document link:")
+  (log/debug "  vault-id:" vault-id)
+  (log/debug "  source-client-id:" source-client-id)
+  (log/debug "  target-client-id:" target-client-id)
+  (log/debug "  target-path:" target-path)
+  (log/debug "  link-type:" link-type)
+  (log/debug "  display-text:" display-text)
+  (log/debug "  original:" original)
+  (let [id (utils/generate-uuid)]
+    (log/debug "Generated link id:" id)
+    (let [data {:id id
+                :vault_id vault-id
+                :source_client_id source-client-id
+                :target_client_id target-client-id
+                :target_path target-path
+                :link_type link-type
+                :display_text display-text
+                :original original}]
+      (log/debug "Insert data:" data)
+      (try
+        (let [result (insert-with-builder! :document_links data)]
+          (log/debug "Insert result:" result)
+          result)
+        (catch Exception e
+          (log/error "Failed to insert document link:" (.getMessage e))
+          (log/error "SQL Exception details:" e)
+          (throw e))))))
+
+(defn get-document-links [vault-id client-id]
+  "获取文档的所有链接（出链）"
+  (execute! ["SELECT * FROM document_links WHERE vault_id = ? AND source_client_id = ?"
+             vault-id client-id]))
+
+(defn get-document-backlinks [vault-id client-id]
+  "获取文档的所有反向链接（入链）"
+  (execute! ["SELECT * FROM document_links WHERE vault_id = ? AND target_client_id = ?"
+             vault-id client-id]))

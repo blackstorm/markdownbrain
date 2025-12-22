@@ -1,11 +1,55 @@
 (ns markdownbrain.utils
   (:require [buddy.hashers :as hashers]
             [clojure.string :as str])
-  (:import [java.util UUID]))
+  (:import [java.util UUID]
+           [java.security MessageDigest]))
 
 ;; UUID 生成
 (defn generate-uuid []
   (str (UUID/randomUUID)))
+
+;; 生成确定性文档 ID（基于 vault-id 和 path）
+(defn generate-document-id
+  "根据 vault-id 和 path 生成确定性的文档 ID
+   使用简单的 hash 方式：SHA-256(vault-id + path) 的十六进制表示前32位转为UUID格式"
+  [vault-id path]
+  (let [md (MessageDigest/getInstance "SHA-256")
+        input (str vault-id ":" path)
+        hash-bytes (.digest md (.getBytes input "UTF-8"))
+        ;; 取前16字节转为UUID格式
+        hex (apply str (map #(format "%02x" %) (take 16 hash-bytes)))
+        ;; 格式化为 UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+        uuid-str (str (subs hex 0 8) "-"
+                      (subs hex 8 12) "-"
+                      (subs hex 12 16) "-"
+                      (subs hex 16 20) "-"
+                      (subs hex 20 32))]
+    uuid-str))
+
+;; 生成客户端 ID（基于 path）
+(defn generate-client-id
+  "根据 path 生成客户端确定性 ID（与 Obsidian 插件保持一致）
+   使用 SHA-256(path) 的十六进制表示转为 UUID 格式"
+  [path]
+  (let [md (MessageDigest/getInstance "SHA-256")
+        hash-bytes (.digest md (.getBytes path "UTF-8"))
+        hex (apply str (map #(format "%02x" %) hash-bytes))
+        ;; 格式化为 UUID
+        uuid-str (str (subs hex 0 8) "-"
+                      (subs hex 8 12) "-"
+                      (subs hex 12 16) "-"
+                      (subs hex 16 20) "-"
+                      (subs hex 20 32))]
+    uuid-str))
+
+;; 标准化 Obsidian 链接路径
+(defn normalize-link-path
+  "标准化 Obsidian 链接路径，确保以 .md 结尾"
+  [link-path]
+  (let [path (str/trim link-path)]
+    (if (str/ends-with? path ".md")
+      path
+      (str path ".md"))))
 
 ;; 密码哈希
 (defn hash-password [password]

@@ -1,0 +1,10 @@
+{
+  "id": "markdownbrain-sync",
+  "name": "MarkdownBrain Sync",
+  "version": "1.0.0",
+  "minAppVersion": "1.0.0",
+  "description": "Sync your Obsidian vault to MarkdownBrain server",
+  "author": "MarkdownBrain",
+  "authorUrl": "https://github.com/yourname/markdownbrain",
+  "isDesktopOnly": false
+}

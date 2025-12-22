@@ -1,10 +1,22 @@
 (ns markdownbrain.routes
   (:require [reitit.ring :as ring]
             [reitit.ring.middleware.parameters :as parameters]
+            [reitit.ring.coercion :as coercion]
+            [reitit.coercion.spec]
+            [muuntaja.core :as m]
+            [reitit.ring.middleware.muuntaja :as muuntaja]
             [markdownbrain.handlers.admin :as admin]
             [markdownbrain.handlers.sync :as sync]
             [markdownbrain.handlers.frontend :as frontend]
             [markdownbrain.middleware :as middleware]))
+
+;; 自定义 Muuntaja 实例，确保 UTF-8 编码
+(def muuntaja-instance
+  (m/create
+    (assoc-in
+      m/default-options
+      [:formats "application/json" :decoder-opts]
+      {:decode-key-fn true})))
 
 (def routes
   [["/" {:get frontend/home}]
@@ -37,5 +49,7 @@
 (def app
   (ring/ring-handler
     (ring/router routes
-                 {:data {:middleware [parameters/parameters-middleware]}})
+                 {:data {:muuntaja muuntaja-instance
+                         :middleware [parameters/parameters-middleware
+                                      muuntaja/format-middleware]}})
     (ring/create-default-handler)))
