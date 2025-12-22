@@ -15,3 +15,4 @@ resources/public/css/app.css
 markdownbrain.db
 .lsp/
 .clj-kondo/
+vault/

@@ -7,7 +7,8 @@
 
 ;; 初始化管理员用户
 (defn init-admin [request]
-  (let [{:keys [username password tenant-name]} (:body-params request)]
+  (let [params (or (:body-params request) (:params request))
+        {:keys [username password tenant-name]} params]
     (cond
       (or (nil? username) (nil? password) (nil? tenant-name))
       (resp/bad-request "缺少必填字段")

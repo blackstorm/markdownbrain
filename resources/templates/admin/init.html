@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="wireframe">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>初始化 MarkdownBrain</title>
+    <link href="/css/app.css" rel="stylesheet">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="min-h-screen bg-base-200">
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div class="card w-full max-w-md bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-2xl font-bold justify-center mb-4">
+                    👋🏻 MarkdownBrain
+                </h2>
+                <p class="text-center text-base-content/70 mb-6">
+                    请首先创建管理员账号
+                </p>
+
+                <form hx-post="/admin/init"
+                      hx-swap="afterbegin"
+                      hx-target="#message-container"
+                      class="space-y-4">
+
+                    <!-- 组织名称 -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">组织名称</span>
+                        </label>
+                        <input type="text"
+                               name="tenant-name"
+                               placeholder="我的组织"
+                               class="input input-bordered w-full"
+                               required />
+                    </div>
+
+                    <!-- 邮箱 -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">邮箱地址</span>
+                        </label>
+                        <input type="email"
+                               name="username"
+                               placeholder="admin@example.com"
+                               class="input input-bordered w-full"
+                               required />
+                        <label class="label">
+                            <span class="label-text-alt">将作为登录用户名</span>
+                        </label>
+                    </div>
+
+                    <!-- 密码 -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">密码</span>
+                        </label>
+                        <input type="password"
+                               name="password"
+                               placeholder="••••••••"
+                               class="input input-bordered w-full"
+                               minlength="6"
+                               required />
+                        <label class="label">
+                            <span class="label-text-alt">至少 6 个字符</span>
+                        </label>
+                    </div>
+
+                    <!-- 消息提示容器 -->
+                    <div id="message-container"></div>
+
+                    <!-- 提交按钮 -->
+                    <div class="form-control mt-6">
+                        <button type="submit" class="btn btn-primary w-full">
+                            创建管理员账号
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 监听 HTMX 响应事件
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.successful) {
+                const response = JSON.parse(event.detail.xhr.response);
+                if (response.success) {
+                    // 显示成功消息
+                    event.detail.target.innerHTML = `
+                        <div class="alert alert-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>初始化成功！正在跳转...</span>
+                        </div>
+                    `;
+                    // 2 秒后跳转到登录页
+                    setTimeout(function() {
+                        window.location.href = '/admin/login';
+                    }, 2000);
+                } else {
+                    // 显示错误消息
+                    event.detail.target.innerHTML = `
+                        <div class="alert alert-error">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>${response.error || '初始化失败'}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                event.detail.target.innerHTML = `
+                    <div class="alert alert-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>网络错误，请稍后重试</span>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

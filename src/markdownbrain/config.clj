@@ -11,7 +11,7 @@
 
 (def config
   {:server
-   {:port (or (some-> (System/getenv "PORT") Integer/parseInt) 3000)
+   {:port (or (some-> (System/getenv "PORT") Integer/parseInt) 8080)
     :host (or (System/getenv "HOST") "0.0.0.0")}
 
    :database

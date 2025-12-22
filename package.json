@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "description": "MarkdownBrain frontend assets",
   "scripts": {
-    "tailwind:watch": "tailwindcss -i ./tailwind.css -o ./resources/public/css/app.css --watch",
-    "tailwind:build": "tailwindcss -i ./tailwind.css -o ./resources/public/css/app.css --minify",
+    "build:css": "npx @tailwindcss/cli@latest -i ./app.css -o ./resources/public/css/app.css --minify",
+    "watch:css": "npx @tailwindcss/cli@latest -i ./app.css -o ./resources/public/css/app.css --watch",
     "setup": "cp node_modules/htmx.org/dist/htmx.min.js resources/public/js/"
   },
   "devDependencies": {
-    "tailwindcss": "^4.0.0-beta.7"
+    "@tailwindcss/cli": "latest",
+    "daisyui": "latest",
+    "tailwindcss": "latest"
   },
   "dependencies": {
     "htmx.org": "^2.0.4"

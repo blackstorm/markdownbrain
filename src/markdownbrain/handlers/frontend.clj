@@ -40,3 +40,7 @@
 ;; 登录页面
 (defn login-page [request]
   (resp/html (selmer/render-file "templates/admin/login.html" {})))
+
+;; 初始化页面
+(defn init-page [request]
+  (resp/html (selmer/render-file "templates/admin/init.html" {})))

@@ -1,5 +1,6 @@
 (ns markdownbrain.core
   (:require [ring.adapter.jetty :as jetty]
+            [ring.middleware.resource :as resource]
             [markdownbrain.routes :as routes]
             [markdownbrain.middleware :as middleware]
             [markdownbrain.db :as db]
@@ -13,7 +14,9 @@
     (db/init-db!)
     (println "Starting server on" host ":" port)
     (jetty/run-jetty
-      (middleware/wrap-middleware routes/app)
+      (-> routes/app
+          (middleware/wrap-middleware)
+          (resource/wrap-resource "public"))
       {:port port
        :host host
        :join? false})))

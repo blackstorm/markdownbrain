@@ -89,6 +89,11 @@
 (defn get-user-by-id [id]
   (find-by :users :id id))
 
+(defn has-any-user? []
+  "检查数据库中是否有任何用户"
+  (let [result (execute-one! ["SELECT COUNT(*) as count FROM users"])]
+    (> (:count result) 0)))
+
 ;; Vault 操作
 (defn create-vault! [id tenant-id name domain sync-key]
   (insert-with-builder! :vaults

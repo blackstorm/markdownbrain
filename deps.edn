@@ -27,7 +27,11 @@
 
  :aliases
  {:dev {:extra-paths ["dev"]
-        :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}}
+        :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}
+        :main-opts ["-m" "markdownbrain.core"]}
+
+  :repl {:extra-paths ["dev"]
+         :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}}
 
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}

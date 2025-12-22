@@ -5,7 +5,9 @@
             [ring.middleware.json :as json]
             [ring.middleware.keyword-params :as keyword-params]
             [ring.util.response :as response]
-            [markdownbrain.config :as config]))
+            [markdownbrain.config :as config]
+            [markdownbrain.db :as db]
+            [clojure.string :as str]))
 
 ;; Session 配置
 (defn wrap-session-middleware [handler]
@@ -35,9 +37,31 @@
           (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
           (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization")))))
 
+;; 初始化检查中间件（检查是否有用户，没有则跳转到初始化页面）
+(defn wrap-init-check [handler]
+  (fn [request]
+    (let [uri (:uri request)
+          method (:request-method request)]
+      ;; 跳过 API 路由、静态资源和初始化相关路由
+      (if (or (str/starts-with? uri "/api/")
+              (str/starts-with? uri "/static/")
+              (str/starts-with? uri "/js/")
+              (str/starts-with? uri "/css/")
+              (= uri "/admin/init")
+              (= uri "/favicon.ico"))
+        (handler request)
+        ;; 检查是否有用户
+        (if (db/has-any-user?)
+          (handler request)
+          ;; 没有用户，跳转到初始化页面
+          (if (= uri "/admin/init")
+            (handler request)
+            (response/redirect "/admin/init")))))))
+
 ;; 完整中间件栈
 (defn wrap-middleware [handler]
   (-> handler
+      wrap-init-check
       wrap-session-middleware
       keyword-params/wrap-keyword-params
       params/wrap-params

@@ -30,7 +30,9 @@
 
    ["/admin"
     ["" {:get frontend/admin-home}]
-    ["/login" {:get frontend/login-page}]]])
+    ["/login" {:get frontend/login-page}]
+    ["/init" {:get frontend/init-page
+              :post admin/init-admin}]]])
 
 (def app
   (ring/ring-handler
