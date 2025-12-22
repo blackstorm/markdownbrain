@@ -1,0 +1,55 @@
+{% if vaults|not-empty %}
+{% for vault in vaults %}
+<div class="card bg-base-100 shadow mb-4 hover:shadow-md transition-shadow border border-base-300">
+    <div class="card-body p-6">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex-1">
+                <h3 class="text-lg font-semibold text-brand mb-1">{{vault.name}}</h3>
+                <a href="http://{{vault.domain}}"
+                   target="_blank"
+                   class="text-sm text-base-content/60 hover:text-brand inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm">language</span>
+                    {{vault.domain}}
+                </a>
+            </div>
+            <button class="btn btn-sm btn-ghost text-error hover:bg-error/10"
+                    hx-delete="/admin/vaults/{{vault.id}}"
+                    hx-confirm="Are you sure you want to delete '{{vault.name}}'? This action cannot be undone."
+                    hx-target="#vault-list"
+                    hx-swap="none"
+                    hx-on::after-request="if(event.detail.successful) { htmx.trigger('#vault-list', 'refreshList'); }">
+                <span class="htmx-indicator loading loading-spinner loading-xs"></span>
+                <span class="delete-text material-symbols-outlined">delete</span>
+            </button>
+        </div>
+
+        <!-- Sync Key -->
+        <div class="bg-base-200 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-medium text-base-content/70 uppercase tracking-wide">Sync Key</span>
+                <div class="flex gap-1">
+                    <button onclick="toggleKey(this)"
+                            class="btn btn-xs btn-ghost"
+                            title="Show/Hide">
+                        <span class="material-symbols-outlined text-base">visibility</span>
+                    </button>
+                    <button onclick="copyToClipboard('{{vault.sync-key}}')"
+                            class="btn btn-xs btn-ghost"
+                            title="Copy to clipboard">
+                        <span class="material-symbols-outlined text-base">content_copy</span>
+                    </button>
+                </div>
+            </div>
+            <code class="block text-xs font-mono text-base-content break-all select-all"
+                  data-key="{{vault.sync-key}}">{{vault.masked-key}}</code>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="text-center py-12">
+    <span class="material-symbols-outlined text-6xl text-base-content/20 mb-4 block">folder_open</span>
+    <p class="text-base-content/60">No sites yet. Click "New Site" button above to create one.</p>
+</div>
+{% endif %}

@@ -115,6 +115,9 @@
 (defn list-vaults-by-tenant [tenant-id]
   (find-all-by :vaults :tenant_id tenant-id :order-by :created_at))
 
+(defn delete-vault! [id]
+  (execute-one! ["DELETE FROM vaults WHERE id = ?" id]))
+
 ;; Document 操作
 (defn upsert-document! [id tenant-id vault-id path content metadata hash mtime]
   (execute-one!

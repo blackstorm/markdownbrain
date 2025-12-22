@@ -41,22 +41,28 @@
 (defn wrap-init-check [handler]
   (fn [request]
     (let [uri (:uri request)
-          method (:request-method request)]
-      ;; 跳过 API 路由、静态资源和初始化相关路由
-      (if (or (str/starts-with? uri "/api/")
-              (str/starts-with? uri "/static/")
-              (str/starts-with? uri "/js/")
-              (str/starts-with? uri "/css/")
-              (= uri "/admin/init")
-              (= uri "/favicon.ico"))
+          method (:request-method request)
+          has-user (db/has-any-user?)]
+      (cond
+        ;; 跳过 API 路由、静态资源和 favicon
+        (or (str/starts-with? uri "/api/")
+            (str/starts-with? uri "/static/")
+            (str/starts-with? uri "/js/")
+            (str/starts-with? uri "/css/")
+            (= uri "/favicon.ico"))
         (handler request)
-        ;; 检查是否有用户
-        (if (db/has-any-user?)
-          (handler request)
-          ;; 没有用户，跳转到初始化页面
-          (if (= uri "/admin/init")
-            (handler request)
-            (response/redirect "/admin/init")))))))
+
+        ;; 如果已有用户，禁止访问初始化页面
+        (and has-user (= uri "/admin/init"))
+        (response/redirect "/admin/login")
+
+        ;; 如果没有用户，只允许访问初始化页面
+        (and (not has-user) (not= uri "/admin/init"))
+        (response/redirect "/admin/init")
+
+        ;; 其他情况正常处理
+        :else
+        (handler request)))))
 
 ;; 完整中间件栈
 (defn wrap-middleware [handler]

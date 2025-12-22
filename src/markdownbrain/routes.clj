@@ -11,14 +11,8 @@
 
    ["/api"
     ["/admin"
-     ["/init" {:post admin/init-admin}]
-     ["/login" {:post admin/login}]
      ["/logout" {:post {:middleware [middleware/wrap-auth]
-                        :handler admin/logout}}]
-     ["/vaults" {:get {:middleware [middleware/wrap-auth]
-                       :handler admin/list-vaults}
-                 :post {:middleware [middleware/wrap-auth]
-                        :handler admin/create-vault}}]]
+                        :handler admin/logout}}]]
 
     ["/vault"
      ["/info" {:get sync/vault-info}]]
@@ -30,9 +24,15 @@
 
    ["/admin"
     ["" {:get frontend/admin-home}]
-    ["/login" {:get frontend/login-page}]
+    ["/login" {:get frontend/login-page
+               :post admin/login}]
     ["/init" {:get frontend/init-page
-              :post admin/init-admin}]]])
+              :post admin/init-admin}]
+    ["/vaults" {:middleware [middleware/wrap-auth]
+                :get admin/list-vaults
+                :post admin/create-vault}]
+    ["/vaults/:id" {:middleware [middleware/wrap-auth]
+                    :delete admin/delete-vault}]]])
 
 (def app
   (ring/ring-handler

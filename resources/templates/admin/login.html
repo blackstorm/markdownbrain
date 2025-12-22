@@ -1,59 +1,108 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en" data-theme="wireframe">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MarkdownBrain</title>
 
-{% block title %}管理员登录 - MarkdownBrain{% endblock %}
+    <link href="/css/app.css" rel="stylesheet">
+    <script src="/js/htmx.min.js"></script>
+</head>
+<body class="min-h-screen bg-base-200">
+    <div class="flex min-h-screen items-center justify-center p-4">
+        <div class="card w-full max-w-md bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="text-2xl font-bold justify-center mb-2 text-brand text-center">
+                    MarkdownBrain
+                </h2>
+                <p class="text-center text-base-content/70 mb-6">
+                    Admin Login
+                </p>
 
-{% block content %}
-<div class="min-h-screen flex items-center justify-center">
-    <div class="card max-w-md w-full">
-        <h1 class="text-2xl font-bold text-gray-900 mb-6">管理员登录</h1>
+                <form hx-post="/admin/login"
+                      hx-swap="afterbegin"
+                      hx-target="#message-container"
+                      class="space-y-4">
 
-        <form hx-post="/api/admin/login"
-              hx-target="#login-result"
-              hx-swap="innerHTML"
-              class="space-y-4">
+                    <!-- Email -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Email</span>
+                        </label>
+                        <input type="email"
+                               name="username"
+                               placeholder="admin@example.com"
+                               class="input input-bordered w-full"
+                               required />
+                    </div>
 
-            <div>
-                <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
-                    用户名
-                </label>
-                <input type="text"
-                       id="username"
-                       name="username"
-                       required
-                       class="input"
-                       placeholder="请输入用户名">
+                    <!-- Password -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Password</span>
+                        </label>
+                        <input type="password"
+                               name="password"
+                               placeholder="••••••••"
+                               class="input input-bordered w-full"
+                               required />
+                    </div>
+
+                    <!-- Message container -->
+                    <div id="message-container"></div>
+
+                    <!-- Submit button -->
+                    <div class="form-control mt-6">
+                        <button type="submit" class="btn btn-brand w-full">
+                            Login
+                        </button>
+                    </div>
+                </form>
             </div>
-
-            <div>
-                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-                    密码
-                </label>
-                <input type="password"
-                       id="password"
-                       name="password"
-                       required
-                       class="input"
-                       placeholder="请输入密码">
-            </div>
-
-            <button type="submit" class="btn btn-primary w-full">
-                登录
-            </button>
-        </form>
-
-        <div id="login-result" class="mt-4"></div>
+        </div>
     </div>
-</div>
 
-<script>
-// HTMX 成功后重定向
-document.body.addEventListener('htmx:afterRequest', function(evt) {
-    if (evt.detail.successful && evt.detail.target.id === 'login-result') {
-        const response = JSON.parse(evt.detail.xhr.responseText);
-        if (response.success) {
-            window.location.href = '/admin';
-        }
-    }
-});
-</script>
-{% endblock %}
+    <script>
+        // Listen for HTMX response events
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.successful) {
+                const response = JSON.parse(event.detail.xhr.response);
+                if (response.success) {
+                    // Show success message
+                    event.detail.target.innerHTML = `
+                        <div class="alert alert-success">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Login successful! Redirecting...</span>
+                        </div>
+                    `;
+                    // Redirect to admin page after 1 second
+                    setTimeout(function() {
+                        window.location.href = '/admin';
+                    }, 1000);
+                } else {
+                    // Show error message
+                    event.detail.target.innerHTML = `
+                        <div class="alert alert-error">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>${response.error || 'Login failed'}</span>
+                        </div>
+                    `;
+                }
+            } else {
+                event.detail.target.innerHTML = `
+                    <div class="alert alert-error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Network error, please try again later</span>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

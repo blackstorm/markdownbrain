@@ -1,6 +1,51 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* Custom Theme */
+@theme {
+  /* IBM Plex Sans as default sans-serif font */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+
+  /* Brand colors - Digital Garden Theme */
+  --color-brand: #10b981;
+  --color-brand-hover: #059669;
+}
+
+/* Brand Components */
+@layer components {
+  /* Brand text */
+  .text-brand {
+    color: var(--color-brand);
+  }
+
+  /* Brand background */
+  .bg-brand {
+    background-color: var(--color-brand);
+  }
+
+  /* Brand button */
+  .btn-brand {
+    background-color: var(--color-brand);
+    border-color: var(--color-brand);
+    color: white;
+  }
+
+  .btn-brand:hover {
+    background-color: var(--color-brand-hover);
+    border-color: var(--color-brand-hover);
+  }
+
+  /* Material Symbols icons */
+  .material-symbols-outlined {
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
+    vertical-align: middle;
+  }
+}
 
 @plugin "daisyui/theme" {
   name: "wireframe";
@@ -36,4 +81,3 @@
   --depth: 0;
   --noise: 0;
 }
-

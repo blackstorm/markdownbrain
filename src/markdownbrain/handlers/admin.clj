@@ -3,7 +3,8 @@
             [markdownbrain.utils :as utils]
             [markdownbrain.config :as config]
             [markdownbrain.response :as resp]
-            [ring.util.response :as response]))
+            [ring.util.response :as response]
+            [selmer.parser :as selmer]))
 
 ;; 初始化管理员用户
 (defn init-admin [request]
@@ -11,10 +12,14 @@
         {:keys [username password tenant-name]} params]
     (cond
       (or (nil? username) (nil? password) (nil? tenant-name))
-      (resp/bad-request "缺少必填字段")
+      {:status 200
+       :body {:success false
+              :error "Missing required fields"}}
 
       (db/get-user-by-username username)
-      (resp/bad-request "用户名已存在")
+      {:status 200
+       :body {:success false
+              :error "Username already exists"}}
 
       :else
       (let [tenant-id (utils/generate-uuid)
@@ -27,7 +32,8 @@
 
 ;; 管理员登录
 (defn login [request]
-  (let [{:keys [username password]} (:body-params request)
+  (let [params (or (:body-params request) (:params request))
+        {:keys [username password]} params
         user (db/get-user-by-username username)]
     (if (and user (utils/verify-password password (:password-hash user)))
       (resp/success {:user {:id (:id user)
@@ -35,7 +41,10 @@
                             :tenant-id (:tenant-id user)}}
                     {:user-id (:id user)
                      :tenant-id (:tenant-id user)})
-      (resp/unauthorized "用户名或密码错误"))))
+      ;; 登录失败，返回 200 状态码但 success 为 false
+      {:status 200
+       :body {:success false
+              :error "Invalid username or password"}})))
 
 ;; 管理员登出
 (defn logout [request]
@@ -44,16 +53,32 @@
 ;; 列出 vault
 (defn list-vaults [request]
   (let [tenant-id (get-in request [:session :tenant-id])
-        vaults (db/list-vaults-by-tenant tenant-id)]
-    (resp/ok (mapv #(select-keys % [:id :name :domain :sync-key :created-at])
-                   vaults))))
+        vaults (db/list-vaults-by-tenant tenant-id)
+        vaults-with-masked (mapv (fn [vault]
+                                   (let [sync-key (:sync-key vault)
+                                         masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))]
+                                     (assoc vault :masked-key masked)))
+                                 vaults)]
+    (resp/html (selmer/render-file "templates/admin/vault-list.html"
+                                   {:vaults vaults-with-masked}))))
 
 ;; 创建 vault
 (defn create-vault [request]
   (let [tenant-id (get-in request [:session :tenant-id])
-        {:keys [name domain]} (:body-params request)]
-    (if (or (nil? name) (nil? domain))
-      (resp/bad-request "缺少必填字段")
+        params (or (:body-params request) (:params request))
+        {:keys [name domain]} params]
+    (cond
+      (or (nil? name) (nil? domain))
+      {:status 200
+       :body {:success false
+              :error "Missing required fields"}}
+
+      (db/get-vault-by-domain domain)
+      {:status 200
+       :body {:success false
+              :error "Domain already in use"}}
+
+      :else
       (let [vault-id (utils/generate-uuid)
             sync-key (utils/generate-uuid)]
         (db/create-vault! vault-id tenant-id name domain sync-key)
@@ -61,3 +86,24 @@
                                :name name
                                :domain domain
                                :sync-key sync-key}})))))
+
+;; 删除 vault
+(defn delete-vault [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 200
+       :body {:success false
+              :error "Site not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 200
+       :body {:success false
+              :error "Permission denied"}}
+
+      :else
+      (do
+        (db/delete-vault! vault-id)
+        (resp/success {:message "Site deleted"})))))
