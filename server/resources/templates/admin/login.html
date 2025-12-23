@@ -1,64 +1,89 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="wireframe">
+<html lang="en" data-theme="markdownbrain">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - MarkdownBrain</title>
 
+    <!-- Geist Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
     <link href="/css/app.css" rel="stylesheet">
     <script src="/js/htmx.min.js"></script>
 </head>
-<body class="min-h-screen bg-base-200">
-    <div class="flex min-h-screen items-center justify-center p-4">
-        <div class="card w-full max-w-md bg-base-100 shadow-xl">
-            <div class="card-body">
-                <h2 class="text-2xl font-bold justify-center mb-2 text-brand text-center">
-                    MarkdownBrain
+<body class="min-h-screen bg-canvas flex items-center justify-center p-4">
+    <div class="card w-full max-w-md bg-base-100 border border-base-300">
+        <div class="card-body p-8">
+            <!-- Logo & Title -->
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center justify-center w-12 h-12 rounded bg-primary mb-4">
+                    <span class="material-symbols-outlined text-white text-2xl">auto_stories</span>
+                </div>
+                <h2 class="text-2xl font-bold text-base-content mb-1">
+                    Welcome Back
                 </h2>
-                <p class="text-center text-base-content/70 mb-6">
-                    Admin Login
+                <p class="text-sm text-base-content/60">
+                    Sign in to manage your sites
                 </p>
+            </div>
 
-                <form hx-post="/admin/login"
-                      hx-swap="afterbegin"
-                      hx-target="#message-container"
-                      class="space-y-4">
+            <form hx-post="/admin/login"
+                  hx-swap="afterbegin"
+                  hx-target="#message-container"
+                  class="space-y-5">
 
-                    <!-- Email -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Email</span>
-                        </label>
+                <!-- Email -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium text-base-content">Email</span>
+                    </label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2
+                                     text-base-content/40 pointer-events-none">
+                            mail
+                        </span>
                         <input type="email"
                                name="username"
                                placeholder="admin@example.com"
-                               class="input input-bordered w-full"
+                               class="input input-bordered w-full pl-10"
+                               autofocus
                                required />
                     </div>
+                </div>
 
-                    <!-- Password -->
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">Password</span>
-                        </label>
+                <!-- Password -->
+                <div class="form-control">
+                    <label class="label">
+                        <span class="label-text font-medium text-base-content">Password</span>
+                    </label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2
+                                     text-base-content/40 pointer-events-none">
+                            lock
+                        </span>
                         <input type="password"
                                name="password"
                                placeholder="••••••••"
-                               class="input input-bordered w-full"
+                               class="input input-bordered w-full pl-10"
                                required />
                     </div>
+                </div>
 
-                    <!-- Message container -->
-                    <div id="message-container"></div>
+                <!-- Message container -->
+                <div id="message-container"></div>
 
-                    <!-- Submit button -->
-                    <div class="form-control mt-6">
-                        <button type="submit" class="btn btn-brand w-full">
-                            Login
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <!-- Submit button -->
+                <div class="form-control mt-6">
+                    <button type="submit" class="btn btn-primary w-full">
+                        Sign In
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -71,9 +96,7 @@
                     // Show success message
                     event.detail.target.innerHTML = `
                         <div class="alert alert-success">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <span class="material-symbols-outlined">check_circle</span>
                             <span>Login successful! Redirecting...</span>
                         </div>
                     `;
@@ -85,9 +108,7 @@
                     // Show error message
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                            <span class="material-symbols-outlined">error</span>
                             <span>${response.error || 'Login failed'}</span>
                         </div>
                     `;
@@ -95,9 +116,7 @@
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                        <span class="material-symbols-outlined">error</span>
                         <span>Network error, please try again later</span>
                     </div>
                 `;

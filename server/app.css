@@ -1,39 +1,120 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @plugin "daisyui";
 
-/* Custom Theme */
+/* Custom Theme - Warm Natural */
 @theme {
-  /* IBM Plex Sans as default sans-serif font */
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  /* Geist as default sans-serif font */
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol';
+  --font-mono: "Geist Mono", "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", monospace;
 
-  /* Brand colors - Digital Garden Theme */
-  --color-brand: #10b981;
-  --color-brand-hover: #059669;
+  /* Primary Green (natural, Notion-like) */
+  --color-brand-50: oklch(97% 0.02 145);
+  --color-brand-100: oklch(94% 0.04 145);
+  --color-brand-200: oklch(88% 0.08 145);
+  --color-brand-300: oklch(78% 0.12 145);
+  --color-brand-400: oklch(68% 0.14 145);
+  --color-brand-500: oklch(58% 0.16 145);   /* Primary brand green */
+  --color-brand-600: oklch(48% 0.14 145);
+  --color-brand-700: oklch(38% 0.12 145);
+
+  /* Warm Orange Accent */
+  --color-accent-50: oklch(96% 0.03 65);
+  --color-accent-100: oklch(92% 0.06 65);
+  --color-accent-200: oklch(85% 0.10 65);
+  --color-accent-300: oklch(75% 0.14 65);
+  --color-accent-400: oklch(68% 0.16 65);
+  --color-accent-500: oklch(62% 0.18 65);   /* Primary accent orange */
+  --color-accent-600: oklch(52% 0.16 65);
+
+  /* Backgrounds - Warm tinted */
+  --color-bg-canvas: oklch(99% 0.002 145);   /* Warm white background */
+  --color-bg-subtle: oklch(97% 0.005 145);   /* Soft gray-green */
+  --color-bg-muted: oklch(94% 0.01 145);     /* Muted green-gray */
+  --color-bg-elevated: oklch(100% 0 0);      /* Pure white for cards */
+
+  /* Text Hierarchy - Warm tinted */
+  --color-text-primary: oklch(25% 0.01 145);    /* Near-black with green tint */
+  --color-text-secondary: oklch(50% 0.01 145);  /* Medium gray */
+  --color-text-tertiary: oklch(65% 0.01 145);   /* Light gray */
+  --color-text-placeholder: oklch(75% 0.01 145); /* Placeholder gray */
+
+  /* Borders - Subtle green tint */
+  --color-border-default: oklch(90% 0.01 145);
+  --color-border-strong: oklch(80% 0.02 145);
+  --color-border-hover: oklch(70% 0.04 145);
+  --color-border-focus: var(--color-brand-500);
+
+  /* Semantic Colors - Friendly and warm */
+  --color-success: oklch(72% 0.18 150);
+  --color-success-bg: oklch(96% 0.04 150);
+  --color-warning: oklch(75% 0.16 75);
+  --color-warning-bg: oklch(96% 0.04 75);
+  --color-error: oklch(62% 0.20 25);
+  --color-error-bg: oklch(96% 0.04 25);
+  --color-info: oklch(65% 0.15 245);
+  --color-info-bg: oklch(96% 0.04 245);
 }
 
 /* Brand Components */
 @layer components {
-  /* Brand text */
+  /* Legacy brand utilities (for backward compatibility) */
   .text-brand {
-    color: var(--color-brand);
+    color: var(--color-brand-500);
   }
 
-  /* Brand background */
   .bg-brand {
-    background-color: var(--color-brand);
+    background-color: var(--color-brand-500);
   }
 
-  /* Brand button */
   .btn-brand {
-    background-color: var(--color-brand);
-    border-color: var(--color-brand);
+    background-color: var(--color-brand-500);
+    border-color: var(--color-brand-500);
     color: white;
   }
 
   .btn-brand:hover {
-    background-color: var(--color-brand-hover);
-    border-color: var(--color-brand-hover);
+    background-color: var(--color-brand-600);
+    border-color: var(--color-brand-600);
+  }
+
+  /* New semantic background utilities */
+  .bg-canvas {
+    background-color: var(--color-bg-canvas);
+  }
+
+  .bg-elevated {
+    background-color: var(--color-bg-elevated);
+  }
+
+  .bg-subtle {
+    background-color: var(--color-bg-subtle);
+  }
+
+  .bg-muted {
+    background-color: var(--color-bg-muted);
+  }
+
+  /* Text color utilities */
+  .text-primary {
+    color: var(--color-text-primary);
+  }
+
+  .text-secondary {
+    color: var(--color-text-secondary);
+  }
+
+  .text-tertiary {
+    color: var(--color-text-tertiary);
+  }
+
+  /* Border utilities */
+  .border-default {
+    border-color: var(--color-border-default);
+  }
+
+  .border-hover {
+    border-color: var(--color-border-hover);
   }
 
   /* Material Symbols icons */
@@ -45,8 +126,142 @@
       'opsz' 24;
     vertical-align: middle;
   }
+
+  /* Card hover effects - minimal flat style */
+  .vault-card {
+    transition: border-color 0.15s ease;
+  }
+
+  .vault-card:hover {
+    border-color: var(--color-primary);
+  }
+
+  /* Loading states for HTMX */
+  .htmx-indicator {
+    display: none;
+  }
+
+  .htmx-request .htmx-indicator {
+    display: inline-flex;
+  }
+
+  .htmx-request .delete-text,
+  .htmx-request .submit-text {
+    display: none;
+  }
+
+  /* Smooth transitions for content swapping */
+  #vault-list {
+    transition: opacity 0.15s ease-out;
+  }
+
+  .htmx-swapping #vault-list {
+    opacity: 0;
+  }
+
+  .htmx-settling #vault-list {
+    opacity: 1;
+  }
+
+  /* Toast animations */
+  .animate-in {
+    animation: slideInFromTop 0.2s ease-out forwards;
+  }
+
+  .animate-out {
+    animation: slideOutToTop 0.3s ease-in forwards;
+  }
+
+  @keyframes slideInFromTop {
+    from {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideOutToTop {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-12px);
+    }
+  }
+
+  /* Backdrop blur support */
+  .backdrop-blur-lg {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
 }
 
+/* DaisyUI Theme: MarkdownBrain (Warm Natural) */
+@plugin "daisyui/theme" {
+  name: "markdownbrain";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+
+  /* Base colors - warm whites and greens */
+  --color-base-100: oklch(100% 0 0);           /* Pure white */
+  --color-base-200: oklch(97% 0.005 145);      /* Subtle warm gray */
+  --color-base-300: oklch(90% 0.01 145);       /* Border color */
+  --color-base-content: oklch(25% 0.01 145);   /* Text color */
+
+  /* Primary - Natural green */
+  --color-primary: oklch(58% 0.16 145);
+  --color-primary-content: oklch(99% 0 0);
+  --color-primary-focus: oklch(48% 0.14 145);
+
+  /* Secondary - Warm orange */
+  --color-secondary: oklch(62% 0.18 65);
+  --color-secondary-content: oklch(99% 0 0);
+  --color-secondary-focus: oklch(52% 0.16 65);
+
+  /* Accent - Same as secondary for consistency */
+  --color-accent: oklch(62% 0.18 65);
+  --color-accent-content: oklch(99% 0 0);
+  --color-accent-focus: oklch(52% 0.16 65);
+
+  /* Neutral - Warm gray */
+  --color-neutral: oklch(90% 0.01 145);
+  --color-neutral-content: oklch(25% 0.01 145);
+  --color-neutral-focus: oklch(80% 0.02 145);
+
+  /* Semantic colors */
+  --color-success: oklch(72% 0.18 150);
+  --color-success-content: oklch(25% 0.01 145);
+
+  --color-warning: oklch(75% 0.16 75);
+  --color-warning-content: oklch(25% 0.01 145);
+
+  --color-error: oklch(62% 0.20 25);
+  --color-error-content: oklch(99% 0 0);
+
+  --color-info: oklch(65% 0.15 245);
+  --color-info-content: oklch(99% 0 0);
+
+  /* Border radius - Minimal flat style */
+  --radius-box: 0.25rem;           /* 4px for cards */
+  --radius-field: 0.25rem;         /* 4px for inputs */
+  --radius-selector: 0.25rem;      /* 4px for selects */
+  --radius-badge: 0.25rem;         /* 4px for badges */
+  --radius-btn: 0.25rem;           /* 4px for buttons */
+
+  /* Border width */
+  --border: 1px;
+
+  /* Shadows - No shadows, flat design */
+  --depth: 0;
+}
+
+/* Keep wireframe theme as fallback */
 @plugin "daisyui/theme" {
   name: "wireframe";
   default: false;
@@ -80,4 +295,11 @@
   --border: 1px;
   --depth: 0;
   --noise: 0;
+}
+
+/* Font rendering optimization */
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }

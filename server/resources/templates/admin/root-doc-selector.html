@@ -5,19 +5,23 @@
         hx-vals='js:{rootDocId: event.target.value}'
         hx-swap="none"
         hx-on::after-request="if(event.detail.successful) {
-            const toast = document.createElement('div');
-            toast.className = 'toast toast-top toast-end';
-            toast.innerHTML = '<div class=\"alert alert-success\"><span>Home page updated</span></div>';
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 2000);
+          showToast('Home page updated successfully', 'success', 2000);
         }">
-    {% for doc in documents %}
-    <option value="{{doc.clientId}}" {% if doc.clientId = root-doc-id %}selected{% endif %}>{{doc.path}}</option>
-    {% endfor %}
+  <option value="" {% if not root-doc-id %}selected{% endif %}>
+    -- Select document --
+  </option>
+  {% for doc in documents %}
+  <option value="{{doc.id}}"
+          {% if doc.id = root-doc-id %}selected{% endif %}>
+    {{doc.path}}
+  </option>
+  {% endfor %}
 </select>
 {% else %}
-<div role="alert" class="alert alert-warning alert-soft">
-    <span class="material-symbols-outlined">warning</span>
-    <span class="text-sm">Please sync files from Obsidian to set home page</span>
+<div class="alert alert-warning alert-sm flex items-start gap-2">
+  <span class="material-symbols-outlined text-base flex-shrink-0">warning</span>
+  <span class="text-xs">
+    No documents synced yet. Sync files from Obsidian to set a home page.
+  </span>
 </div>
 {% endif %}
