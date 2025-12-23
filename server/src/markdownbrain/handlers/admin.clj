@@ -54,13 +54,16 @@
 (defn list-vaults [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vaults (db/list-vaults-by-tenant tenant-id)
-        vaults-with-masked (mapv (fn [vault]
-                                   (let [sync-key (:sync-key vault)
-                                         masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))]
-                                     (assoc vault :masked-key masked)))
-                                 vaults)]
+        vaults-with-data (mapv (fn [vault]
+                                 (let [sync-key (:sync-key vault)
+                                       masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
+                                       documents (db/search-documents-by-vault (:id vault) "")]
+                                   (assoc vault
+                                          :masked-key masked
+                                          :documents documents)))
+                               vaults)]
     (resp/html (selmer/render-file "templates/admin/vault-list.html"
-                                   {:vaults vaults-with-masked}))))
+                                   {:vaults vaults-with-data}))))
 
 ;; 创建 vault
 (defn create-vault [request]
