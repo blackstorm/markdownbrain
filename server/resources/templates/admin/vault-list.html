@@ -3,7 +3,7 @@
     {% include "templates/components/vault-card.html" %}
   {% endfor %}
 {% else %}
-  {% with icon="inbox" title="还没有站点" message="创建您的第一个站点，开始将 Obsidian 笔记发布到网络上" cta-text="创建第一个站点" cta-action="openCreateModal()" cta-icon="plus" grid-full=true %}
+  {% with icon="inbox" title="No sites yet" message="Create your first site to start publishing your Obsidian notes to the web" cta-text="Create first site" cta-action="openCreateModal()" cta-icon="plus" grid-full=true %}
     {% include "templates/components/empty-state.html" %}
   {% endwith %}
 {% endif %}

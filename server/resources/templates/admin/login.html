@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - MarkdownBrain</title>
+    <title>Login - MarkdownBrain</title>
     <link href="/css/app.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
     <script src="/js/helpers.js"></script>
@@ -21,7 +21,7 @@
             {% with size="md" %}
               {% include "templates/components/logo.html" %}
             {% endwith %}
-            <p class="text-sm text-[var(--text-secondary)] mt-2 mb-0">登录管理后台</p>
+            <p class="text-sm text-[var(--text-secondary)] mt-2 mb-0">Login to admin dashboard</p>
         </div>
 
         <!-- Body -->
@@ -34,18 +34,18 @@
                   hx-disabled-elt="button"
                   hx-indicator=".spinner">
 
-                {% with id="username" name="username" type="email" label="邮箱" placeholder="admin@example.com" autocomplete="username" autofocus=true required=true %}
+                {% with id="username" name="username" type="email" label="Email" placeholder="admin@example.com" autocomplete="username" autofocus=true required=true %}
                   {% include "templates/components/form-field.html" %}
                 {% endwith %}
 
-                {% with id="password" name="password" type="password" label="密码" placeholder="••••••••" autocomplete="current-password" required=true %}
+                {% with id="password" name="password" type="password" label="Password" placeholder="••••••••" autocomplete="current-password" required=true %}
                   {% include "templates/components/form-field.html" %}
                 {% endwith %}
 
                 <button type="submit" class="btn-primary">
                     <span class="flex items-center justify-center gap-2">
                         <span class="spinner"></span>
-                        <span>登录</span>
+                        <span>Login</span>
                     </span>
                 </button>
             </form>
@@ -63,7 +63,7 @@
                         event.detail.target.innerHTML = `
                             <div class="alert alert-success">
                                 <i data-lucide="check-circle" class="icon-sm"></i>
-                                <span>登录成功，正在跳转...</span>
+                                <span>Login successful, redirecting...</span>
                             </div>
                         `;
                         lucide.createIcons();
@@ -72,7 +72,7 @@
                         event.detail.target.innerHTML = `
                             <div class="alert alert-error">
                                 <i data-lucide="alert-circle" class="icon-sm"></i>
-                                <span>${response.error || '登录失败'}</span>
+                                <span>${response.error || 'Login failed'}</span>
                             </div>
                         `;
                         lucide.createIcons();
@@ -81,7 +81,7 @@
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
                             <i data-lucide="alert-circle" class="icon-sm"></i>
-                            <span>服务器响应异常</span>
+                            <span>Server response error</span>
                         </div>
                     `;
                     lucide.createIcons();
@@ -90,7 +90,7 @@
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
                         <i data-lucide="alert-circle" class="icon-sm"></i>
-                        <span>网络错误，请重试</span>
+                        <span>Network error, please try again</span>
                     </div>
                 `;
                 lucide.createIcons();

@@ -4,8 +4,8 @@
         hx-put="/admin/vaults/{{vault-id}}/root-doc"
         hx-trigger="change"
         hx-swap="none"
-        hx-on::after-request="if(event.detail.successful) showNotification('首页已更新', 'success'); else showNotification('更新失败', 'error');">
-  <option value="" {% if not root-doc-id %}selected{% endif %}>选择文档</option>
+        hx-on::after-request="if(event.detail.successful) showNotification('Homepage updated', 'success'); else showNotification('Update failed', 'error');">
+  <option value="" {% if not root-doc-id %}selected{% endif %}>Select document</option>
   {% for doc in documents %}
   <option value="{{doc.id}}" {% if doc.id = root-doc-id %}selected{% endif %}>
     {{doc.path}}
@@ -15,6 +15,6 @@
 {% else %}
 <div class="warning-box">
   <i data-lucide="alert-triangle" class="icon-xs shrink-0"></i>
-  <span>尚未同步任何文档。请在 Obsidian 中使用插件同步文件后，再设置首页。</span>
+  <span>No documents synced yet. Please use the Obsidian plugin to sync files before setting a homepage.</span>
 </div>
 {% endif %}

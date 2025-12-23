@@ -24,20 +24,20 @@
         <div class="action-menu">
           <button type="button" onclick="window.open('http://{{vault.domain}}', '_blank'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))">
             <i data-lucide="external-link" class="icon-xs"></i>
-            <span>打开站点</span>
+            <span>Open site</span>
           </button>
           <button type="button" onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))">
             <i data-lucide="pencil" class="icon-xs"></i>
-            <span>编辑</span>
+            <span>Edit</span>
           </button>
           <button type="button"
                   class="danger"
                   hx-delete="/admin/vaults/{{vault.id}}"
-                  hx-confirm="确定删除「{{vault.name}}」吗？此操作无法撤销。"
+                  hx-confirm="Are you sure you want to delete '{{vault.name}}'? This cannot be undone."
                   hx-swap="none"
-                  hx-on::after-request="if(event.detail.successful) { showNotification('站点已删除', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('删除失败', 'error'); }">
+                  hx-on::after-request="if(event.detail.successful) { showNotification('Site deleted', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Delete failed', 'error'); }">
             <i data-lucide="trash-2" class="icon-xs"></i>
-            <span>删除</span>
+            <span>Delete</span>
           </button>
         </div>
       </div>
@@ -45,21 +45,21 @@
 
     <!-- Sync Key Section -->
     <div class="vault-section">
-      <span class="section-label">同步密钥</span>
+      <span class="section-label">Sync Key</span>
       <div class="sync-key-box">
         <div class="sync-key-header">
-          <span class="text-xs text-[var(--text-tertiary)]">用于 Obsidian 插件同步</span>
+          <span class="text-xs text-[var(--text-tertiary)]">For Obsidian plugin sync</span>
           <div class="sync-key-actions">
             <button type="button"
                     class="icon-btn"
                     onclick="toggleSyncKey(this, '{{vault.id}}')"
-                    title="显示/隐藏">
+                    title="Show/Hide">
               <i data-lucide="eye" class="icon-xs"></i>
             </button>
             <button type="button"
                     class="icon-btn"
                     onclick="copyToClipboard('{{vault.sync-key}}')"
-                    title="复制">
+                    title="Copy">
               <i data-lucide="copy" class="icon-xs"></i>
             </button>
           </div>
@@ -72,7 +72,7 @@
 
     <!-- Home Page Section -->
     <div class="vault-section">
-      <span class="section-label">首页设置</span>
+      <span class="section-label">Home Page</span>
       {% with vault-id=vault.id root-doc-id=vault.root-doc-id documents=vault.documents %}
         {% include "templates/admin/root-doc-selector.html" %}
       {% endwith %}

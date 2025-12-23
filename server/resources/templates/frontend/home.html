@@ -128,7 +128,7 @@
 
     <!-- Documents Section -->
     <section>
-        <h2 class="section-title">文档</h2>
+        <h2 class="section-title">Documents</h2>
 
         {% if documents %}
         <div class="doc-list">
@@ -137,7 +137,7 @@
                 <div class="doc-item-content">
                     <div class="doc-info">
                         <h3 class="doc-title">{{ doc.path }}</h3>
-                        <p class="doc-meta">最后修改: {{ doc.mtime }}</p>
+                        <p class="doc-meta">Last modified: {{ doc.mtime }}</p>
                     </div>
                     <div class="doc-arrow">
                         <i data-lucide="chevron-right" class="icon-lg"></i>
@@ -147,7 +147,7 @@
             {% endfor %}
         </div>
         {% else %}
-        {% with icon="file-text" title="暂无文档" message="请使用 Obsidian 插件同步您的笔记" %}
+        {% with icon="file-text" title="No documents" message="Please use the Obsidian plugin to sync your notes" %}
           {% include "templates/components/empty-state.html" %}
         {% endwith %}
         {% endif %}
