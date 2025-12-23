@@ -360,6 +360,43 @@
     @apply mb-0;
   }
 
+  .vault-info h3 {
+    @apply text-lg font-semibold m-0 mb-1.5;
+    @apply text-[var(--text-primary)];
+  }
+
+  .vault-domain {
+    @apply inline-flex items-center gap-1.5 text-sm no-underline;
+    @apply text-[var(--text-secondary)];
+    @apply transition-colors duration-150;
+  }
+
+  .vault-domain:hover {
+    @apply text-[var(--accent)];
+  }
+
+  .vault-actions {
+    @apply relative;
+  }
+
+  .action-menu-btn {
+    @apply p-1.5 border border-[var(--border-color)] bg-white cursor-pointer;
+    @apply text-[var(--text-secondary)];
+    @apply transition-colors duration-150;
+  }
+
+  .action-menu-btn:hover {
+    @apply border-[var(--border-hover)] text-[var(--text-primary)];
+  }
+
+  .sync-key-header {
+    @apply flex justify-between items-center mb-2.5;
+  }
+
+  .sync-key-actions {
+    @apply flex gap-1;
+  }
+
   .sync-key-box {
     @apply bg-gray-50 border border-[var(--border-color)] p-3.5;
   }
@@ -538,6 +575,27 @@
 
   .htmx-settling #vault-list {
     @apply opacity-100;
+  }
+
+  /* Icon Sizes */
+  .icon-xs {
+    @apply w-3.5 h-3.5;
+  }
+
+  .icon-sm {
+    @apply w-4 h-4;
+  }
+
+  .icon-md {
+    @apply w-4.5 h-4.5;
+  }
+
+  .icon-lg {
+    @apply w-5 h-5;
+  }
+
+  .icon-xl {
+    @apply w-6 h-6;
   }
 }
 

@@ -21,7 +21,7 @@
             {% with size="md" %}
               {% include "templates/components/logo.html" %}
             {% endwith %}
-            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0.5rem 0 0;">登录管理后台</p>
+            <p class="text-sm text-[var(--text-secondary)] mt-2 mb-0">登录管理后台</p>
         </div>
 
         <!-- Body -->
@@ -43,7 +43,7 @@
                 {% endwith %}
 
                 <button type="submit" class="btn-primary">
-                    <span style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span class="flex items-center justify-center gap-2">
                         <span class="spinner"></span>
                         <span>登录</span>
                     </span>
@@ -62,7 +62,7 @@
                     if (response.success) {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-success">
-                                <i data-lucide="check-circle" style="width: 1rem; height: 1rem;"></i>
+                                <i data-lucide="check-circle" class="icon-sm"></i>
                                 <span>登录成功，正在跳转...</span>
                             </div>
                         `;
@@ -71,7 +71,7 @@
                     } else {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-error">
-                                <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                                <i data-lucide="alert-circle" class="icon-sm"></i>
                                 <span>${response.error || '登录失败'}</span>
                             </div>
                         `;
@@ -80,7 +80,7 @@
                 } catch (e) {
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                            <i data-lucide="alert-circle" class="icon-sm"></i>
                             <span>服务器响应异常</span>
                         </div>
                     `;
@@ -89,7 +89,7 @@
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                        <i data-lucide="alert-circle" class="icon-sm"></i>
                         <span>网络错误，请重试</span>
                     </div>
                 `;

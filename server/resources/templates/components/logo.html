@@ -3,11 +3,11 @@
   - size: "sm", "md", "lg" (default: "md")
   - with-text: show text beside icon (default: true)
 -->
-<div style="display: flex; align-items: center; gap: 0.75rem;">
+<div class="flex items-center gap-3">
     <img src="/images/logo.png"
          alt="MarkdownBrain Logo"
-         style="width: {% if size = "sm" %}2rem{% else %}{% if size = "lg" %}4rem{% else %}2.5rem{% endif %}{% endif %}; height: {% if size = "sm" %}2rem{% else %}{% if size = "lg" %}4rem{% else %}2.5rem{% endif %}{% endif %}; object-fit: contain;">
+         class="{% if size = 'sm' %}w-8 h-8{% else %}{% if size = 'lg' %}w-16 h-16{% else %}w-10 h-10{% endif %}{% endif %} object-contain">
     {% if with-text|default:true %}
-    <h1 style="font-size: {% if size = "sm" %}1rem{% else %}{% if size = "lg" %}1.5rem{% else %}1.25rem{% endif %}{% endif %}; font-weight: 600; color: var(--text-primary); margin: 0;">MarkdownBrain</h1>
+    <h1 class="{% if size = 'sm' %}text-base{% else %}{% if size = 'lg' %}text-2xl{% else %}text-xl{% endif %}{% endif %} font-semibold text-[var(--text-primary)] m-0">MarkdownBrain</h1>
     {% endif %}
 </div>
