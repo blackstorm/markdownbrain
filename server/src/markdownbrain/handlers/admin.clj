@@ -112,30 +112,39 @@
 (defn update-vault [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
-        params (:body-params request)
+        params (or (:body-params request) (:params request))
         name (:name params)
         domain (:domain params)
         vault (db/get-vault-by-id vault-id)]
     (cond
       (nil? vault)
-      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Site not found</span></div>")
+      {:status 200
+       :body {:success false
+              :error "Site not found"}}
 
       (not= (:tenant-id vault) tenant-id)
-      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Permission denied</span></div>")
+      {:status 200
+       :body {:success false
+              :error "Permission denied"}}
 
       (or (nil? name) (clojure.string/blank? name))
-      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Site name is required</span></div>")
+      {:status 200
+       :body {:success false
+              :error "Site name is required"}}
 
       (or (nil? domain) (clojure.string/blank? domain))
-      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Domain is required</span></div>")
+      {:status 200
+       :body {:success false
+              :error "Domain is required"}}
 
       :else
       (do
         (db/update-vault! vault-id name domain)
-        ;; 返回空响应，触发 HX-Trigger 刷新列表
         {:status 200
-         :headers {"HX-Trigger" "refreshList"}
-         :body ""}))))
+         :body {:success true
+                :vault {:id vault-id
+                        :name name
+                        :domain domain}}}))))
 
 ;; 搜索 vault 中的文档
 (defn search-vault-documents [request]

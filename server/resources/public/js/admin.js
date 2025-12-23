@@ -58,8 +58,11 @@ function openEditModal(vaultId, name, domain) {
   document.getElementById('edit-name').value = name;
   document.getElementById('edit-domain').value = domain;
 
-  // Set form action
+  // Set form action URL
   form.setAttribute('hx-put', `/admin/vaults/${vaultId}`);
+
+  // IMPORTANT: Re-process the form element so HTMX picks up the new hx-put attribute
+  htmx.process(form);
 
   // Clear previous errors
   const resultDiv = document.getElementById('edit-result');
@@ -98,8 +101,10 @@ function closeEditModal() {
  * Handle vault creation response
  */
 document.body.addEventListener('htmx:afterRequest', function(event) {
-  // Create vault response
-  if (event.detail.pathInfo.requestPath === '/admin/vaults' && event.detail.verb === 'post') {
+  const requestPath = event.detail.pathInfo.requestPath;
+
+  // Create vault response (POST only)
+  if (requestPath === '/admin/vaults' && event.detail.requestConfig?.verb === 'post') {
     if (event.detail.successful) {
       try {
         const response = JSON.parse(event.detail.xhr.responseText);
@@ -109,23 +114,29 @@ document.body.addEventListener('htmx:afterRequest', function(event) {
           // Trigger list refresh
           htmx.trigger('body', 'refreshList');
         } else {
-          event.detail.target.innerHTML = `
-            <div class="alert alert-error">
-              <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
-              <span>${response.error || '创建失败'}</span>
-            </div>
-          `;
-          lucide.createIcons();
+          // Show error in modal
+          const resultDiv = document.getElementById('create-result');
+          if (resultDiv) {
+            resultDiv.innerHTML = `
+              <div class="alert alert-error">
+                <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                <span>${response.error || '创建失败'}</span>
+              </div>
+            `;
+            lucide.createIcons();
+          }
         }
       } catch (e) {
         console.error('Failed to parse response:', e);
         showNotification('服务器响应异常', 'error');
       }
+    } else {
+      showNotification('网络错误，请重试', 'error');
     }
   }
 
   // Update vault response
-  if (event.detail.pathInfo.requestPath.startsWith('/admin/vaults/') && event.detail.verb === 'put') {
+  if (requestPath.startsWith('/admin/vaults/')) {
     if (event.detail.successful) {
       try {
         const response = JSON.parse(event.detail.xhr.responseText);
@@ -135,18 +146,24 @@ document.body.addEventListener('htmx:afterRequest', function(event) {
           // Trigger list refresh
           htmx.trigger('body', 'refreshList');
         } else {
-          event.detail.target.innerHTML = `
-            <div class="alert alert-error">
-              <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
-              <span>${response.error || '更新失败'}</span>
-            </div>
-          `;
-          lucide.createIcons();
+          // Show error in modal
+          const resultDiv = document.getElementById('edit-result');
+          if (resultDiv) {
+            resultDiv.innerHTML = `
+              <div class="alert alert-error">
+                <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                <span>${response.error || '更新失败'}</span>
+              </div>
+            `;
+            lucide.createIcons();
+          }
         }
       } catch (e) {
         console.error('Failed to parse response:', e);
         showNotification('服务器响应异常', 'error');
       }
+    } else {
+      showNotification('网络错误，请重试', 'error');
     }
   }
 });

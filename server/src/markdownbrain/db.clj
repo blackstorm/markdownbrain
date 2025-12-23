@@ -129,7 +129,7 @@
 
 (defn update-vault! [vault-id name domain]
   "更新 vault 的名称和域名"
-  (execute-one! ["UPDATE vaults SET name = ?, domain = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+  (execute-one! ["UPDATE vaults SET name = ?, domain = ? WHERE id = ?"
                  name domain vault-id]))
 
 ;; Document 操作

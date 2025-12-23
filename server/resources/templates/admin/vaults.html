@@ -392,7 +392,7 @@
 
     <!-- Footer -->
     <footer class="app-footer">
-        <p>Powered by <strong>MarkdownBrain</strong></p>
+        <p>Powered by <strong><a href="https://markdownbrain.com" class="hover:underline" target="_blank">MarkdownBrain</a></strong></p>
     </footer>
 
     <!-- Create Site Modal -->
@@ -405,8 +405,7 @@
                 </button>
             </div>
             <form hx-post="/admin/vaults"
-                  hx-target="#create-result"
-                  hx-swap="innerHTML"
+                  hx-swap="none"
                   hx-disabled-elt="button[type=submit]"
                   hx-indicator=".create-spinner">
                 <div class="modal-body">
@@ -455,8 +454,7 @@
             </div>
             <form id="edit-form"
                   hx-put=""
-                  hx-target="#edit-result"
-                  hx-swap="innerHTML"
+                  hx-swap="none"
                   hx-disabled-elt="button[type=submit]"
                   hx-indicator=".edit-spinner">
                 <input type="hidden" name="id" id="edit-vault-id">
