@@ -8,43 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
     <script src="/js/helpers.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <style>
-        /* Clean line-based design system */
-        :root {
-            --border-color: #e5e7eb;
-            --border-hover: #d1d5db;
-            --text-primary: #1f2937;
-            --text-secondary: #6b7280;
-            --text-tertiary: #9ca3af;
-            --accent: #2563eb;
-            --accent-hover: #1d4ed8;
-            --success: #10b981;
-            --error: #ef4444;
-            --warning: #f59e0b;
-            --bg-primary: #ffffff;
-            --bg-secondary: #f9fafb;
-            --spacing-unit: 8px;
-        }
-
-        /* Reset focus styles for clean look */
-        *:focus {
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
-        }
-
-        /* Smooth transitions */
-        * {
-            transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
-        }
-
-        /* Loading states */
-        .htmx-request .htmx-indicator {
-            display: inline-block;
-        }
-        .htmx-indicator {
-            display: none;
-        }
-    </style>
 </head>
 <body class="antialiased" style="background: #fafafa; min-height: 100vh;">
     <script>

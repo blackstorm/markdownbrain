@@ -61,6 +61,18 @@
   --color-border-default: #e5e7eb;
   --color-border-hover: #d1d5db;
   --color-border-focus: var(--color-brand-500);
+
+  /* Aliases for template compatibility */
+  --border-color: #e5e7eb;
+  --border-hover: #d1d5db;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --text-tertiary: #9ca3af;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --success: #10b981;
+  --error: #ef4444;
+  --warning: #f59e0b;
 }
 
 /* Brand Components */
@@ -281,13 +293,31 @@
   }
 
   /* Button Components */
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn:hover {
+    border-color: var(--border-hover);
+    background: #fafafa;
+  }
+
   .btn-primary {
     padding: 0.625rem 1rem;
     font-size: 0.875rem;
     font-weight: 500;
     color: white;
-    background-color: var(--color-brand-500);
-    border: 1px solid var(--color-brand-500);
+    background: var(--accent);
+    border: 1px solid var(--accent);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -295,8 +325,8 @@
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-brand-600);
-    border-color: var(--color-brand-600);
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
   }
 
   .btn-primary:disabled {
@@ -698,6 +728,251 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  /* ============================================================
+   * Page-Specific Styles
+   * ============================================================ */
+
+  /* ---- Login Page ---- */
+  .login-container {
+    width: 100%;
+    max-width: 400px;
+    background: white;
+    border: 1px solid var(--color-border-default);
+  }
+
+  .login-header {
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-default);
+  }
+
+  .login-body {
+    padding: 2rem;
+  }
+
+  .login-container .form-field {
+    margin-bottom: 1.5rem;
+  }
+
+  .login-container .btn-primary {
+    width: 100%;
+  }
+
+  /* ---- Init/Welcome Page ---- */
+  .init-container {
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    border: 1px solid var(--color-border-default);
+  }
+
+  .init-header {
+    padding: 2rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--color-border-default);
+  }
+
+  .init-body {
+    padding: 2rem;
+  }
+
+  .init-container .form-field {
+    margin-bottom: 1.5rem;
+  }
+
+  .init-container .btn-primary {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .welcome-icon {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-border-default);
+    margin: 0 auto 1rem;
+  }
+
+  /* ---- Admin Vaults Page ---- */
+  .header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo-area {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .logo-icon {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid var(--color-border-default);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo-text h1 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+    line-height: 1.2;
+  }
+
+  .logo-text p {
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .main-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+  }
+
+  .page-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 0.25rem;
+  }
+
+  .page-header p {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .vault-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 1024px) {
+    .vault-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .modal-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .btn-close {
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+  }
+
+  .btn-close:hover {
+    color: var(--color-text-primary);
+  }
+
+  .empty-state h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 0.5rem;
+  }
+
+  .empty-state p {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0 0 1.5rem;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .app-footer {
+    border-top: 1px solid var(--color-border-default);
+    padding: 1.5rem;
+    text-align: center;
+    margin-top: 4rem;
+  }
+
+  .app-footer p {
+    font-size: 0.875rem;
+    color: var(--color-text-tertiary);
+    margin: 0;
+  }
+
+  /* ---- Frontend Home Page ---- */
+  .site-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+
+  .site-header {
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--color-border-default);
+    margin-bottom: 2rem;
+  }
+
+  .site-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 0.5rem;
+    line-height: 1.2;
+  }
+
+  .site-domain {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    margin: 0 0 1.5rem;
+  }
+
+  .doc-arrow {
+    flex-shrink: 0;
+    color: var(--color-text-tertiary);
+  }
+
+  /* ---- Shared Auth Page Styles ---- */
+  body.auth-page {
+    background: #fafafa;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  body.vaults-page {
+    background: #fafafa;
+    min-height: 100vh;
   }
 }
 
