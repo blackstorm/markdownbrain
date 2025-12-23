@@ -85,7 +85,7 @@ class SyncManager {
             const timeoutId = setTimeout(() => controller.abort(), timeout);
 
             const response = await requestUrl({
-                url: `${this.config.serverUrl}/api/vault/info`,
+                url: `${this.config.serverUrl}/obsidian/vault/info`,
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${this.config.syncKey}`
@@ -136,7 +136,7 @@ class SyncManager {
             console.log('[MarkdownBrain] Request body size:', requestBody.length, 'bytes');
 
             const response = await requestUrl({
-                url: `${this.config.serverUrl}/api/sync`,
+                url: `${this.config.serverUrl}/obsidian/sync`,
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -107,3 +107,58 @@
       (do
         (db/delete-vault! vault-id)
         (resp/success {:message "Site deleted"})))))
+
+;; 搜索 vault 中的文档
+(defn search-vault-documents [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        query (get-in request [:params :q])
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 200
+       :body {:success false
+              :error "Vault not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 200
+       :body {:success false
+              :error "Permission denied"}}
+
+      (nil? query)
+      {:status 200
+       :body {:success false
+              :error "Missing search query"}}
+
+      :else
+      (let [documents (db/search-documents-by-vault vault-id query)]
+        (resp/success {:documents documents})))))
+
+;; 更新 vault 的首页文档
+(defn update-vault-root-doc [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        params (or (:body-params request) (:params request))
+        root-doc-id (:rootDocId params)
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 200
+       :body {:success false
+              :error "Vault not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 200
+       :body {:success false
+              :error "Permission denied"}}
+
+      (nil? root-doc-id)
+      {:status 200
+       :body {:success false
+              :error "Missing rootDocId"}}
+
+      :else
+      (do
+        (db/update-vault-root-doc! vault-id root-doc-id)
+        (resp/success {:message "Root document updated"
+                       :rootDocId root-doc-id})))))

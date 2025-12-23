@@ -33,12 +33,12 @@ install: backend-install frontend-install plugin-install
 
 backend-install:
 	@echo "Installing backend dependencies..."
-	@clojure -P -M:dev:test
+	@cd server && clojure -P -M:dev:test
 
 frontend-install:
 	@echo "Installing frontend dependencies..."
-	@npm install
-	@npm run setup
+	@cd server && npm install
+	@cd server && npm run setup
 
 plugin-install:
 	@echo "Installing plugin dependencies..."
@@ -49,19 +49,19 @@ dev:
 	@echo "Starting backend development server..."
 	@echo "Server will run on http://localhost:3000"
 	@echo "Use Ctrl+C to stop"
-	@clojure -M:dev
+	@cd server && clojure -M:dev
 
 backend-dev:
 	@echo "Starting backend development server..."
-	@clojure -M:dev
+	@cd server && clojure -M:dev
 
 backend-repl:
 	@echo "Starting backend REPL..."
-	@clojure -M:repl
+	@cd server && clojure -M:repl
 
 frontend-dev:
 	@echo "Starting frontend CSS watch mode..."
-	@npm run watch:css
+	@cd server && npm run watch:css
 
 plugin-dev:
 	@echo "Starting Obsidian plugin development mode..."
@@ -72,13 +72,13 @@ build: backend-build frontend-build plugin-build
 
 backend-build:
 	@echo "Building backend uberjar..."
-	@clojure -T:build uberjar
-	@echo "Backend built: target/markdownbrain-standalone.jar"
+	@cd server && clojure -T:build uberjar
+	@echo "Backend built: server/target/markdownbrain-standalone.jar"
 
 frontend-build:
 	@echo "Building frontend CSS..."
-	@npm run build:css
-	@echo "Frontend CSS built: resources/public/css/app.css"
+	@cd server && npm run build:css
+	@echo "Frontend CSS built: server/resources/public/css/app.css"
 
 plugin-build:
 	@echo "Building Obsidian plugin..."
@@ -95,24 +95,24 @@ test: backend-test
 
 backend-test:
 	@echo "Running backend tests..."
-	@clojure -M:test
+	@cd server && clojure -M:test
 
 # 数据库操作
 db-migrate:
 	@echo "Running database migrations..."
-	@clojure -M:dev -m markdownbrain.db/migrate
+	@cd server && clojure -M:dev -m markdownbrain.db/migrate
 
 db-reset:
 	@echo "Resetting database..."
 	@rm -f data/markdownbrain.db
-	@clojure -M:dev -m markdownbrain.db/init-db!
+	@cd server && clojure -M:dev -m markdownbrain.db/init-db!
 	@echo "Database reset complete"
 
 # 清理
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -rf target/
-	@rm -rf .cpcache/
+	@rm -rf server/target/
+	@rm -rf server/.cpcache/
 	@rm -rf obsidian-plugin/dist/
 	@rm -rf obsidian-plugin/node_modules/
 	@rm -f obsidian-plugin/main.js
@@ -127,5 +127,5 @@ start: backend-dev
 release: clean install test build plugin-package
 	@echo ""
 	@echo "Release artifacts ready:"
-	@echo "  - Backend: target/markdownbrain-standalone.jar"
+	@echo "  - Backend: server/target/markdownbrain-standalone.jar"
 	@echo "  - Plugin: obsidian-plugin/markdownbrain-plugin.zip"

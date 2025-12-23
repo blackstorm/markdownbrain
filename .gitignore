@@ -1,17 +1,32 @@
 # MarkdownBrain
 
+# Database files
 *.db
 *.db-shm
 *.db-wal
 *.log
+markdownbrain.db
+
+# Clojure
 .nrepl-port
 .cpcache/
-.shadow-cljs/
-node_modules/
-target/
-.DS_Store
-resources/public/js/htmx.min.js
-resources/public/css/app.css
-markdownbrain.db
 .lsp/
 .clj-kondo/
+server/.cpcache/
+server/target/
+
+# Node.js
+node_modules/
+server/node_modules/
+obsidian-plugin/node_modules/
+
+# Build artifacts
+target/
+server/resources/public/js/htmx.min.js
+server/resources/public/css/app.css
+
+# Shadow-cljs
+.shadow-cljs/
+
+# System files
+.DS_Store

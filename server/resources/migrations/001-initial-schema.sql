@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS vaults (
   domain TEXT UNIQUE,
   sync_key TEXT UNIQUE NOT NULL,
   client_type TEXT NOT NULL DEFAULT 'obsidian',  -- 客户端类型: obsidian, logseq, notion 等
+  root_doc_id TEXT,                              -- 首页展示的根文档 ID (document.client_id)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );

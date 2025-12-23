@@ -123,6 +123,10 @@
 (defn delete-vault! [id]
   (execute-one! ["DELETE FROM vaults WHERE id = ?" id]))
 
+(defn update-vault-root-doc! [vault-id root-doc-id]
+  "更新 vault 的首页文档 ID"
+  (execute-one! ["UPDATE vaults SET root_doc_id = ? WHERE id = ?" root-doc-id vault-id]))
+
 ;; Document 操作
 (defn upsert-document! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!
@@ -156,6 +160,17 @@
 
 (defn get-document-by-client-id [vault-id client-id]
   (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
+
+(defn search-documents-by-vault [vault-id query]
+  "搜索 vault 中的文档，支持按路径和内容搜索"
+  (execute! ["SELECT client_id as clientId, path, content, metadata, mtime
+              FROM documents
+              WHERE vault_id = ? AND (path LIKE ? OR content LIKE ?)
+              ORDER BY path ASC
+              LIMIT 50"
+             vault-id
+             (str "%" query "%")
+             (str "%" query "%")]))
 
 ;; Document Links 操作
 (defn delete-document-links-by-source! [vault-id source-client-id]
