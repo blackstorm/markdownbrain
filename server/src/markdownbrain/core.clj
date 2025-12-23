@@ -13,13 +13,15 @@
     (println "Initializing database...")
     (db/init-db!)
     (println "Starting server on" host ":" port)
-    (jetty/run-jetty
-      (-> routes/app
-          (middleware/wrap-middleware)
-          (resource/wrap-resource "public"))
-      {:port port
-       :host host
-       :join? false})))
+    (let [server (jetty/run-jetty
+                  (-> routes/app
+                      (middleware/wrap-middleware)
+                      (resource/wrap-resource "public"))
+                  {:port port
+                   :host host
+                   :join? false})]
+      {:server server
+       :stop #(.stop server)})))
 
 (defn -main [& args]
   (start-server))

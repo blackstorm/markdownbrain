@@ -6,54 +6,67 @@
     <!-- Header: Name + Domain + Actions -->
     <div class="flex items-start justify-between mb-4">
       <div class="flex-1 min-w-0">
-        <h3 class="text-lg font-semibold text-base-content mb-1 truncate">
+        <h3 class="text-lg font-bold text-base-content mb-1 truncate">
           {{vault.name}}
         </h3>
         <a href="http://{{vault.domain}}" target="_blank"
-           class="text-sm text-base-content/60 hover:text-primary inline-flex items-center gap-1 group transition-colors">
-          <span class="material-symbols-outlined text-base">language</span>
+           class="text-sm font-sans text-base-content/60 hover:text-primary inline-flex items-center gap-1 group transition-colors">
+          <i data-lucide="globe" class="w-4 h-4"></i>
           <span class="group-hover:underline">{{vault.domain}}</span>
-          <span class="material-symbols-outlined text-base opacity-0 group-hover:opacity-100 transition-opacity">
-            open_in_new
-          </span>
+          <i data-lucide="external-link" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i>
         </a>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="flex items-center gap-1">
-        <a href="http://{{vault.domain}}" target="_blank"
-           class="btn btn-ghost btn-sm btn-circle" title="Open site">
-          <span class="material-symbols-outlined">open_in_new</span>
-        </a>
-        <button class="btn btn-ghost btn-sm btn-circle"
-                hx-delete="/admin/vaults/{{vault.id}}"
-                hx-confirm="Delete '{{vault.name}}'? This action cannot be undone."
-                hx-target="#vault-list"
-                hx-swap="none"
-                hx-on::after-request="if(event.detail.successful) {
-                  showToast('Site deleted successfully', 'success');
-                  htmx.trigger('#vault-list', 'refreshList');
-                }">
-          <span class="htmx-indicator loading loading-spinner loading-xs"></span>
-          <span class="delete-text material-symbols-outlined text-error">delete</span>
-        </button>
+      <!-- Quick Actions Dropdown -->
+      <div class="dropdown dropdown-end">
+        <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-circle">
+          <i data-lucide="more-vertical" class="w-5 h-5"></i>
+        </div>
+        <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-10 w-48 p-2 shadow-sm border border-base-300">
+          <li>
+            <a href="http://{{vault.domain}}" target="_blank" class="gap-3">
+              <i data-lucide="external-link" class="w-4 h-4"></i>
+              <span>Open Site</span>
+            </a>
+          </li>
+          <li>
+            <button onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}')" class="gap-3">
+              <i data-lucide="pencil" class="w-4 h-4"></i>
+              <span>Edit</span>
+            </button>
+          </li>
+          <li>
+            <button class="gap-3"
+                    hx-delete="/admin/vaults/{{vault.id}}"
+                    hx-confirm="Delete '{{vault.name}}'? This action cannot be undone."
+                    hx-target="#vault-list"
+                    hx-swap="none"
+                    hx-on::after-request="if(event.detail.successful) {
+                      showToast('Site deleted successfully', 'success');
+                      htmx.trigger('#vault-list', 'refreshList');
+                    }">
+              <i data-lucide="trash-2" class="w-4 h-4 text-error"></i>
+              <span class="text-error">Delete</span>
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
 
     <!-- Sync Key Section -->
     <div class="sync-key-section bg-base-200 rounded p-4 mb-4">
       <div class="flex items-center justify-between mb-2">
-        <span class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">
+        <span class="text-xs font-display font-semibold text-base-content/60 uppercase tracking-wide">
           Sync Key
         </span>
         <div class="flex gap-1">
           <button onclick="toggleKey(this, '{{vault.id}}')"
                   class="btn btn-xs btn-ghost" title="Show/Hide key">
-            <span class="material-symbols-outlined text-base">visibility</span>
+            <i data-lucide="eye" class="w-4 h-4"></i>
           </button>
           <button onclick="copyToClipboard('{{vault.sync-key}}', this)"
                   class="btn btn-xs btn-ghost copy-btn" title="Copy to clipboard">
-            <span class="material-symbols-outlined text-base">content_copy</span>
+            <i data-lucide="copy" class="w-4 h-4"></i>
           </button>
         </div>
       </div>
@@ -66,7 +79,7 @@
 
     <!-- Root Doc Selector -->
     <div class="root-doc-section">
-      <label class="block text-xs font-semibold text-base-content/60 uppercase tracking-wide mb-2">
+      <label class="block text-xs font-display font-semibold text-base-content/60 uppercase tracking-wide mb-2">
         Home Page
       </label>
       {% with vault-id=vault.id root-doc-id=vault.root-doc-id documents=vault.documents %}
@@ -80,14 +93,14 @@
   <div class="col-span-full">
     <div class="text-center py-16 px-4">
       <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-200 mb-4">
-        <span class="material-symbols-outlined text-4xl text-base-content/40">inbox</span>
+        <i data-lucide="inbox" class="w-9 h-9 text-base-content/40"></i>
       </div>
-      <h3 class="text-lg font-semibold text-base-content mb-2">No sites yet</h3>
-      <p class="text-sm text-base-content/60 mb-6 max-w-sm mx-auto">
+      <h3 class="text-lg font-display font-bold text-base-content mb-2">No sites yet</h3>
+      <p class="text-sm font-sans text-base-content/60 mb-6 max-w-sm mx-auto">
         Create your first site to start publishing your Obsidian notes to the web
       </p>
       <button onclick="my_modal_create.showModal()" class="btn btn-primary gap-2">
-        <span class="material-symbols-outlined">add</span>
+        <i data-lucide="plus" class="w-5 h-5"></i>
         <span>Create Your First Site</span>
       </button>
     </div>

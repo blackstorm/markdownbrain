@@ -127,6 +127,11 @@
   "更新 vault 的首页文档 ID"
   (execute-one! ["UPDATE vaults SET root_doc_id = ? WHERE id = ?" root-doc-id vault-id]))
 
+(defn update-vault! [vault-id name domain]
+  "更新 vault 的名称和域名"
+  (execute-one! ["UPDATE vaults SET name = ?, domain = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+                 name domain vault-id]))
+
 ;; Document 操作
 (defn upsert-document! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!
@@ -163,7 +168,7 @@
 
 (defn search-documents-by-vault [vault-id query]
   "搜索 vault 中的文档，支持按路径和内容搜索"
-  (execute! ["SELECT client_id as clientId, path, content, metadata, mtime
+  (execute! ["SELECT id, client_id as clientId, path, content, metadata, mtime
               FROM documents
               WHERE vault_id = ? AND (path LIKE ? OR content LIKE ?)
               ORDER BY path ASC

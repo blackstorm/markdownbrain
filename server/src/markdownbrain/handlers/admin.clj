@@ -108,6 +108,35 @@
         (db/delete-vault! vault-id)
         (resp/success {:message "Site deleted"})))))
 
+;; 更新 vault
+(defn update-vault [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        params (:body-params request)
+        name (:name params)
+        domain (:domain params)
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Site not found</span></div>")
+
+      (not= (:tenant-id vault) tenant-id)
+      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Permission denied</span></div>")
+
+      (or (nil? name) (clojure.string/blank? name))
+      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Site name is required</span></div>")
+
+      (or (nil? domain) (clojure.string/blank? domain))
+      (resp/html "<div class=\"alert alert-error\"><span class=\"material-symbols-outlined\">error</span><span>Domain is required</span></div>")
+
+      :else
+      (do
+        (db/update-vault! vault-id name domain)
+        ;; 返回空响应，触发 HX-Trigger 刷新列表
+        {:status 200
+         :headers {"HX-Trigger" "refreshList"}
+         :body ""}))))
+
 ;; 搜索 vault 中的文档
 (defn search-vault-documents [request]
   (let [tenant-id (get-in request [:session :tenant-id])

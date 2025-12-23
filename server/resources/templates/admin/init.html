@@ -5,29 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome - MarkdownBrain</title>
 
-    <!-- Geist Font -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
-
     <link href="/css/app.css" rel="stylesheet">
     <script src="/js/htmx.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="min-h-screen bg-canvas flex items-center justify-center p-4">
+    <!-- Initialize Lucide icons -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        lucide.createIcons();
+      });
+    </script>
     <div class="card w-full max-w-md bg-base-100 border border-base-300">
         <div class="card-body p-8">
             <!-- Logo & Title -->
             <div class="text-center mb-6">
                 <div class="inline-flex items-center justify-center w-12 h-12 rounded bg-primary mb-4">
-                    <span class="material-symbols-outlined text-white text-2xl">auto_stories</span>
+                    <i data-lucide="book-open" class="w-6 h-6 text-white"></i>
                 </div>
-                <h2 class="text-2xl font-bold text-base-content mb-1">
+                <h2 class="text-2xl font-display font-bold text-base-content mb-1">
                     Welcome to MarkdownBrain
                 </h2>
-                <p class="text-sm text-base-content/60">
+                <p class="text-sm font-sans text-base-content/60">
                     Set up your admin account to get started
                 </p>
             </div>
@@ -42,18 +43,12 @@
                     <label class="label">
                         <span class="label-text font-medium text-base-content">Organization Name</span>
                     </label>
-                    <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2
-                                     text-base-content/40 pointer-events-none">
-                            business
-                        </span>
-                        <input type="text"
-                               name="tenant-name"
-                               placeholder="My Organization"
-                               class="input input-bordered w-full pl-10"
-                               autofocus
-                               required />
-                    </div>
+                    <input type="text"
+                           name="tenant-name"
+                           placeholder="My Organization"
+                           class="input input-bordered w-full"
+                           autofocus
+                           required />
                     <label class="label">
                         <span class="label-text-alt text-base-content/60">
                             Your company or personal workspace name
@@ -66,17 +61,11 @@
                     <label class="label">
                         <span class="label-text font-medium text-base-content">Admin Email</span>
                     </label>
-                    <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2
-                                     text-base-content/40 pointer-events-none">
-                            mail
-                        </span>
-                        <input type="email"
-                               name="username"
-                               placeholder="admin@example.com"
-                               class="input input-bordered w-full pl-10"
-                               required />
-                    </div>
+                    <input type="email"
+                           name="username"
+                           placeholder="admin@example.com"
+                           class="input input-bordered w-full"
+                           required />
                 </div>
 
                 <!-- Password -->
@@ -84,17 +73,11 @@
                     <label class="label">
                         <span class="label-text font-medium text-base-content">Password</span>
                     </label>
-                    <div class="relative">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2
-                                     text-base-content/40 pointer-events-none">
-                            lock
-                        </span>
-                        <input type="password"
-                               name="password"
-                               placeholder="••••••••"
-                               class="input input-bordered w-full pl-10"
-                               required />
-                    </div>
+                    <input type="password"
+                           name="password"
+                           placeholder="••••••••"
+                           class="input input-bordered w-full"
+                           required />
                     <label class="label">
                         <span class="label-text-alt text-base-content/60">
                             Use a strong password with at least 8 characters
@@ -108,7 +91,7 @@
                 <!-- Submit button -->
                 <div class="form-control mt-6">
                     <button type="submit" class="btn btn-primary w-full gap-2">
-                        <span class="material-symbols-outlined">rocket_launch</span>
+                        <i data-lucide="rocket" class="w-5 h-5"></i>
                         <span>Create Account</span>
                     </button>
                 </div>
@@ -125,7 +108,7 @@
                     // Show success message
                     event.detail.target.innerHTML = `
                         <div class="alert alert-success">
-                            <span class="material-symbols-outlined">check_circle</span>
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
                             <span>Account created successfully! Redirecting to login...</span>
                         </div>
                     `;
@@ -137,7 +120,7 @@
                     // Show error message
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <span class="material-symbols-outlined">error</span>
+                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
                             <span>${response.error || 'Account creation failed'}</span>
                         </div>
                     `;
@@ -145,7 +128,7 @@
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <span class="material-symbols-outlined">error</span>
+                        <i data-lucide="alert-circle" class="w-5 h-5"></i>
                         <span>Network error, please try again later</span>
                     </div>
                 `;

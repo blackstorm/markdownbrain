@@ -33,8 +33,10 @@
 
  :aliases
  {:dev {:extra-paths ["dev"]
-        :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}
-        :main-opts ["-m" "markdownbrain.core"]}
+        :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}
+                     io.github.nextjournal/beholder {:git/tag "v1.0.2" :git/sha "87b5220"}
+                     org.clojure/tools.namespace {:mvn/version "1.5.0"}}
+        :main-opts ["-m" "user"]}
 
   :repl {:extra-paths ["dev"]
          :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}}

@@ -43,6 +43,7 @@
                 :get admin/list-vaults
                 :post admin/create-vault}]
     ["/vaults/:id" {:middleware [middleware/wrap-auth]
+                    :put admin/update-vault
                     :delete admin/delete-vault}]
     ["/vaults/:id/documents" {:middleware [middleware/wrap-auth]
                               :get admin/search-vault-documents}]

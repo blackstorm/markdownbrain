@@ -322,3 +322,47 @@ window.showToast = showToast;
 window.copyToClipboard = copyToClipboard;
 window.toggleKey = toggleKey;
 window.validateDomain = validateDomain;
+
+// ============================================================================
+// Edit Modal Handler
+// ============================================================================
+
+/**
+ * Open edit modal and populate with vault data
+ * @param {string} vaultId - ID of the vault to edit
+ * @param {string} name - Current vault name
+ * @param {string} domain - Current vault domain
+ */
+function openEditModal(vaultId, name, domain) {
+  const modal = document.getElementById('my_modal_edit');
+  const form = document.getElementById('edit-form');
+
+  if (!modal || !form) {
+    console.error('Edit modal or form not found');
+    return;
+  }
+
+  // Populate form fields
+  document.getElementById('edit-vault-id').value = vaultId;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-domain').value = domain;
+
+  // Set the form action URL
+  form.setAttribute('hx-put', `/admin/vaults/${vaultId}`);
+
+  // Clear any previous errors
+  const resultDiv = document.getElementById('edit-result');
+  if (resultDiv) {
+    resultDiv.innerHTML = '';
+  }
+
+  // Show modal
+  modal.showModal();
+
+  // Focus on name input
+  setTimeout(() => {
+    document.getElementById('edit-name').focus();
+  }, 100);
+}
+
+window.openEditModal = openEditModal;

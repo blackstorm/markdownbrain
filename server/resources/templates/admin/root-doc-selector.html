@@ -1,27 +1,27 @@
 {% if documents|not-empty %}
-<select class="select select-sm select-bordered w-full"
-        hx-put="/admin/vaults/{{vault-id}}/root-doc"
-        hx-trigger="change"
-        hx-vals='js:{rootDocId: event.target.value}'
-        hx-swap="none"
-        hx-on::after-request="if(event.detail.successful) {
-          showToast('Home page updated successfully', 'success', 2000);
-        }">
-  <option value="" {% if not root-doc-id %}selected{% endif %}>
-    -- Select document --
-  </option>
-  {% for doc in documents %}
-  <option value="{{doc.id}}"
-          {% if doc.id = root-doc-id %}selected{% endif %}>
-    {{doc.path}}
-  </option>
-  {% endfor %}
-</select>
+<form>
+  <select name="rootDocId"
+          class="select select-sm select-bordered w-full"
+          hx-put="/admin/vaults/{{vault-id}}/root-doc"
+          hx-trigger="change"
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) {
+            showToast('Home page updated', 'success', 2000);
+          }">
+    <option value="" disabled {% if not root-doc-id %}selected{% endif %}>
+      Select document
+    </option>
+    {% for doc in documents %}
+    <option value="{{doc.id}}"
+            {% if doc.id = root-doc-id %}selected{% endif %}>
+      {{doc.path}}
+    </option>
+    {% endfor %}
+  </select>
+</form>
 {% else %}
-<div class="alert alert-warning alert-sm flex items-start gap-2">
-  <span class="material-symbols-outlined text-base flex-shrink-0">warning</span>
-  <span class="text-xs">
-    No documents synced yet. Sync files from Obsidian to set a home page.
-  </span>
+<div role="alert" class="alert alert-warning alert-sm">
+  <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+  <span class="text-xs">No documents synced yet. Sync files from Obsidian to set a home page.</span>
 </div>
 {% endif %}
