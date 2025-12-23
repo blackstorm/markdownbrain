@@ -18,13 +18,10 @@
     <div class="login-container">
         <!-- Header -->
         <div class="login-header">
-            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-                <div style="width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
-                    <i data-lucide="book-open" style="width: 1.125rem; height: 1.125rem; color: var(--accent);"></i>
-                </div>
-                <h1 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">MarkdownBrain</h1>
-            </div>
-            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">登录管理后台</p>
+            {% with size="md" %}
+              {% include "templates/components/logo.html" %}
+            {% endwith %}
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0.5rem 0 0;">登录管理后台</p>
         </div>
 
         <!-- Body -->
@@ -37,28 +34,13 @@
                   hx-disabled-elt="button"
                   hx-indicator=".spinner">
 
-                <div class="form-field">
-                    <label class="form-label" for="username">邮箱</label>
-                    <input type="email"
-                           id="username"
-                           name="username"
-                           class="form-input"
-                           placeholder="admin@example.com"
-                           autocomplete="username"
-                           autofocus
-                           required>
-                </div>
+                {% with id="username" name="username" type="email" label="邮箱" placeholder="admin@example.com" autocomplete="username" autofocus=true required=true %}
+                  {% include "templates/components/form-field.html" %}
+                {% endwith %}
 
-                <div class="form-field">
-                    <label class="form-label" for="password">密码</label>
-                    <input type="password"
-                           id="password"
-                           name="password"
-                           class="form-input"
-                           placeholder="••••••••"
-                           autocomplete="current-password"
-                           required>
-                </div>
+                {% with id="password" name="password" type="password" label="密码" placeholder="••••••••" autocomplete="current-password" required=true %}
+                  {% include "templates/components/form-field.html" %}
+                {% endwith %}
 
                 <button type="submit" class="btn-primary">
                     <span style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">

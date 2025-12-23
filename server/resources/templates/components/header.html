@@ -1,0 +1,26 @@
+<!-- Admin Header Component
+  Parameters:
+  - tenant: tenant object with name field (required)
+-->
+<header class="app-header">
+    <div class="header-content">
+        <div class="logo-area">
+            <div class="logo-icon">
+                <img src="/images/logo.png" alt="MarkdownBrain Logo" style="width: 2rem; height: 2rem; object-fit: contain;">
+            </div>
+            <div class="logo-text">
+                <h1>{{tenant.name}}</h1>
+                <p>MarkdownBrain</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button hx-post="/admin/logout"
+                    hx-swap="none"
+                    hx-on::after-request="window.location.href='/admin/login'"
+                    class="btn">
+                <i data-lucide="log-out" style="width: 1rem; height: 1rem;"></i>
+                <span>退出登录</span>
+            </button>
+        </div>
+    </div>
+</header>

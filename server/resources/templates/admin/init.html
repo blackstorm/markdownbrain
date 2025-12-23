@@ -35,41 +35,17 @@
                   hx-disabled-elt="button"
                   hx-indicator=".spinner">
 
-                <div class="form-field">
-                    <label class="form-label" for="tenant-name">组织名称</label>
-                    <input type="text"
-                           id="tenant-name"
-                           name="tenant-name"
-                           class="form-input"
-                           placeholder="我的组织"
-                           autofocus
-                           required>
-                    <span class="form-hint">您的公司或个人工作空间名称</span>
-                </div>
+                {% with id="tenant-name" name="tenant-name" label="组织名称" placeholder="我的组织" hint="您的公司或个人工作空间名称" autofocus=true required=true %}
+                  {% include "templates/components/form-field.html" %}
+                {% endwith %}
 
-                <div class="form-field">
-                    <label class="form-label" for="username">管理员邮箱</label>
-                    <input type="email"
-                           id="username"
-                           name="username"
-                           class="form-input"
-                           placeholder="admin@example.com"
-                           autocomplete="username"
-                           required>
-                </div>
+                {% with id="username" name="username" type="email" label="管理员邮箱" placeholder="admin@example.com" autocomplete="username" required=true %}
+                  {% include "templates/components/form-field.html" %}
+                {% endwith %}
 
-                <div class="form-field">
-                    <label class="form-label" for="password">密码</label>
-                    <input type="password"
-                           id="password"
-                           name="password"
-                           class="form-input"
-                           placeholder="••••••••"
-                           autocomplete="new-password"
-                           minlength="8"
-                           required>
-                    <span class="form-hint">至少 8 个字符，建议使用强密码</span>
-                </div>
+                {% with id="password" name="password" type="password" label="密码" placeholder="••••••••" autocomplete="new-password" minlength="8" hint="至少 8 个字符，建议使用强密码" required=true %}
+                  {% include "templates/components/form-field.html" %}
+                {% endwith %}
 
                 <button type="submit" class="btn-primary">
                     <span class="spinner"></span>

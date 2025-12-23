@@ -1,0 +1,10 @@
+<!-- Alert Component
+  Parameters:
+  - type: "success", "error", "warning", "info" (required)
+  - message: alert message (required)
+  - icon: lucide icon name (optional, defaults based on type)
+-->
+<div class="alert alert-{{type}}">
+    <i data-lucide="{% if icon %}{{icon}}{% else %}{% if type = "success" %}check-circle{% else %}{% if type = "error" %}alert-circle{% else %}{% if type = "warning" %}alert-triangle{% else %}info{% endif %}{% endif %}{% endif %}{% endif %}" style="width: 1rem; height: 1rem;"></i>
+    <span>{{message}}</span>
+</div>

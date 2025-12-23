@@ -147,13 +147,9 @@
             {% endfor %}
         </div>
         {% else %}
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i data-lucide="file-text" style="width: 2rem; height: 2rem; color: var(--text-tertiary);"></i>
-            </div>
-            <h3>暂无文档</h3>
-            <p>请使用 Obsidian 插件同步您的笔记</p>
-        </div>
+        {% with icon="file-text" title="暂无文档" message="请使用 Obsidian 插件同步您的笔记" %}
+          {% include "templates/components/empty-state.html" %}
+        {% endwith %}
         {% endif %}
     </section>
 </div>

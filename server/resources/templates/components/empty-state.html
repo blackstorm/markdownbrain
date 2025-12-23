@@ -1,0 +1,31 @@
+<!-- Empty State Component
+  Parameters:
+  - icon: lucide icon name (required)
+  - title: empty state title (required)
+  - message: empty state message (required)
+  - cta-text: call-to-action button text (optional)
+  - cta-action: button onclick handler (optional)
+  - cta-icon: button icon (optional)
+  - grid-full: whether to span full grid width (default: false)
+-->
+{% if grid-full %}
+<div style="grid-column: 1 / -1;">
+{% endif %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i data-lucide="{{icon}}" style="width: 2rem; height: 2rem; color: var(--text-tertiary);"></i>
+        </div>
+        <h3>{{title}}</h3>
+        <p>{{message}}</p>
+        {% if cta-text %}
+        <button onclick="{{cta-action}}" class="btn btn-primary">
+            {% if cta-icon %}
+            <i data-lucide="{{cta-icon}}" style="width: 1rem; height: 1rem;"></i>
+            {% endif %}
+            <span>{{cta-text}}</span>
+        </button>
+        {% endif %}
+    </div>
+{% if grid-full %}
+</div>
+{% endif %}

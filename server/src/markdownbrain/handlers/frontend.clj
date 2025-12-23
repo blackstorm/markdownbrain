@@ -36,6 +36,7 @@
 ;; 管理后台首页
 (defn admin-home [request]
   (let [tenant-id (get-in request [:session :tenant-id])
+        tenant (db/get-tenant tenant-id)
         vaults (db/list-vaults-by-tenant tenant-id)
         vaults-with-data (mapv (fn [vault]
                                  (let [sync-key (:sync-key vault)
@@ -46,7 +47,8 @@
                                           :documents documents)))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vaults.html"
-                                    {:vaults vaults-with-data}))))
+                                    {:tenant tenant
+                                     :vaults vaults-with-data}))))
 
 ;; 登录页面
 (defn login-page [request]
