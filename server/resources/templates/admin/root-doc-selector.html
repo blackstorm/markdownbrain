@@ -1,0 +1,23 @@
+{% if documents|not-empty %}
+<select class="select select-sm select-bordered w-full"
+        hx-put="/admin/vaults/{{vault-id}}/root-doc"
+        hx-trigger="change"
+        hx-vals='js:{rootDocId: event.target.value}'
+        hx-swap="none"
+        hx-on::after-request="if(event.detail.successful) {
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-top toast-end';
+            toast.innerHTML = '<div class=\"alert alert-success\"><span>Home page updated</span></div>';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }">
+    {% for doc in documents %}
+    <option value="{{doc.clientId}}" {% if doc.clientId = root-doc-id %}selected{% endif %}>{{doc.path}}</option>
+    {% endfor %}
+</select>
+{% else %}
+<div role="alert" class="alert alert-warning alert-soft">
+    <span class="material-symbols-outlined">warning</span>
+    <span class="text-sm">Please sync files from Obsidian to set home page</span>
+</div>
+{% endif %}

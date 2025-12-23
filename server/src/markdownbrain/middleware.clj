@@ -44,8 +44,9 @@
           method (:request-method request)
           has-user (db/has-any-user?)]
       (cond
-        ;; 跳过 API 路由、静态资源和 favicon
-        (or (str/starts-with? uri "/api/")
+        ;; 跳过 Obsidian 同步接口、API 路由、静态资源和 favicon
+        (or (str/starts-with? uri "/obsidian/")
+            (str/starts-with? uri "/api/")
             (str/starts-with? uri "/static/")
             (str/starts-with? uri "/js/")
             (str/starts-with? uri "/css/")

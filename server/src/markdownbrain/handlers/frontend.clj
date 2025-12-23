@@ -35,7 +35,18 @@
 
 ;; 管理后台首页
 (defn admin-home [request]
-  (resp/html (selmer/render-file "templates/admin/vaults.html" {})))
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vaults (db/list-vaults-by-tenant tenant-id)
+        vaults-with-data (mapv (fn [vault]
+                                 (let [sync-key (:sync-key vault)
+                                       masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
+                                       documents (db/search-documents-by-vault (:id vault) "")]
+                                   (assoc vault
+                                          :masked-key masked
+                                          :documents documents)))
+                               vaults)]
+    (resp/html (selmer/render-file "templates/admin/vaults.html"
+                                    {:vaults vaults-with-data}))))
 
 ;; 登录页面
 (defn login-page [request]

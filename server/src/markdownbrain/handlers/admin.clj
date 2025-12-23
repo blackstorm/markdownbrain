@@ -162,3 +162,29 @@
         (db/update-vault-root-doc! vault-id root-doc-id)
         (resp/success {:message "Root document updated"
                        :rootDocId root-doc-id})))))
+
+;; 获取 vault 的首页文档选择器（返回 HTML 片段）
+(defn get-root-doc-selector [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 404
+       :headers {"Content-Type" "text/html"}
+       :body "<div class=\"alert alert-error\"><span>Vault not found</span></div>"}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 403
+       :headers {"Content-Type" "text/html"}
+       :body "<div class=\"alert alert-error\"><span>Permission denied</span></div>"}
+
+      :else
+      (let [documents (db/search-documents-by-vault vault-id "")
+            root-doc-id (:root-doc-id vault)]
+        {:status 200
+         :headers {"Content-Type" "text/html"}
+         :body (selmer/render-file "templates/admin/root-doc-selector.html"
+                                    {:documents documents
+                                     :vault-id vault-id
+                                     :root-doc-id root-doc-id})}))))

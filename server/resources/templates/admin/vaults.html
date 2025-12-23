@@ -39,15 +39,8 @@
         </div>
 
         <!-- Site list -->
-        <div hx-get="/admin/vaults"
-             hx-trigger="load, refreshList from:body"
-             hx-target="#vault-list"
-             hx-swap="innerHTML">
-            <div id="vault-list">
-                <div class="flex justify-center py-12">
-                    <span class="loading loading-spinner loading-lg"></span>
-                </div>
-            </div>
+        <div id="vault-list">
+            {% include "templates/admin/vault-list.html" %}
         </div>
 
         <!-- Create site modal -->
@@ -150,14 +143,19 @@
     }
 
     function toggleKey(button) {
-        const codeElement = button.previousElementSibling;
+        // Find the code element: button -> .flex.gap-1 -> parent div -> code sibling
+        const flexDiv = button.closest('.flex.gap-1');
+        const parentDiv = flexDiv.parentElement;
+        const codeElement = parentDiv.nextElementSibling;
         const fullKey = codeElement.dataset.key;
         const isHidden = codeElement.textContent.includes('******');
 
         if (isHidden) {
             codeElement.textContent = fullKey;
+            button.querySelector('.material-symbols-outlined').textContent = 'visibility_off';
         } else {
             codeElement.textContent = fullKey.substring(0, 8) + '******' + fullKey.substring(fullKey.length - 8);
+            button.querySelector('.material-symbols-outlined').textContent = 'visibility';
         }
     }
     </script>

@@ -13,19 +13,21 @@
                     {{vault.domain}}
                 </a>
             </div>
-            <button class="btn btn-sm btn-ghost text-error hover:bg-error/10"
-                    hx-delete="/admin/vaults/{{vault.id}}"
-                    hx-confirm="Are you sure you want to delete '{{vault.name}}'? This action cannot be undone."
-                    hx-target="#vault-list"
-                    hx-swap="none"
-                    hx-on::after-request="if(event.detail.successful) { htmx.trigger('#vault-list', 'refreshList'); }">
-                <span class="htmx-indicator loading loading-spinner loading-xs"></span>
-                <span class="delete-text material-symbols-outlined">delete</span>
-            </button>
+            <div class="flex gap-2">
+                <button class="btn btn-sm btn-ghost text-error hover:bg-error/10"
+                        hx-delete="/admin/vaults/{{vault.id}}"
+                        hx-confirm="Are you sure you want to delete '{{vault.name}}'? This action cannot be undone."
+                        hx-target="#vault-list"
+                        hx-swap="none"
+                        hx-on::after-request="if(event.detail.successful) { htmx.trigger('#vault-list', 'refreshList'); }">
+                    <span class="htmx-indicator loading loading-spinner loading-xs"></span>
+                    <span class="delete-text material-symbols-outlined">delete</span>
+                </button>
+            </div>
         </div>
 
         <!-- Sync Key -->
-        <div class="bg-base-200 rounded-lg p-4">
+        <div class="bg-base-200 rounded-lg p-4 mb-3">
             <div class="flex items-center justify-between mb-2">
                 <span class="text-xs font-medium text-base-content/70 uppercase tracking-wide">Sync Key</span>
                 <div class="flex gap-1">
@@ -43,6 +45,16 @@
             </div>
             <code class="block text-xs font-mono text-base-content break-all select-all"
                   data-key="{{vault.sync-key}}">{{vault.masked-key}}</code>
+        </div>
+
+        <!-- Root Doc Select -->
+        <div class="form-control">
+            <label class="label">
+                <span class="label-text text-xs font-medium text-base-content/70 uppercase tracking-wide">Home Page</span>
+            </label>
+            {% with vault-id=vault.id root-doc-id=vault.root-doc-id documents=vault.documents %}
+                {% include "templates/admin/root-doc-selector.html" %}
+            {% endwith %}
         </div>
     </div>
 </div>

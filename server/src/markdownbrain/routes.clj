@@ -47,7 +47,9 @@
     ["/vaults/:id/documents" {:middleware [middleware/wrap-auth]
                               :get admin/search-vault-documents}]
     ["/vaults/:id/root-doc" {:middleware [middleware/wrap-auth]
-                             :put admin/update-vault-root-doc}]]])
+                             :put admin/update-vault-root-doc}]
+    ["/vaults/:id/root-doc-selector" {:middleware [middleware/wrap-auth]
+                                      :get admin/get-root-doc-selector}]]])
 
 (def app
   (ring/ring-handler
