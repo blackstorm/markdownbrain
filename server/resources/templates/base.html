@@ -7,22 +7,70 @@
     <link rel="stylesheet" href="/css/app.css">
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
     <script src="/js/helpers.js"></script>
-
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Clean line-based design system */
+        :root {
+            --border-color: #e5e7eb;
+            --border-hover: #d1d5db;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --spacing-unit: 8px;
+        }
+
+        /* Reset focus styles for clean look */
+        *:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* Smooth transitions */
+        * {
+            transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+        }
+
+        /* Loading states */
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-indicator {
+            display: none;
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Initialize Lucide icons -->
+<body class="antialiased" style="background: #fafafa; min-height: 100vh;">
     <script>
+      // Initialize Lucide icons
       document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
       });
-      // Re-init icons after HTMX swaps
+
+      // Re-initialize icons after HTMX swaps
       document.body.addEventListener('htmx:afterSwap', () => {
         lucide.createIcons();
       });
+
+      // Global HTMX config for better UX
+      document.body.addEventListener('htmx:configRequest', (event) => {
+        // Add custom headers if needed
+      });
+
+      // Handle HTMX errors gracefully
+      document.body.addEventListener('htmx:responseError', (event) => {
+        showNotification('操作失败，请重试', 'error');
+      });
     </script>
-    <div id="notification-container"></div>
+
+    <!-- Notification container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50"></div>
 
     {% block content %}{% endblock %}
 </body>

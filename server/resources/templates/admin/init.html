@@ -1,137 +1,252 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="markdownbrain">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome - MarkdownBrain</title>
-
+    <title>欢迎 - MarkdownBrain</title>
     <link href="/css/app.css" rel="stylesheet">
-    <script src="/js/htmx.min.js"></script>
-
-    <!-- Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <script src="/js/helpers.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --border-color: #e5e7eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+        }
+        body {
+            background: #fafafa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .init-container {
+            width: 100%;
+            max-width: 480px;
+            background: white;
+            border: 1px solid var(--border-color);
+        }
+        .init-header {
+            padding: 2rem 2rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .init-body {
+            padding: 2rem;
+        }
+        .form-field {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        .form-hint {
+            display: block;
+            font-size: 0.8125rem;
+            color: var(--text-tertiary);
+            margin-top: 0.375rem;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            font-size: 0.9375rem;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-primary);
+        }
+        .form-input:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+            border-color: transparent;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: white;
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .alert {
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .alert-success {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+        }
+        .alert-error {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+        .spinner {
+            display: none;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        .htmx-request .spinner {
+            display: inline-block;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .welcome-icon {
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            margin: 0 auto 1rem;
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-canvas flex items-center justify-center p-4">
-    <!-- Initialize Lucide icons -->
+<body>
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-      });
+      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
     </script>
-    <div class="card w-full max-w-md bg-base-100 border border-base-300">
-        <div class="card-body p-8">
-            <!-- Logo & Title -->
-            <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded bg-primary mb-4">
-                    <i data-lucide="book-open" class="w-6 h-6 text-white"></i>
-                </div>
-                <h2 class="text-2xl font-display font-bold text-base-content mb-1">
-                    Welcome to MarkdownBrain
-                </h2>
-                <p class="text-sm font-sans text-base-content/60">
-                    Set up your admin account to get started
-                </p>
+
+    <div class="init-container">
+        <!-- Header -->
+        <div class="init-header">
+            <div class="welcome-icon">
+                <i data-lucide="sparkles" style="width: 1.5rem; height: 1.5rem; color: var(--accent);"></i>
             </div>
+            <h1 style="font-size: 1.375rem; font-weight: 600; color: var(--text-primary); margin: 0 0 0.5rem; text-align: center;">欢迎使用 MarkdownBrain</h1>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0; text-align: center;">创建管理员账号以开始使用</p>
+        </div>
+
+        <!-- Body -->
+        <div class="init-body">
+            <div id="message-container"></div>
 
             <form hx-post="/admin/init"
-                  hx-swap="afterbegin"
                   hx-target="#message-container"
-                  class="space-y-5">
+                  hx-swap="innerHTML"
+                  hx-disabled-elt="button"
+                  hx-indicator=".spinner">
 
-                <!-- Organization name -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Organization Name</span>
-                    </label>
+                <div class="form-field">
+                    <label class="form-label" for="tenant-name">组织名称</label>
                     <input type="text"
+                           id="tenant-name"
                            name="tenant-name"
-                           placeholder="My Organization"
-                           class="input input-bordered w-full"
+                           class="form-input"
+                           placeholder="我的组织"
                            autofocus
-                           required />
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/60">
-                            Your company or personal workspace name
-                        </span>
-                    </label>
+                           required>
+                    <span class="form-hint">您的公司或个人工作空间名称</span>
                 </div>
 
-                <!-- Email -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Admin Email</span>
-                    </label>
+                <div class="form-field">
+                    <label class="form-label" for="username">管理员邮箱</label>
                     <input type="email"
+                           id="username"
                            name="username"
+                           class="form-input"
                            placeholder="admin@example.com"
-                           class="input input-bordered w-full"
-                           required />
+                           autocomplete="username"
+                           required>
                 </div>
 
-                <!-- Password -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Password</span>
-                    </label>
+                <div class="form-field">
+                    <label class="form-label" for="password">密码</label>
                     <input type="password"
+                           id="password"
                            name="password"
+                           class="form-input"
                            placeholder="••••••••"
-                           class="input input-bordered w-full"
-                           required />
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/60">
-                            Use a strong password with at least 8 characters
-                        </span>
-                    </label>
+                           autocomplete="new-password"
+                           minlength="8"
+                           required>
+                    <span class="form-hint">至少 8 个字符，建议使用强密码</span>
                 </div>
 
-                <!-- Message container -->
-                <div id="message-container"></div>
-
-                <!-- Submit button -->
-                <div class="form-control mt-6">
-                    <button type="submit" class="btn btn-primary w-full gap-2">
-                        <i data-lucide="rocket" class="w-5 h-5"></i>
-                        <span>Create Account</span>
-                    </button>
-                </div>
+                <button type="submit" class="btn-primary">
+                    <span class="spinner"></span>
+                    <i data-lucide="rocket" style="width: 1.125rem; height: 1.125rem;"></i>
+                    <span>创建账号</span>
+                </button>
             </form>
         </div>
     </div>
 
     <script>
-        // Listen for HTMX response events
         document.body.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.pathInfo.requestPath !== '/admin/init') return;
+
             if (event.detail.successful) {
-                const response = JSON.parse(event.detail.xhr.response);
-                if (response.success) {
-                    // Show success message
-                    event.detail.target.innerHTML = `
-                        <div class="alert alert-success">
-                            <i data-lucide="check-circle" class="w-5 h-5"></i>
-                            <span>Account created successfully! Redirecting to login...</span>
-                        </div>
-                    `;
-                    // Redirect to login page after 2 seconds
-                    setTimeout(function() {
-                        window.location.href = '/admin/login';
-                    }, 2000);
-                } else {
-                    // Show error message
+                try {
+                    const response = JSON.parse(event.detail.xhr.response);
+                    if (response.success) {
+                        event.detail.target.innerHTML = `
+                            <div class="alert alert-success">
+                                <i data-lucide="check-circle" style="width: 1rem; height: 1rem;"></i>
+                                <span>账号创建成功，正在跳转...</span>
+                            </div>
+                        `;
+                        lucide.createIcons();
+                        setTimeout(() => window.location.href = '/admin/login', 1200);
+                    } else {
+                        event.detail.target.innerHTML = `
+                            <div class="alert alert-error">
+                                <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                                <span>${response.error || '创建失败'}</span>
+                            </div>
+                        `;
+                        lucide.createIcons();
+                    }
+                } catch (e) {
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
-                            <span>${response.error || 'Account creation failed'}</span>
+                            <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                            <span>服务器响应异常</span>
                         </div>
                     `;
+                    lucide.createIcons();
                 }
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <i data-lucide="alert-circle" class="w-5 h-5"></i>
-                        <span>Network error, please try again later</span>
+                        <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                        <span>网络错误，请重试</span>
                     </div>
                 `;
+                lucide.createIcons();
             }
         });
     </script>

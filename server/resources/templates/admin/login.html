@@ -1,114 +1,222 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="markdownbrain">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - MarkdownBrain</title>
-
+    <title>登录 - MarkdownBrain</title>
     <link href="/css/app.css" rel="stylesheet">
-    <script src="/js/htmx.min.js"></script>
-
-    <!-- Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <script src="/js/helpers.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --border-color: #e5e7eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+        }
+        body {
+            background: #fafafa;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .login-container {
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border: 1px solid var(--border-color);
+        }
+        .login-header {
+            padding: 2rem 2rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .login-body {
+            padding: 2rem;
+        }
+        .form-field {
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            font-size: 0.9375rem;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-primary);
+        }
+        .form-input:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+            border-color: transparent;
+        }
+        .btn-primary {
+            width: 100%;
+            padding: 0.625rem 1rem;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            color: white;
+            background: var(--accent);
+            border: 1px solid var(--accent);
+            cursor: pointer;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .alert {
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .alert-success {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+        }
+        .alert-error {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+        .spinner {
+            display: none;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        .htmx-request .spinner {
+            display: inline-block;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
-<body class="min-h-screen bg-canvas flex items-center justify-center p-4">
-    <!-- Initialize Lucide icons -->
+<body>
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-      });
+      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
     </script>
-    <div class="card w-full max-w-md bg-base-100 border border-base-300">
-        <div class="card-body p-8">
-            <!-- Logo & Title -->
-            <div class="text-center mb-6">
-                <div class="inline-flex items-center justify-center w-12 h-12 rounded bg-primary mb-4">
-                    <i data-lucide="book-open" class="w-6 h-6 text-white"></i>
+
+    <div class="login-container">
+        <!-- Header -->
+        <div class="login-header">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <div style="width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
+                    <i data-lucide="book-open" style="width: 1.125rem; height: 1.125rem; color: var(--accent);"></i>
                 </div>
-                <h2 class="text-2xl font-display font-bold text-base-content mb-1">
-                    Welcome Back
-                </h2>
-                <p class="text-sm font-sans text-base-content/60">
-                    Sign in to manage your sites
-                </p>
+                <h1 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">MarkdownBrain</h1>
             </div>
+            <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;">登录管理后台</p>
+        </div>
+
+        <!-- Body -->
+        <div class="login-body">
+            <div id="message-container"></div>
 
             <form hx-post="/admin/login"
-                  hx-swap="afterbegin"
                   hx-target="#message-container"
-                  class="space-y-5">
+                  hx-swap="innerHTML"
+                  hx-disabled-elt="button"
+                  hx-indicator=".spinner">
 
-                <!-- Email -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Email</span>
-                    </label>
+                <div class="form-field">
+                    <label class="form-label" for="username">邮箱</label>
                     <input type="email"
+                           id="username"
                            name="username"
+                           class="form-input"
                            placeholder="admin@example.com"
-                           class="input input-bordered w-full"
+                           autocomplete="username"
                            autofocus
-                           required />
+                           required>
                 </div>
 
-                <!-- Password -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Password</span>
-                    </label>
+                <div class="form-field">
+                    <label class="form-label" for="password">密码</label>
                     <input type="password"
+                           id="password"
                            name="password"
+                           class="form-input"
                            placeholder="••••••••"
-                           class="input input-bordered w-full"
-                           required />
+                           autocomplete="current-password"
+                           required>
                 </div>
 
-                <!-- Message container -->
-                <div id="message-container"></div>
-
-                <!-- Submit button -->
-                <div class="form-control mt-6">
-                    <button type="submit" class="btn btn-primary w-full">
-                        Sign In
-                    </button>
-                </div>
+                <button type="submit" class="btn-primary">
+                    <span style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                        <span class="spinner"></span>
+                        <span>登录</span>
+                    </span>
+                </button>
             </form>
         </div>
     </div>
 
     <script>
-        // Listen for HTMX response events
         document.body.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.pathInfo.requestPath !== '/admin/login') return;
+
             if (event.detail.successful) {
-                const response = JSON.parse(event.detail.xhr.response);
-                if (response.success) {
-                    // Show success message
-                    event.detail.target.innerHTML = `
-                        <div class="alert alert-success">
-                            <i data-lucide="check-circle" class="w-5 h-5"></i>
-                            <span>Login successful! Redirecting...</span>
-                        </div>
-                    `;
-                    // Redirect to admin page after 1 second
-                    setTimeout(function() {
-                        window.location.href = '/admin';
-                    }, 1000);
-                } else {
-                    // Show error message
+                try {
+                    const response = JSON.parse(event.detail.xhr.response);
+                    if (response.success) {
+                        event.detail.target.innerHTML = `
+                            <div class="alert alert-success">
+                                <i data-lucide="check-circle" style="width: 1rem; height: 1rem;"></i>
+                                <span>登录成功，正在跳转...</span>
+                            </div>
+                        `;
+                        lucide.createIcons();
+                        setTimeout(() => window.location.href = '/admin', 800);
+                    } else {
+                        event.detail.target.innerHTML = `
+                            <div class="alert alert-error">
+                                <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                                <span>${response.error || '登录失败'}</span>
+                            </div>
+                        `;
+                        lucide.createIcons();
+                    }
+                } catch (e) {
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <i data-lucide="alert-circle" class="w-5 h-5"></i>
-                            <span>${response.error || 'Login failed'}</span>
+                            <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                            <span>服务器响应异常</span>
                         </div>
                     `;
+                    lucide.createIcons();
                 }
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <i data-lucide="alert-circle" class="w-5 h-5"></i>
-                        <span>Network error, please try again later</span>
+                        <i data-lucide="alert-circle" style="width: 1rem; height: 1rem;"></i>
+                        <span>网络错误，请重试</span>
                     </div>
                 `;
+                lucide.createIcons();
             }
         });
     </script>

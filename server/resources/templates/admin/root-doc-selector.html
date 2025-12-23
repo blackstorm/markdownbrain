@@ -1,27 +1,20 @@
 {% if documents|not-empty %}
-<form>
-  <select name="rootDocId"
-          class="select select-sm select-bordered w-full"
-          hx-put="/admin/vaults/{{vault-id}}/root-doc"
-          hx-trigger="change"
-          hx-swap="none"
-          hx-on::after-request="if(event.detail.successful) {
-            showToast('Home page updated', 'success', 2000);
-          }">
-    <option value="" disabled {% if not root-doc-id %}selected{% endif %}>
-      Select document
-    </option>
-    {% for doc in documents %}
-    <option value="{{doc.id}}"
-            {% if doc.id = root-doc-id %}selected{% endif %}>
-      {{doc.path}}
-    </option>
-    {% endfor %}
-  </select>
-</form>
+<select name="rootDocId"
+        class="home-page-select"
+        hx-put="/admin/vaults/{{vault-id}}/root-doc"
+        hx-trigger="change"
+        hx-swap="none"
+        hx-on::after-request="if(event.detail.successful) showNotification('首页已更新', 'success'); else showNotification('更新失败', 'error');">
+  <option value="" {% if not root-doc-id %}selected{% endif %}>选择文档</option>
+  {% for doc in documents %}
+  <option value="{{doc.id}}" {% if doc.id = root-doc-id %}selected{% endif %}>
+    {{doc.path}}
+  </option>
+  {% endfor %}
+</select>
 {% else %}
-<div role="alert" class="alert alert-warning alert-sm">
-  <i data-lucide="alert-triangle" class="w-5 h-5"></i>
-  <span class="text-xs">No documents synced yet. Sync files from Obsidian to set a home page.</span>
+<div class="warning-box">
+  <i data-lucide="alert-triangle" style="width: 0.875rem; height: 0.875rem; flex-shrink: 0;"></i>
+  <span>尚未同步任何文档。请在 Obsidian 中使用插件同步文件后，再设置首页。</span>
 </div>
 {% endif %}

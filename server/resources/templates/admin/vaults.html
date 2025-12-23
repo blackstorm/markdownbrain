@@ -1,239 +1,496 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="markdownbrain">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - MarkdownBrain</title>
-
+    <title>管理后台 - MarkdownBrain</title>
     <link href="/css/app.css" rel="stylesheet">
-    <script src="/js/htmx.min.js"></script>
-
-    <!-- Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+    <script src="/js/helpers.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-</head>
-<body class="min-h-screen bg-canvas">
-    <!-- Initialize Lucide icons -->
-    <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
-      });
-      // Re-init icons after HTMX swaps
-      document.body.addEventListener('htmx:afterSwap', () => {
-        lucide.createIcons();
-      });
-    </script>
-    <!-- Header -->
-    <header class="sticky top-0 z-40 bg-base-100 border-b border-base-300">
-        <div class="container mx-auto px-6 py-4 max-w-6xl">
-            <div class="flex items-center justify-between">
-                <!-- Logo + Title -->
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded bg-primary flex items-center justify-center">
-                        <i data-lucide="book-open" class="w-6 h-6 text-white"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-xl font-display font-bold text-base-content">MarkdownBrain</h1>
-                        <p class="text-xs font-sans text-base-content/60">Your Knowledge Garden</p>
-                    </div>
-                </div>
+    <style>
+        :root {
+            --border-color: #e5e7eb;
+            --border-hover: #d1d5db;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-tertiary: #9ca3af;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
 
-                <!-- User Actions -->
-                <div class="flex items-center gap-2">
-                    <button hx-post="/admin/logout"
-                            hx-swap="none"
-                            hx-on::after-request="window.location.href='/admin/login'"
-                            class="btn btn-ghost btn-sm gap-2">
-                        <i data-lucide="log-out" class="w-5 h-5"></i>
-                        <span class="hidden sm:inline">Logout</span>
-                    </button>
+        body {
+            background: #fafafa;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .app-header {
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 40;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 2rem;
+            height: 2rem;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .logo-text p {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            margin: 0;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn:hover {
+            border-color: var(--border-hover);
+            background: #fafafa;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            border-color: var(--accent-hover);
+        }
+
+        /* Main content */
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .page-header {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .page-header h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.25rem;
+        }
+
+        .page-header p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* Vault grid */
+        .vault-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 1024px) {
+            .vault-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border: 1px solid var(--border-color);
+            width: 100%;
+            max-width: 480px;
+            margin: 1rem;
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .btn-close {
+            padding: 0.25rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .btn-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        /* Form */
+        .form-field {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-hint {
+            display: block;
+            font-size: 0.8125rem;
+            color: var(--text-tertiary);
+            margin-top: 0.375rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            font-size: 0.9375rem;
+            border: 1px solid var(--border-color);
+            background: white;
+            color: var(--text-primary);
+        }
+
+        .form-input:focus {
+            outline: 2px solid var(--accent);
+            outline-offset: -1px;
+            border-color: transparent;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 1rem;
+        }
+
+        .empty-icon {
+            width: 4rem;
+            height: 4rem;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .empty-state h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 0 0 0.5rem;
+        }
+
+        .empty-state p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0 0 1.5rem;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: none;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid white;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .htmx-request .spinner {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Alert */
+        .alert {
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            border: 1px solid;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .alert-success {
+            background: #f0fdf4;
+            border-color: #86efac;
+            color: #166534;
+        }
+
+        .alert-error {
+            background: #fef2f2;
+            border-color: #fca5a5;
+            color: #991b1b;
+        }
+
+        /* Footer */
+        .app-footer {
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        .app-footer p {
+            font-size: 0.875rem;
+            color: var(--text-tertiary);
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+    </script>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-content">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i data-lucide="book-open" style="width: 1.125rem; height: 1.125rem; color: var(--accent);"></i>
                 </div>
+                <div class="logo-text">
+                    <h1>MarkdownBrain</h1>
+                    <p>知识花园</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button hx-post="/admin/logout"
+                        hx-swap="none"
+                        hx-on::after-request="window.location.href='/admin/login'"
+                        class="btn">
+                    <i data-lucide="log-out" style="width: 1rem; height: 1rem;"></i>
+                    <span>退出登录</span>
+                </button>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-6 py-8 max-w-6xl">
-        <!-- Page Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+    <main class="main-content">
+        <div class="page-header">
             <div>
-                <h2 class="text-2xl font-display font-bold text-base-content mb-1">Your Sites</h2>
-                <p class="text-sm font-sans text-base-content/60">
-                    Manage your published Obsidian vaults
-                </p>
+                <h2>站点管理</h2>
+                <p>管理您发布的 Obsidian 知识库</p>
             </div>
-            <button onclick="my_modal_create.showModal()"
-                    class="btn btn-primary gap-2">
-                <i data-lucide="plus" class="w-5 h-5"></i>
-                <span>New Site</span>
+            <button onclick="openCreateModal()" class="btn btn-primary">
+                <i data-lucide="plus" style="width: 1rem; height: 1rem;"></i>
+                <span>新建站点</span>
             </button>
         </div>
 
-        <!-- Vault List (2-column grid on desktop) -->
-        <div id="vault-list" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Vault List -->
+        <div id="vault-list"
+             hx-get="/admin/vaults"
+             hx-trigger="refreshList from:body"
+             hx-swap="innerHTML"
+             class="vault-grid">
             {% include "templates/admin/vault-list.html" %}
         </div>
     </main>
 
-    <!-- Create Site Modal -->
-    <dialog id="my_modal_create" class="modal">
-        <div class="modal-box max-w-md">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-display font-bold text-base-content">Create New Site</h3>
-                <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
-                </form>
-            </div>
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>Powered by <strong>MarkdownBrain</strong></p>
+    </footer>
 
-            <!-- Create Form -->
+    <!-- Create Site Modal -->
+    <div id="modal-create" class="modal-backdrop" onclick="if(event.target === this) closeCreateModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>新建站点</h3>
+                <button type="button" class="btn-close" onclick="closeCreateModal()">
+                    <i data-lucide="x" style="width: 1.25rem; height: 1.25rem;"></i>
+                </button>
+            </div>
             <form hx-post="/admin/vaults"
                   hx-target="#create-result"
                   hx-swap="innerHTML"
-                  hx-indicator=".create-spinner"
-                  class="space-y-5">
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".create-spinner">
+                <div class="modal-body">
+                    <div id="create-result"></div>
 
-                <!-- Site Name Input -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Site Name</span>
-                    </label>
-                    <input type="text"
-                           name="name"
-                           required
-                           autofocus
-                           class="input input-bordered w-full"
-                           placeholder="My Digital Garden">
+                    <div class="form-field">
+                        <label class="form-label" for="create-name">站点名称</label>
+                        <input type="text"
+                               id="create-name"
+                               name="name"
+                               class="form-input"
+                               placeholder="我的数字花园"
+                               required>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="form-label" for="create-domain">域名</label>
+                        <input type="text"
+                               id="create-domain"
+                               name="domain"
+                               class="form-input"
+                               placeholder="notes.example.com"
+                               required>
+                        <span class="form-hint">您的自定义域名（不含 https://）</span>
+                    </div>
                 </div>
-
-                <!-- Domain Input -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Domain</span>
-                    </label>
-                    <input type="text"
-                           name="domain"
-                           required
-                           class="input input-bordered w-full"
-                           placeholder="notes.example.com">
-                    <label class="label">
-                        <span class="label-text-alt text-base-content/60">
-                            Your custom domain (without https://)
-                        </span>
-                    </label>
-                </div>
-
-                <!-- Result Message Area -->
-                <div id="create-result"></div>
-
-                <!-- Modal Actions -->
-                <div class="modal-action">
-                    <button type="button"
-                            onclick="my_modal_create.close()"
-                            class="btn btn-ghost">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary gap-2">
-                        <span class="create-spinner loading loading-spinner loading-sm"></span>
-                        <span>Create Site</span>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeCreateModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner create-spinner"></span>
+                        <span>创建站点</span>
                     </button>
                 </div>
             </form>
         </div>
-        <form method="dialog" class="modal-backdrop">
-            <button>close</button>
-        </form>
-    </dialog>
+    </div>
 
     <!-- Edit Site Modal -->
-    <dialog id="my_modal_edit" class="modal">
-        <div class="modal-box max-w-md">
-            <!-- Modal Header -->
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-display font-bold text-base-content">Edit Site</h3>
-                <form method="dialog">
-                    <button class="btn btn-sm btn-circle btn-ghost">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
-                </form>
+    <div id="modal-edit" class="modal-backdrop" onclick="if(event.target === this) closeEditModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>编辑站点</h3>
+                <button type="button" class="btn-close" onclick="closeEditModal()">
+                    <i data-lucide="x" style="width: 1.25rem; height: 1.25rem;"></i>
+                </button>
             </div>
-
-            <!-- Edit Form -->
             <form id="edit-form"
                   hx-put=""
                   hx-target="#edit-result"
                   hx-swap="innerHTML"
-                  hx-indicator=".edit-spinner"
-                  hx-on::after-request="if(event.detail.successful) {
-                    showToast('Site updated', 'success');
-                    my_modal_edit.close();
-                    htmx.trigger('#vault-list', 'refreshList');
-                  }"
-                  class="space-y-5">
-
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".edit-spinner">
                 <input type="hidden" name="id" id="edit-vault-id">
+                <div class="modal-body">
+                    <div id="edit-result"></div>
 
-                <!-- Site Name Input -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Site Name</span>
-                    </label>
-                    <input type="text"
-                           name="name"
-                           id="edit-name"
-                           required
-                           autofocus
-                           class="input input-bordered w-full"
-                           placeholder="My Digital Garden">
+                    <div class="form-field">
+                        <label class="form-label" for="edit-name">站点名称</label>
+                        <input type="text"
+                               id="edit-name"
+                               name="name"
+                               class="form-input"
+                               required>
+                    </div>
+
+                    <div class="form-field">
+                        <label class="form-label" for="edit-domain">域名</label>
+                        <input type="text"
+                               id="edit-domain"
+                               name="domain"
+                               class="form-input"
+                               required>
+                    </div>
                 </div>
-
-                <!-- Domain Input -->
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text font-medium text-base-content">Domain</span>
-                    </label>
-                    <input type="text"
-                           name="domain"
-                           id="edit-domain"
-                           required
-                           class="input input-bordered w-full"
-                           placeholder="notes.example.com">
-                </div>
-
-                <!-- Result Message Area -->
-                <div id="edit-result"></div>
-
-                <!-- Modal Actions -->
-                <div class="modal-action">
-                    <button type="button"
-                            onclick="my_modal_edit.close()"
-                            class="btn btn-ghost">
-                        Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary gap-2">
-                        <span class="edit-spinner loading loading-spinner loading-sm"></span>
-                        <span>Update Site</span>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeEditModal()">取消</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner edit-spinner"></span>
+                        <span>保存修改</span>
                     </button>
                 </div>
             </form>
         </div>
-        <form method="dialog" class="modal-backdrop">
-            <button>close</button>
-        </form>
-    </dialog>
-
-    <!-- Toast Container -->
-    <div id="toast-container" class="toast toast-top toast-end z-50"></div>
-
-    <!-- Footer -->
-    <footer class="footer footer-center p-6 text-base-content/50 mt-12 border-t border-base-300">
-        <aside>
-            <p class="text-sm">
-                Powered by <span class="font-semibold text-primary">MarkdownBrain</span>
-            </p>
-        </aside>
-    </footer>
+    </div>
 
     <script src="/js/admin.js"></script>
 </body>

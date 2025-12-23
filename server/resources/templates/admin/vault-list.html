@@ -1,87 +1,261 @@
+<style>
+.vault-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+}
+
+.vault-card:hover {
+    border-color: var(--border-hover);
+}
+
+.vault-header {
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.vault-info h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 0.375rem;
+}
+
+.vault-domain {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+}
+
+.vault-domain:hover {
+    color: var(--accent);
+}
+
+.vault-actions {
+    position: relative;
+}
+
+.action-menu-btn {
+    padding: 0.375rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+
+.action-menu-btn:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.action-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.25rem;
+    min-width: 160px;
+    background: white;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+}
+
+.action-menu.open {
+    display: block;
+}
+
+.action-menu button {
+    width: 100%;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    text-align: left;
+    border: none;
+    background: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+}
+
+.action-menu button:hover {
+    background: #fafafa;
+}
+
+.action-menu button.danger {
+    color: var(--error);
+}
+
+.action-menu button + button {
+    border-top: 1px solid var(--border-color);
+}
+
+.vault-section {
+    margin-bottom: 1.25rem;
+}
+
+.vault-section:last-child {
+    margin-bottom: 0;
+}
+
+.section-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.625rem;
+}
+
+.sync-key-box {
+    background: #fafafa;
+    border: 1px solid var(--border-color);
+    padding: 0.875rem;
+}
+
+.sync-key-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.625rem;
+}
+
+.sync-key-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.icon-btn {
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+}
+
+.icon-btn:hover {
+    color: var(--text-primary);
+}
+
+.sync-key-value {
+    font-family: 'Courier New', monospace;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    word-break: break-all;
+    user-select: all;
+}
+
+.home-page-select {
+    width: 100%;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--border-color);
+    background: white;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.home-page-select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: transparent;
+}
+
+.warning-box {
+    padding: 0.75rem;
+    border: 1px solid #fbbf24;
+    background: #fef3c7;
+    font-size: 0.8125rem;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>
+
 {% if vaults|not-empty %}
   {% for vault in vaults %}
-  <div class="vault-card bg-base-100 rounded border border-base-300
-              hover:border-primary transition-colors duration-150 p-6">
-
-    <!-- Header: Name + Domain + Actions -->
-    <div class="flex items-start justify-between mb-4">
-      <div class="flex-1 min-w-0">
-        <h3 class="text-lg font-bold text-base-content mb-1 truncate">
-          {{vault.name}}
-        </h3>
-        <a href="http://{{vault.domain}}" target="_blank"
-           class="text-sm font-sans text-base-content/60 hover:text-primary inline-flex items-center gap-1 group transition-colors">
-          <i data-lucide="globe" class="w-4 h-4"></i>
-          <span class="group-hover:underline">{{vault.domain}}</span>
-          <i data-lucide="external-link" class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity"></i>
+  <div class="vault-card">
+    <!-- Header -->
+    <div class="vault-header">
+      <div class="vault-info">
+        <h3>{{vault.name}}</h3>
+        <a href="http://{{vault.domain}}" target="_blank" class="vault-domain">
+          <i data-lucide="globe" style="width: 0.875rem; height: 0.875rem;"></i>
+          <span>{{vault.domain}}</span>
+          <i data-lucide="external-link" style="width: 0.875rem; height: 0.875rem;"></i>
         </a>
       </div>
 
-      <!-- Quick Actions Dropdown -->
-      <div class="dropdown dropdown-end">
-        <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-circle">
-          <i data-lucide="more-vertical" class="w-5 h-5"></i>
+      <!-- Actions -->
+      <div class="vault-actions">
+        <button type="button"
+                class="action-menu-btn"
+                onclick="toggleActionMenu(this)">
+          <i data-lucide="more-vertical" style="width: 1.125rem; height: 1.125rem;"></i>
+        </button>
+        <div class="action-menu">
+          <button type="button" onclick="window.open('http://{{vault.domain}}', '_blank'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))">
+            <i data-lucide="external-link" style="width: 0.875rem; height: 0.875rem;"></i>
+            <span>打开站点</span>
+          </button>
+          <button type="button" onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))">
+            <i data-lucide="pencil" style="width: 0.875rem; height: 0.875rem;"></i>
+            <span>编辑</span>
+          </button>
+          <button type="button"
+                  class="danger"
+                  hx-delete="/admin/vaults/{{vault.id}}"
+                  hx-confirm="确定删除「{{vault.name}}」吗？此操作无法撤销。"
+                  hx-swap="none"
+                  hx-on::after-request="if(event.detail.successful) { showNotification('站点已删除', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('删除失败', 'error'); }">
+            <i data-lucide="trash-2" style="width: 0.875rem; height: 0.875rem;"></i>
+            <span>删除</span>
+          </button>
         </div>
-        <ul tabindex="-1" class="dropdown-content menu bg-base-100 rounded-box z-10 w-48 p-2 shadow-sm border border-base-300">
-          <li>
-            <a href="http://{{vault.domain}}" target="_blank" class="gap-3">
-              <i data-lucide="external-link" class="w-4 h-4"></i>
-              <span>Open Site</span>
-            </a>
-          </li>
-          <li>
-            <button onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}')" class="gap-3">
-              <i data-lucide="pencil" class="w-4 h-4"></i>
-              <span>Edit</span>
-            </button>
-          </li>
-          <li>
-            <button class="gap-3"
-                    hx-delete="/admin/vaults/{{vault.id}}"
-                    hx-confirm="Delete '{{vault.name}}'? This action cannot be undone."
-                    hx-target="#vault-list"
-                    hx-swap="none"
-                    hx-on::after-request="if(event.detail.successful) {
-                      showToast('Site deleted successfully', 'success');
-                      htmx.trigger('#vault-list', 'refreshList');
-                    }">
-              <i data-lucide="trash-2" class="w-4 h-4 text-error"></i>
-              <span class="text-error">Delete</span>
-            </button>
-          </li>
-        </ul>
       </div>
     </div>
 
     <!-- Sync Key Section -->
-    <div class="sync-key-section bg-base-200 rounded p-4 mb-4">
-      <div class="flex items-center justify-between mb-2">
-        <span class="text-xs font-display font-semibold text-base-content/60 uppercase tracking-wide">
-          Sync Key
-        </span>
-        <div class="flex gap-1">
-          <button onclick="toggleKey(this, '{{vault.id}}')"
-                  class="btn btn-xs btn-ghost" title="Show/Hide key">
-            <i data-lucide="eye" class="w-4 h-4"></i>
-          </button>
-          <button onclick="copyToClipboard('{{vault.sync-key}}', this)"
-                  class="btn btn-xs btn-ghost copy-btn" title="Copy to clipboard">
-            <i data-lucide="copy" class="w-4 h-4"></i>
-          </button>
+    <div class="vault-section">
+      <span class="section-label">同步密钥</span>
+      <div class="sync-key-box">
+        <div class="sync-key-header">
+          <span style="font-size: 0.75rem; color: var(--text-tertiary);">用于 Obsidian 插件同步</span>
+          <div class="sync-key-actions">
+            <button type="button"
+                    class="icon-btn"
+                    onclick="toggleSyncKey(this, '{{vault.id}}')"
+                    title="显示/隐藏">
+              <i data-lucide="eye" style="width: 0.875rem; height: 0.875rem;"></i>
+            </button>
+            <button type="button"
+                    class="icon-btn"
+                    onclick="copyToClipboard('{{vault.sync-key}}')"
+                    title="复制">
+              <i data-lucide="copy" style="width: 0.875rem; height: 0.875rem;"></i>
+            </button>
+          </div>
+        </div>
+        <div class="sync-key-value" id="key-{{vault.id}}" data-key="{{vault.sync-key}}">
+          {{vault.masked-key}}
         </div>
       </div>
-      <code id="key-{{vault.id}}"
-            class="block text-xs font-mono text-base-content bg-base-100 rounded p-2 break-all select-all"
-            data-key="{{vault.sync-key}}">
-        {{vault.masked-key}}
-      </code>
     </div>
 
-    <!-- Root Doc Selector -->
-    <div class="root-doc-section">
-      <label class="block text-xs font-display font-semibold text-base-content/60 uppercase tracking-wide mb-2">
-        Home Page
-      </label>
+    <!-- Home Page Section -->
+    <div class="vault-section">
+      <span class="section-label">首页设置</span>
       {% with vault-id=vault.id root-doc-id=vault.root-doc-id documents=vault.documents %}
         {% include "templates/admin/root-doc-selector.html" %}
       {% endwith %}
@@ -90,19 +264,63 @@
   {% endfor %}
 {% else %}
   <!-- Empty State -->
-  <div class="col-span-full">
-    <div class="text-center py-16 px-4">
-      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-base-200 mb-4">
-        <i data-lucide="inbox" class="w-9 h-9 text-base-content/40"></i>
+  <div style="grid-column: 1 / -1;">
+    <div class="empty-state">
+      <div class="empty-icon">
+        <i data-lucide="inbox" style="width: 2rem; height: 2rem; color: var(--text-tertiary);"></i>
       </div>
-      <h3 class="text-lg font-display font-bold text-base-content mb-2">No sites yet</h3>
-      <p class="text-sm font-sans text-base-content/60 mb-6 max-w-sm mx-auto">
-        Create your first site to start publishing your Obsidian notes to the web
-      </p>
-      <button onclick="my_modal_create.showModal()" class="btn btn-primary gap-2">
-        <i data-lucide="plus" class="w-5 h-5"></i>
-        <span>Create Your First Site</span>
+      <h3>还没有站点</h3>
+      <p>创建您的第一个站点，开始将 Obsidian 笔记发布到网络上</p>
+      <button onclick="openCreateModal()" class="btn btn-primary">
+        <i data-lucide="plus" style="width: 1rem; height: 1rem;"></i>
+        <span>创建第一个站点</span>
       </button>
     </div>
   </div>
 {% endif %}
+
+<script>
+// Toggle action menu
+function toggleActionMenu(button) {
+    const menu = button.nextElementSibling;
+    const isOpen = menu.classList.contains('open');
+
+    // Close all menus first
+    document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
+
+    // Toggle this menu
+    if (!isOpen) {
+        menu.classList.add('open');
+    }
+}
+
+// Close menus when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.vault-actions')) {
+        document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
+    }
+});
+
+// Toggle sync key visibility
+function toggleSyncKey(button, vaultId) {
+    const keyElement = document.getElementById(`key-${vaultId}`);
+    const fullKey = keyElement.dataset.key;
+    const currentText = keyElement.textContent.trim();
+    const isHidden = currentText.includes('*');
+
+    const icon = button.querySelector('i');
+
+    if (isHidden) {
+        keyElement.textContent = fullKey;
+        icon.setAttribute('data-lucide', 'eye-off');
+        button.title = '隐藏';
+    } else {
+        const masked = fullKey.substring(0, 8) + '******' + fullKey.substring(fullKey.length - 8);
+        keyElement.textContent = masked;
+        icon.setAttribute('data-lucide', 'eye');
+        button.title = '显示';
+    }
+
+    lucide.createIcons();
+}
+</script>
