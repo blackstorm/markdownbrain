@@ -518,7 +518,7 @@ export default class MarkdownBrainPlugin extends Plugin {
 
             // 获取文件统计信息
             const stat = file.stat;
-            const hash = this.hashString(content);
+            const hash = await this.hashString(content);
             const mtime = new Date(stat.mtime).toISOString();
 
             // 生成客户端 ID
@@ -609,33 +609,58 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     async syncAllFiles() {
         const files = this.app.vault.getMarkdownFiles();
-        new Notice(`开始同步 ${files.length} 个文件...`);
+        console.log(`[MarkdownBrain] Starting batch sync for ${files.length} files`);
+        new Notice(`开始批量同步 ${files.length} 个文件...`);
 
         let success = 0;
         let failed = 0;
+        let skipped = 0;
 
-        for (const file of files) {
-            try {
-                await this.handleFileChange(file, 'modify');
-                success++;
-            } catch (error) {
-                failed++;
-                console.error(`Failed to sync ${file.path}:`, error);
-            }
+        // 批量处理，每次处理 10 个文件
+        const batchSize = 10;
+        for (let i = 0; i < files.length; i += batchSize) {
+            const batch = files.slice(i, i + batchSize);
+            const batchPromises = batch.map(async (file) => {
+                try {
+                    // 跳过空文件
+                    const content = await this.app.vault.read(file);
+                    if (!content || content.trim().length === 0) {
+                        console.log(`[MarkdownBrain] Skipping empty file: ${file.path}`);
+                        skipped++;
+                        return;
+                    }
+
+                    await this.performSync(file, 'modify');
+                    success++;
+                    console.log(`[MarkdownBrain] ✓ Synced (${success + failed + skipped}/${files.length}): ${file.path}`);
+                } catch (error) {
+                    failed++;
+                    console.error(`[MarkdownBrain] ✗ Failed to sync ${file.path}:`, error);
+                }
+            });
+
+            await Promise.all(batchPromises);
+
+            // 显示进度
+            const progress = Math.min(i + batchSize, files.length);
+            new Notice(`同步进度: ${progress}/${files.length} (成功: ${success}, 失败: ${failed}, 跳过: ${skipped})`);
         }
 
-        new Notice(`同步完成: ${success} 成功, ${failed} 失败`);
+        const finalMsg = `同步完成! 总计: ${files.length}, 成功: ${success}, 失败: ${failed}, 跳过: ${skipped}`;
+        console.log(`[MarkdownBrain] ${finalMsg}`);
+        new Notice(finalMsg, 8000);
     }
 
-    // 简单的字符串哈希函数
-    hashString(str: string): string {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash;
-        }
-        return hash.toString(16);
+    // MD5 哈希函数（用于检测文件内容变化）
+    async hashString(str: string): Promise<string> {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(str);
+        const hashBuffer = await crypto.subtle.digest('MD5', data).catch(() => {
+            // 如果 MD5 不可用，降级使用 SHA-256
+            return crypto.subtle.digest('SHA-256', data);
+        });
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
     onunload() {
@@ -726,6 +751,22 @@ class MarkdownBrainSettingTab extends PluginSettingTab {
                     } else {
                         new Notice(`❌ 连接失败: ${result.error || 'Unknown error'}`, 5000);
                     }
+                }));
+
+        // 批量同步按钮
+        new Setting(containerEl)
+            .setName('批量同步')
+            .setDesc('手动同步所有 Markdown 文件到服务器')
+            .addButton(button => button
+                .setButtonText('开始同步')
+                .onClick(async () => {
+                    button.setDisabled(true);
+                    button.setButtonText('同步中...');
+
+                    await this.plugin.syncAllFiles();
+
+                    button.setDisabled(false);
+                    button.setButtonText('开始同步');
                 }));
 
         new Setting(containerEl)

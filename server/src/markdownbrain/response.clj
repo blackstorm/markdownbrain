@@ -20,10 +20,15 @@
 
 (defn bad-request
   "返回 400 Bad Request 响应"
-  [error-msg]
-  {:status 400
-   :body {:success false
-          :error error-msg}})
+  ([error-msg]
+   {:status 400
+    :body {:success false
+           :error error-msg}})
+  ([error-msg errors]
+   {:status 400
+    :body {:success false
+           :error error-msg
+           :errors errors}}))
 
 (defn unauthorized
   "返回 401 Unauthorized 响应"

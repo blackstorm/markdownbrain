@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "欢迎.md",
+                "file": "新文件.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "欢迎"
+              "title": "新文件"
             }
           }
         ]
@@ -185,9 +185,9 @@
   },
   "active": "d5b055be5c70d422",
   "lastOpenFiles": [
+    "欢迎.md",
     "新文件2.md",
     "新文件.md",
-    "欢迎.md",
     "控卫而建.md"
   ]
 }

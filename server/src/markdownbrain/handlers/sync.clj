@@ -3,6 +3,7 @@
             [markdownbrain.utils :as utils]
             [markdownbrain.response :as resp]
             [markdownbrain.link-diff :as link-diff]
+            [markdownbrain.validation :as validation]
             [clojure.data.json :as json]
             [clojure.tools.logging :as log]))
 
@@ -27,6 +28,83 @@
       (resp/unauthorized "Invalid sync-key"))
     (resp/unauthorized "Missing authorization header")))
 
+;; 处理删除操作
+(defn- handle-delete [vault-id clientId path]
+  (log/info "Deleting document - Path:" path "ClientId:" clientId)
+  (db/delete-document-by-client-id! vault-id clientId)
+  (log/info "Document deleted successfully")
+  (resp/success {:vault-id vault-id
+                 :path path
+                 :client-id clientId
+                 :action "delete"}))
+
+;; 处理创建/修改操作
+(defn- handle-upsert [vault tenant-id vault-id clientId path content metadata hash mtime action]
+  (log/info "Processing document upsert - Path:" path "ClientId:" clientId "Hash:" hash)
+
+  ;; 检查文档是否已存在且 hash 相同（避免不必要的更新）
+  (let [existing-doc (db/get-document-by-client-id vault-id clientId)]
+    (if (and existing-doc hash (= hash (:hash existing-doc)))
+      ;; Hash 相同，文件内容未变化，跳过更新
+      (do
+        (log/info "Document unchanged (same hash) - Path:" path "Hash:" hash)
+        (resp/success {:vault-id vault-id
+                       :path path
+                       :client-id clientId
+                       :action action
+                       :skipped true
+                       :reason "unchanged"}))
+
+      ;; Hash 不同或文档不存在，执行 upsert
+      (do
+        (log/info "Upserting document - Path:" path "ClientId:" clientId)
+        (let [doc-id (utils/generate-uuid)
+              metadata-str (when metadata (json/write-str metadata))]
+          (log/debug "Document details - DocId:" doc-id "ClientId:" clientId "TenantId:" tenant-id "VaultId:" vault-id)
+
+          ;; 保存文档
+          (db/upsert-document! doc-id tenant-id vault-id path clientId content metadata-str hash mtime)
+          (log/info "Document upserted successfully")
+
+          ;; 处理链接关系 - 使用 diff 算法
+          (let [new-links (or (:links metadata) [])
+                existing-links (db/get-document-links vault-id clientId)
+                ;; 计算 diff
+                operations (link-diff/compute-link-diff existing-links new-links)
+                summary (link-diff/summarize-diff operations)]
+
+            (log/info "Link diff analysis - Existing:" (count existing-links)
+                     "New:" (count new-links)
+                     "Operations:" (:total-operations summary)
+                     "Deletes:" (:deletes summary)
+                     "Inserts:" (:inserts summary)
+                     "Updates:" (:updates summary))
+
+            ;; 执行操作
+            (doseq [operation operations]
+              (case (:op operation)
+                :delete
+                (do
+                  (log/debug "Executing DELETE - Target:" (:target-client-id operation))
+                  (db/delete-document-link-by-target! vault-id clientId (:target-client-id operation)))
+
+                :insert
+                (let [{:keys [target-client-id target-path link-type display-text original]} (:link-data operation)]
+                  (log/debug "Executing INSERT - Target:" target-client-id "Path:" target-path)
+                  (try
+                    (db/insert-document-link! vault-id clientId target-client-id target-path
+                                             link-type display-text original)
+                    (catch Exception e
+                      (log/error "Failed to insert link:" (.getMessage e))
+                      (log/error "Exception:" e))))))
+
+            (log/info "Links sync completed -" (:total-operations summary) "operations applied"))
+
+          (resp/success {:vault-id vault-id
+                         :path path
+                         :client-id clientId
+                         :action action}))))))
+
 ;; 同步文件
 (defn sync-file [request]
   (log/debug "========== Sync Request ==========")
@@ -40,87 +118,35 @@
       (if-let [vault (validate-sync-key sync-key)]
         (do
           (log/info "Vault found - ID:" (:id vault) "Name:" (:name vault) "Client-Type:" (:client-type vault))
-          (let [{:keys [path clientId content metadata hash mtime action]} (:body-params request)
-                vault-id (:id vault)]
-            (log/debug "Parsed params - Path:" path "ClientId:" clientId "Action:" action "HasContent:" (some? content))
 
-            (cond
-              (nil? path)
+          ;; 验证请求体
+          (let [validation-result (validation/validate-sync-request (:body-params request))]
+            (if (:valid? validation-result)
+              (let [{:keys [path clientId content metadata hash mtime action]} (:body-params request)
+                    vault-id (:id vault)
+                    tenant-id (:tenant-id vault)]
+
+                ;; 验证 content 是否在需要时存在
+                (let [content-validation (validation/validate-content-required action (:body-params request))]
+                  (if (:valid? content-validation)
+                    (do
+                      (log/debug "Parsed params - Path:" path "ClientId:" clientId "Action:" action "HasContent:" (some? content))
+
+                      ;; 根据 action 分发到不同的处理函数
+                      (case action
+                        "delete" (handle-delete vault-id clientId path)
+                        ("create" "modify") (handle-upsert vault tenant-id vault-id clientId path content metadata hash mtime action)
+                        (resp/bad-request (str "Unknown action: " action))))
+
+                    ;; Content validation failed
+                    (do
+                      (log/error "Content validation failed:" (:errors content-validation))
+                      (resp/bad-request (:message content-validation) (:errors content-validation))))))
+
+              ;; Request validation failed
               (do
-                (log/error "Missing required field: path")
-                (resp/bad-request "Missing required field: path"))
-
-              (nil? clientId)
-              (do
-                (log/error "Missing required field: clientId")
-                (resp/bad-request "Missing required field: clientId"))
-
-              (nil? action)
-              (do
-                (log/error "Missing required field: action")
-                (resp/bad-request "Missing required field: action"))
-
-              (= action "delete")
-              (do
-                (log/info "Deleting document - Path:" path "ClientId:" clientId)
-                (db/delete-document-by-client-id! vault-id clientId)
-                (log/info "Document deleted successfully")
-                (resp/success {:vault-id vault-id
-                               :path path
-                               :client-id clientId
-                               :action action}))
-
-              ;; "create" 和 "modify" 都使用 upsert
-              :else
-              (do
-                (log/info "Upserting document - Path:" path "ClientId:" clientId)
-                (let [doc-id (utils/generate-uuid)
-                      tenant-id (:tenant-id vault)
-                      metadata-str (when metadata (json/write-str metadata))]
-                  (log/debug "Document details - DocId:" doc-id "ClientId:" clientId "TenantId:" tenant-id "VaultId:" vault-id)
-
-                  ;; 保存文档
-                  (db/upsert-document! doc-id tenant-id vault-id path clientId content metadata-str hash mtime)
-                  (log/info "Document upserted successfully")
-
-                  ;; 处理链接关系 - 使用 diff 算法
-                  (let [new-links (or (:links metadata) [])
-                        existing-links (db/get-document-links vault-id clientId)
-                        ;; 计算 diff
-                        operations (link-diff/compute-link-diff existing-links new-links)
-                        summary (link-diff/summarize-diff operations)]
-
-                    (log/info "Link diff analysis - Existing:" (count existing-links)
-                             "New:" (count new-links)
-                             "Operations:" (:total-operations summary)
-                             "Deletes:" (:deletes summary)
-                             "Inserts:" (:inserts summary)
-                             "Updates:" (:updates summary))
-
-                    ;; 执行操作
-                    (doseq [operation operations]
-                      (case (:op operation)
-                        :delete
-                        (do
-                          (log/debug "Executing DELETE - Target:" (:target-client-id operation))
-                          (db/delete-document-link-by-target! vault-id clientId (:target-client-id operation)))
-
-                        :insert
-                        (let [{:keys [target-client-id target-path link-type display-text original]} (:link-data operation)]
-                          (log/debug "Executing INSERT - Target:" target-client-id "Path:" target-path)
-                          (try
-                            (db/insert-document-link! vault-id clientId target-client-id target-path
-                                                     link-type display-text original)
-                            (catch Exception e
-                              (log/error "Failed to insert link:" (.getMessage e))
-                              (log/error "Exception:" e))))))
-
-                    (log/info "Links sync completed -" (:total-operations summary) "operations applied"))
-
-                  (resp/success {:vault-id vault-id
-                                 :path path
-                                 :client-id clientId
-                                 :action action}))))))
+                (log/error "Request validation failed:" (:errors validation-result))
+                (resp/bad-request (:message validation-result) (:errors validation-result))))))
         (do
           (log/error "Invalid sync-key")
           (resp/unauthorized "Invalid sync-key"))))
