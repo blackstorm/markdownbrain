@@ -1,13 +1,13 @@
 (ns markdownbrain.middleware
-  (:require [ring.middleware.session :as session]
-            [ring.middleware.session.cookie :as cookie]
-            [ring.middleware.params :as params]
-            [ring.middleware.json :as json]
-            [ring.middleware.keyword-params :as keyword-params]
-            [ring.util.response :as response]
-            [markdownbrain.config :as config]
-            [markdownbrain.db :as db]
-            [clojure.string :as str]))
+  (:require
+   [clojure.string :as str]
+   [markdownbrain.config :as config]
+   [markdownbrain.db :as db]
+   [ring.middleware.keyword-params :as keyword-params]
+   [ring.middleware.params :as params]
+   [ring.middleware.session :as session]
+   [ring.middleware.session.cookie :as cookie]
+   [ring.util.response :as response]))
 
 ;; Session 配置
 (defn wrap-session-middleware [handler]
@@ -17,16 +17,22 @@
      :cookie-name (config/get-config :session :cookie-name)
      :cookie-attrs {:max-age (config/get-config :session :max-age)
                     :http-only true
-                    :same-site :lax}}))
+                    :same-site :lax
+                    :secure (config/production?)}}))
 
 ;; 认证中间件（检查管理员登录）
 (defn wrap-auth [handler]
   (fn [request]
-    (if (get-in request [:session :user-id])
-      (handler request)
-      {:status 401
-       :headers {"Content-Type" "application/json"}
-       :body {:error "Unauthorized" :message "请先登录"}})))
+    (let [uri (:uri request)
+          session (:session request)
+          user-id (get-in request [:session :user-id])]
+      (if (and user-id (not (str/blank? user-id)))
+        (do
+          (handler request))
+        ;; 未登录，重定向到登录页
+        (do
+          {:status 302
+           :headers {"Location" "/admin/login"}})))))
 
 ;; CORS 中间件
 (defn wrap-cors [handler]

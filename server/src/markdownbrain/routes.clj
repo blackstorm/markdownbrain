@@ -18,21 +18,25 @@
     [:formats "application/json" :decoder-opts]
     {:decode-key-fn true})))
 
-(def routes
+;; Frontend 路由 (端口 8080)
+;; 仅包含：公开的文档展示
+(def frontend-routes
   [["/" {:get frontend/home}]
+   ["/documents" {:get frontend/get-documents}]
+   ["/documents/:id" {:get frontend/get-document}]])
 
-   ;; Obsidian 同步接口
+;; Admin 路由 (端口 9090)
+;; 包含：管理后台、登录、Vault 管理、Obsidian 同步 API
+(def admin-routes
+  [;; Obsidian 同步接口
    ["/obsidian"
     ["/vault/info" {:get sync/vault-info}]
     ["/sync" {:post sync/sync-file}]]
 
-   ;; 文档查询接口（用于前端展示）
-   ["/documents" {:get frontend/get-documents}]
-   ["/documents/:id" {:get frontend/get-document}]
-
    ;; 管理后台
    ["/admin"
-    ["" {:get frontend/admin-home}]
+    ["" {:middleware [middleware/wrap-auth]
+         :get frontend/admin-home}]
     ["/login" {:get frontend/login-page
                :post admin/login}]
     ["/logout" {:post {:middleware [middleware/wrap-auth]
@@ -52,9 +56,19 @@
     ["/vaults/:id/root-doc-selector" {:middleware [middleware/wrap-auth]
                                       :get admin/get-root-doc-selector}]]])
 
-(def app
+;; Frontend App (8080)
+(def frontend-app
   (ring/ring-handler
-   (ring/router routes
+   (ring/router frontend-routes
+                {:data {:muuntaja muuntaja-instance
+                        :middleware [parameters/parameters-middleware
+                                     muuntaja/format-middleware]}})
+   (ring/create-default-handler)))
+
+;; Admin App (9090)
+(def admin-app
+  (ring/ring-handler
+   (ring/router admin-routes
                 {:data {:muuntaja muuntaja-instance
                         :middleware [parameters/parameters-middleware
                                      muuntaja/format-middleware]}})

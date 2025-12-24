@@ -47,7 +47,6 @@ plugin-install:
 # 开发模式
 dev:
 	@echo "Starting backend development server..."
-	@echo "Server will run on http://localhost:3000"
 	@echo "Use Ctrl+C to stop"
 	@cd server && clojure -M:dev
 

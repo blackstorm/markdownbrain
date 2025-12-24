@@ -1,8 +1,9 @@
 (ns markdownbrain.handlers.admin
-  (:require [markdownbrain.db :as db]
-            [markdownbrain.utils :as utils]
-            [markdownbrain.response :as resp]
-            [selmer.parser :as selmer]))
+  (:require
+   [markdownbrain.db :as db]
+   [markdownbrain.response :as resp]
+   [markdownbrain.utils :as utils]
+   [selmer.parser :as selmer]))
 
 ;; 初始化管理员用户
 (defn init-admin [request]
@@ -46,7 +47,9 @@
 
 ;; 管理员登出
 (defn logout [request]
-  (resp/success {} nil))
+  {:status 302
+   :session nil
+   :headers {"Location" "/admin/login"}})
 
 ;; 列出 vault
 (defn list-vaults [request]

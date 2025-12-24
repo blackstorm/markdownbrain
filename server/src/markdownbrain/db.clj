@@ -69,7 +69,7 @@
                            (clojure.string/split #";")
                            (->> (map clojure.string/trim)
                                 (filter #(not (clojure.string/blank? %)))))]
-        (println "Running migration:" migration)
+        (log/info "Running migration:" migration)
         (doseq [stmt statements]
           (jdbc/execute! @datasource [stmt]))))))
 

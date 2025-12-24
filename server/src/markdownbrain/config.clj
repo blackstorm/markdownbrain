@@ -11,8 +11,12 @@
 
 (def config
   {:server
-   {:port (or (some-> (System/getenv "PORT") Integer/parseInt) 8080)
-    :host (or (System/getenv "HOST") "0.0.0.0")}
+   {:frontend
+    {:port (or (some-> (System/getenv "FRONTEND_PORT") Integer/parseInt) 8080)
+     :host (or (System/getenv "HOST") "0.0.0.0")}
+    :admin
+    {:port (or (some-> (System/getenv "ADMIN_PORT") Integer/parseInt) 9090)
+     :host (or (System/getenv "HOST") "0.0.0.0")}}
 
    :database
    {:dbtype "sqlite"
@@ -20,11 +24,24 @@
 
    :session
    {:secret (string->16-bytes (or (System/getenv "SESSION_SECRET") "change-me-in-production-very-secret"))
-    :cookie-name "markdownbrain-session"
+    :cookie-name "mdbrain-session"
     :max-age (* 60 60 24 7)} ; 7 days
+
+   :environment
+   (keyword (or (System/getenv "ENVIRONMENT") "development"))
 
    :server-ip
    (or (System/getenv "SERVER_IP") "123.45.67.89")})
 
 (defn get-config [& path]
   (get-in config path))
+
+(defn production?
+  "判断是否为生产环境"
+  []
+  (= :production (get-config :environment)))
+
+(defn development?
+  "判断是否为开发环境"
+  []
+  (= :development (get-config :environment)))
