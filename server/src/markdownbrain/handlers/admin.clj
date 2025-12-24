@@ -1,9 +1,7 @@
 (ns markdownbrain.handlers.admin
   (:require [markdownbrain.db :as db]
             [markdownbrain.utils :as utils]
-            [markdownbrain.config :as config]
             [markdownbrain.response :as resp]
-            [ring.util.response :as response]
             [selmer.parser :as selmer]))
 
 ;; 初始化管理员用户

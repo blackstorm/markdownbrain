@@ -1,5 +1,5 @@
 (ns markdownbrain.core
-  (:require [ring.adapter.jetty :as jetty]
+  (:require [ring.adapter.undertow :as undertow]
             [ring.middleware.resource :as resource]
             [markdownbrain.routes :as routes]
             [markdownbrain.middleware :as middleware]
@@ -13,13 +13,12 @@
     (println "Initializing database...")
     (db/init-db!)
     (println "Starting server on" host ":" port)
-    (let [server (jetty/run-jetty
+    (let [server (undertow/run-undertow
                   (-> routes/app
                       (middleware/wrap-middleware)
                       (resource/wrap-resource "public"))
                   {:port port
-                   :host host
-                   :join? false})]
+                   :host host})]
       {:server server
        :stop #(.stop server)})))
 
