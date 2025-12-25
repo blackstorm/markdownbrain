@@ -163,7 +163,7 @@
   (let [href (if anchor
                (format "/%s#%s" (:id target-doc) anchor)
                (format "/%s" (:id target-doc)))]
-    (format "<a href=\"%s\" class=\"internal-link\" data-note-id=\"%s\">%s</a>"
+    (format "<a href=\"%s\" class=\"internal-link\" data-doc-id=\"%s\">%s</a>"
             href
             (:id target-doc)
             (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"}))))

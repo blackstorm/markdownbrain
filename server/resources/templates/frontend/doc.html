@@ -1,6 +1,6 @@
 {# 单个文档面板 - 用于 HTMX 滑动面板插入 #}
 <div
-  class="doc grow shrink-0 overflow-y-auto top-0 sticky w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
+  class="doc h-full grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
   id="doc-{{ doc.id }}"
   data-doc-id="{{ doc.id }}"
 >
@@ -14,7 +14,7 @@
 
     {# 最后更新时间 #}
     {% if doc.updated-at %}
-    <p class="text-xs text-gray-400 mt-8 pt-4 border-t border-gray-200">
+    <p class="text-xs text-gray-400 mt-8 pt-4">
       Last updated: {{ doc.updated-at }}
     </p>
     {% endif %}

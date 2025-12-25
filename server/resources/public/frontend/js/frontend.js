@@ -122,6 +122,20 @@ htmx.on('htmx:afterSwap', (evt) => {
     document.title = titles.join(' | ');
   }
 
+  // Initialize HTMX attributes for newly loaded links
+  document.querySelectorAll('.internal-link, .backlink-item').forEach(link => {
+    if (!link.hasAttribute('hx-get')) {
+      link.setAttribute('hx-get', link.getAttribute('href'));
+      link.setAttribute('hx-target', '.docs-container');
+      link.setAttribute('hx-swap', 'beforeend');
+    }
+  });
+
+  // Reprocess HTMX for new elements
+  if (typeof htmx !== 'undefined') {
+    htmx.process(document.body);
+  }
+
   // Initialize syntax highlighting and math rendering
   initializeSyntaxHighlighting();
   initializeMathRendering();

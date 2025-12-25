@@ -3,11 +3,11 @@
 {% block title %}{{ docs.0.doc.title }}{% endblock %}
 
 {% block content %}
-<div class="docs-container flex overflow-x-auto h-screen bg-gray-100">
+<div class="docs-container grow flex bg-gray-100">
   {% for doc_data in docs %}
     {# 复用 doc.html 的结构 #}
     <div
-      class="doc grow shrink-0 overflow-y-auto top-0 sticky w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
+      class="doc h-full grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
       id="doc-{{ doc_data.doc.id }}"
       data-doc-id="{{ doc_data.doc.id }}"
     >
@@ -19,7 +19,7 @@
         </div>
 
         {% if doc_data.doc.updated-at %}
-        <p class="text-xs text-gray-400 mt-8 pt-4 border-t border-gray-200">
+        <p class="text-xs text-gray-400 mt-8 pt-4">
           Last updated: {{ doc_data.doc.updated-at }}
         </p>
         {% endif %}

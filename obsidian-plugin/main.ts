@@ -324,6 +324,16 @@ export default class MarkdownBrainPlugin extends Plugin {
         );
         console.log('[MarkdownBrain] Registered event: file delete');
 
+        // 监听文件重命名
+        this.registerEvent(
+            this.app.vault.on('rename', (file, oldPath) => {
+                if (file instanceof TFile && file.extension === 'md') {
+                    this.handleFileRename(file, oldPath);
+                }
+            })
+        );
+        console.log('[MarkdownBrain] Registered event: file rename');
+
         // 添加设置面板
         this.addSettingTab(new MarkdownBrainSettingTab(this.app, this));
         console.log('[MarkdownBrain] Settings tab added');

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "新文件.md",
+                "file": "About.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "新文件"
+              "title": "About"
             }
           }
         ]
@@ -185,9 +185,9 @@
   },
   "active": "d5b055be5c70d422",
   "lastOpenFiles": [
-    "欢迎.md",
-    "新文件2.md",
-    "新文件.md",
+    "Home.md",
+    "About.md",
+    "Evergreen notes permit smooth incremental progress in writing (“incremental writing”).md",
     "控卫而建.md"
   ]
 }

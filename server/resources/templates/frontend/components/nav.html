@@ -1,6 +1,6 @@
-{# 导航栏组件 #}
-<nav class="navbar">
-  <div class="navbar-content">
+{# Navigation component #}
+<nav class="navbar shrink-0">
+  <div class="navbar-content px-4 md:px-8">
     <div class="navbar-left">
       <a href="/" class="navbar-logo">
         {{ vault.name|default:"MarkdownBrain" }}
@@ -13,7 +13,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m15 18-6-6 6-6"/>
         </svg>
-        返回
+        Back
       </button>
       {% endif %}
     </div>
