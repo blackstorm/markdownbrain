@@ -161,14 +161,10 @@
    输出: HTML 字符串"
   [target-doc display-text anchor]
   (let [href (if anchor
-               (format "/?stacked=%s#%s" (:id target-doc) anchor)
-               (format "/?stacked=%s" (:id target-doc)))
-        ;; HTMX 属性用于滑动面板
-        hx-attrs (format "hx-get=\"%s\" hx-target=\".notes-container\" hx-swap=\"beforeend\" hx-push-url=\"true\""
-                         href)]
-    (format "<a href=\"%s\" class=\"internal-link\" %s data-note-id=\"%s\">%s</a>"
+               (format "/%s#%s" (:id target-doc) anchor)
+               (format "/%s" (:id target-doc)))]
+    (format "<a href=\"%s\" class=\"internal-link\" data-note-id=\"%s\">%s</a>"
             href
-            hx-attrs
             (:id target-doc)
             (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"}))))
 

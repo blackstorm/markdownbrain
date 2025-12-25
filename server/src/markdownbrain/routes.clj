@@ -20,11 +20,13 @@
 
 ;; Frontend 路由 (端口 8080)
 ;; 仅包含：公开的文档展示
-;; 使用单一的 catch-all 路由处理所有请求
-;; - / (无UUID): 返回 root document
-;; - /:id (有UUID): 返回指定文档，支持 ?stacked=xxx&stacked=yyy 参数
+;; URL 方案:
+;; - / : 根路径，重定向到 /root-doc-id 或显示文档列表
+;; - /{*path} : 主路由，支持 + 分隔符叠加
+;;   例如: /doc-a, /doc-a+doc-b, /doc-a+doc-b+doc-c
+;;   HTMX 请求时返回 HTML 片段，普通请求返回完整页面
 (def frontend-routes
-  [["/*path" {:get frontend/get-note}]])
+  [["/{*path}" {:get frontend/get-doc}]])
 
 ;; Admin 路由 (端口 9090)
 ;; 包含：管理后台、登录、Vault 管理、Obsidian 同步 API
@@ -37,12 +39,12 @@
    ;; 管理后台
    ["/admin"
     ["" {:middleware [middleware/wrap-auth]
-         :get frontend/admin-home}]
-    ["/login" {:get frontend/login-page
+         :get admin/admin-home}]
+    ["/login" {:get admin/login-page
                :post admin/login}]
     ["/logout" {:post {:middleware [middleware/wrap-auth]
                        :handler admin/logout}}]
-    ["/init" {:get frontend/init-page
+    ["/init" {:get admin/init-page
               :post admin/init-admin}]
     ["/vaults" {:middleware [middleware/wrap-auth]
                 :get admin/list-vaults

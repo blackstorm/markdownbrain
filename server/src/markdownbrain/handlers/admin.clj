@@ -51,6 +51,31 @@
    :session nil
    :headers {"Location" "/admin/login"}})
 
+;; 管理后台首页
+(defn admin-home [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        tenant (db/get-tenant tenant-id)
+        vaults (db/list-vaults-by-tenant tenant-id)
+        vaults-with-data (mapv (fn [vault]
+                                 (let [sync-key (:sync-key vault)
+                                       masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
+                                       documents (db/search-documents-by-vault (:id vault) "")]
+                                   (assoc vault
+                                          :masked-key masked
+                                          :documents documents)))
+                               vaults)]
+    (resp/html (selmer/render-file "templates/admin/vaults.html"
+                                    {:tenant tenant
+                                     :vaults vaults-with-data}))))
+
+;; 登录页面
+(defn login-page [request]
+  (resp/html (selmer/render-file "templates/admin/login.html" {})))
+
+;; 初始化页面
+(defn init-page [request]
+  (resp/html (selmer/render-file "templates/admin/init.html" {})))
+
 ;; 列出 vault
 (defn list-vaults [request]
   (let [tenant-id (get-in request [:session :tenant-id])

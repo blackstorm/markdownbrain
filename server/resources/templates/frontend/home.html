@@ -133,7 +133,7 @@
         {% if documents %}
         <div class="doc-list">
             {% for doc in documents %}
-            <a href="/?stacked={{ doc.id }}" class="doc-item internal-link" data-note-id="{{ doc.id }}">
+            <a href="/{{ doc.id }}" class="doc-item internal-link" data-doc-id="{{ doc.id }}">
                 <div class="doc-item-content">
                     <div class="doc-info">
                         <h3 class="doc-title">{{ doc.path }}</h3>

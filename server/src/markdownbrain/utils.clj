@@ -1,8 +1,10 @@
 (ns markdownbrain.utils
-  (:require [buddy.hashers :as hashers]
-            [clojure.string :as str])
-  (:import [java.util UUID]
-           [java.security MessageDigest]))
+  (:require
+   [buddy.hashers :as hashers]
+   [clojure.string :as str])
+  (:import
+   [java.security MessageDigest]
+   [java.util UUID]))
 
 ;; UUID 生成
 (defn generate-uuid []
@@ -82,3 +84,6 @@
                  (not (str/blank? sync-token)))
         {:vault-id vault-id
          :sync-token sync-token}))))
+
+(defn is-htmx? [req]
+  (boolean (get-in req [:headers "hx-request"])))

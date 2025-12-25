@@ -90,7 +90,7 @@ body {
    笔记容器和面板
    ============================================================ */
 
-.notes-container {
+.docs-container {
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
@@ -355,7 +355,7 @@ body {
    ============================================================ */
 
 @media (max-width: 767px) {
-  .notes-container {
+  .docs-container {
     scroll-snap-type: x mandatory;
   }
 
@@ -425,7 +425,7 @@ html {
    ============================================================ */
 
 @media print {
-  .notes-container {
+  .docs-container {
     display: block;
     overflow: visible;
     height: auto;

@@ -1,38 +1,39 @@
-{# 单个笔记面板 - 用于 HTMX 滑动面板插入 #}
+{# 单个文档面板 - 用于 HTMX 滑动面板插入 #}
 <div
-  class="note grow shrink-0 overflow-y-auto top-0 sticky w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
-  id="note-{{ note.id }}"
-  data-note-id="{{ note.id }}"
+  class="doc grow shrink-0 overflow-y-auto top-0 sticky w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
+  id="doc-{{ doc.id }}"
+  data-doc-id="{{ doc.id }}"
 >
   <article class="p-4 md:p-8 prose prose-slate max-w-none">
-    <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ note.title }}</h1>
+    <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ doc.title }}</h1>
 
     {# 渲染的 Markdown 内容 #}
     <div class="markdown-content">
-      {{ note.html-content|safe }}
+      {{ doc.html-content|safe }}
     </div>
 
     {# 最后更新时间 #}
-    {% if note.updated-at %}
+    {% if doc.updated-at %}
     <p class="text-xs text-gray-400 mt-8 pt-4 border-t border-gray-200">
-      最后更新: {{ note.updated-at }}
+      Last updated: {{ doc.updated-at }}
     </p>
     {% endif %}
   </article>
 
-  {# 反向链接区域 - Link to this note #}
+  {# 反向链接区域 - Link to this doc #}
   {% if backlinks %}
-  <div class="p-4 md:p-8 mt-4 bg-gray-50 border-t border-gray-200">
+  {% if backlinks|length > 0 %}
+  <div class="p-4 md:p-8 mt-4 border-t border-gray-200">
     <h2 class="text-lg font-bold text-gray-700 mb-4 px-2">
-      Link to this note
+      Link to this document
     </h2>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
       {% for backlink in backlinks %}
       <div class="p-3 bg-white hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors duration-150">
         <a
-          href="/?stacked={{ backlink.id }}"
+          href="/{{ backlink.id }}"
           class="block backlink-item"
-          data-note-id="{{ backlink.id }}"
+          data-doc-id="{{ backlink.id }}"
         >
           <p class="text-sm font-semibold text-gray-900 mb-1">
             {{ backlink.title }}
@@ -47,5 +48,6 @@
       {% endfor %}
     </div>
   </div>
+  {% endif %}
   {% endif %}
 </div>

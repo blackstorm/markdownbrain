@@ -1,42 +1,43 @@
 {% extends "templates/frontend/base.html" %}
 
-{% block title %}{{ notes.0.note.title }}{% endblock %}
+{% block title %}{{ docs.0.doc.title }}{% endblock %}
 
 {% block content %}
-<div class="notes-container flex overflow-x-auto h-screen bg-gray-100">
-  {% for note_data in notes %}
-    {# 复用 note.html 的结构 #}
+<div class="docs-container flex overflow-x-auto h-screen bg-gray-100">
+  {% for doc_data in docs %}
+    {# 复用 doc.html 的结构 #}
     <div
-      class="note grow shrink-0 overflow-y-auto top-0 sticky w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
-      id="note-{{ note_data.note.id }}"
-      data-note-id="{{ note_data.note.id }}"
+      class="doc grow shrink-0 overflow-y-auto top-0 sticky w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
+      id="doc-{{ doc_data.doc.id }}"
+      data-doc-id="{{ doc_data.doc.id }}"
     >
       <article class="p-4 md:p-8 prose prose-slate max-w-none">
-        <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ note_data.note.title }}</h1>
+        <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ doc_data.doc.title }}</h1>
 
         <div class="markdown-content">
-          {{ note_data.note.html-content|safe }}
+          {{ doc_data.doc.html-content|safe }}
         </div>
 
-        {% if note_data.note.updated-at %}
+        {% if doc_data.doc.updated-at %}
         <p class="text-xs text-gray-400 mt-8 pt-4 border-t border-gray-200">
-          最后更新: {{ note_data.note.updated-at }}
+          Last updated: {{ doc_data.doc.updated-at }}
         </p>
         {% endif %}
       </article>
 
-      {% if note_data.backlinks %}
-      <div class="p-4 md:p-8 mt-4 bg-gray-50 border-t border-gray-200">
+      {% if doc_data.backlinks %}
+      {% if doc_data.backlinks|length > 0 %}
+      <div class="p-4 md:p-8 mt-4 border-t border-gray-200">
         <h2 class="text-lg font-bold text-gray-700 mb-4 px-2">
-          Link to this note
+          Link to this document
         </h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {% for backlink in note_data.backlinks %}
+          {% for backlink in doc_data.backlinks %}
           <div class="p-3 bg-white hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors duration-150">
             <a
-              href="/?stacked={{ backlink.id }}"
+              href="/{{ backlink.id }}"
               class="block backlink-item"
-              data-note-id="{{ backlink.id }}"
+              data-doc-id="{{ backlink.id }}"
             >
               <p class="text-sm font-semibold text-gray-900 mb-1">
                 {{ backlink.title }}
@@ -51,6 +52,7 @@
           {% endfor %}
         </div>
       </div>
+      {% endif %}
       {% endif %}
     </div>
   {% endfor %}
