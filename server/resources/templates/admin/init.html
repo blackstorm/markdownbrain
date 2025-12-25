@@ -36,15 +36,15 @@
                   hx-indicator=".spinner">
 
                 {% with id="tenant-name" name="tenant-name" label="Organization Name" placeholder="My Organization" hint="Your company or personal workspace name" autofocus=true required=true %}
-                  {% include "templates/components/form-field.html" %}
+                  {% include "templates/admin/components/form-field.html" %}
                 {% endwith %}
 
                 {% with id="username" name="username" type="email" label="Admin Email" placeholder="admin@example.com" autocomplete="username" required=true %}
-                  {% include "templates/components/form-field.html" %}
+                  {% include "templates/admin/components/form-field.html" %}
                 {% endwith %}
 
                 {% with id="password" name="password" type="password" label="Password" placeholder="••••••••" autocomplete="new-password" minlength="8" hint="At least 8 characters, use a strong password" required=true %}
-                  {% include "templates/components/form-field.html" %}
+                  {% include "templates/admin/components/form-field.html" %}
                 {% endwith %}
 
                 <button type="submit" class="btn-primary">

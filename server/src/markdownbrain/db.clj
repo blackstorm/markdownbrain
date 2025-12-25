@@ -233,3 +233,22 @@
   "获取文档的所有反向链接（入链）"
   (execute! ["SELECT * FROM document_links WHERE vault_id = ? AND target_client_id = ?"
              vault-id client-id]))
+
+(defn get-backlinks-with-docs [vault-id client-id]
+  "获取反向链接及完整文档信息
+   返回指向当前文档的所有文档（反向链接）的完整信息
+
+   参数:
+   - vault-id: Vault ID
+   - client-id: 当前文档的 client-id
+
+   返回:
+   - 文档列表，每个文档包含完整信息和链接的 display-text
+
+   示例用途：在笔记底部显示 'Link to this note' 区块"
+  (execute! ["SELECT d.*, dl.display_text as link_display_text, dl.link_type
+              FROM document_links dl
+              INNER JOIN documents d ON d.vault_id = dl.vault_id AND d.client_id = dl.source_client_id
+              WHERE dl.vault_id = ? AND dl.target_client_id = ?
+              ORDER BY d.path ASC"
+             vault-id client-id]))

@@ -19,7 +19,7 @@
     </script>
 
     {% with tenant=tenant %}
-      {% include "templates/components/header.html" %}
+      {% include "templates/admin/components/header.html" %}
     {% endwith %}
 
     <!-- Main Content -->
@@ -45,7 +45,7 @@
         </div>
     </main>
 
-    {% include "templates/components/footer.html" %}
+    {% include "templates/admin/components/footer.html" %}
 
     <!-- Create Site Modal -->
     <div id="modal-create" class="modal-backdrop" onclick="if(event.target === this) closeCreateModal()">
@@ -64,11 +64,11 @@
                     <div id="create-result"></div>
 
                     {% with id="create-name" name="name" label="Site Name" placeholder="My Digital Garden" required=true %}
-                      {% include "templates/components/form-field.html" %}
+                      {% include "templates/admin/components/form-field.html" %}
                     {% endwith %}
 
                     {% with id="create-domain" name="domain" label="Domain" placeholder="notes.example.com" hint="Your custom domain (without https://)" required=true %}
-                      {% include "templates/components/form-field.html" %}
+                      {% include "templates/admin/components/form-field.html" %}
                     {% endwith %}
                 </div>
                 <div class="modal-footer">
@@ -101,11 +101,11 @@
                     <div id="edit-result"></div>
 
                     {% with id="edit-name" name="name" label="Site Name" required=true %}
-                      {% include "templates/components/form-field.html" %}
+                      {% include "templates/admin/components/form-field.html" %}
                     {% endwith %}
 
                     {% with id="edit-domain" name="domain" label="Domain" required=true %}
-                      {% include "templates/components/form-field.html" %}
+                      {% include "templates/admin/components/form-field.html" %}
                     {% endwith %}
                 </div>
                 <div class="modal-footer">

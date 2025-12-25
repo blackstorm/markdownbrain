@@ -19,7 +19,7 @@
         <!-- Header -->
         <div class="login-header">
             {% with size="md" %}
-              {% include "templates/components/logo.html" %}
+              {% include "templates/admin/components/logo.html" %}
             {% endwith %}
             <p class="text-sm text-[var(--text-secondary)] mt-2 mb-0">Login to admin dashboard</p>
         </div>
@@ -35,11 +35,11 @@
                   hx-indicator=".spinner">
 
                 {% with id="username" name="username" type="email" label="Email" placeholder="admin@example.com" autocomplete="username" autofocus=true required=true %}
-                  {% include "templates/components/form-field.html" %}
+                  {% include "templates/admin/components/form-field.html" %}
                 {% endwith %}
 
                 {% with id="password" name="password" type="password" label="Password" placeholder="••••••••" autocomplete="current-password" required=true %}
-                  {% include "templates/components/form-field.html" %}
+                  {% include "templates/admin/components/form-field.html" %}
                 {% endwith %}
 
                 <button type="submit" class="btn-primary">

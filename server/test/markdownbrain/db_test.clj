@@ -42,18 +42,39 @@
                      tenant_id TEXT NOT NULL,
                      vault_id TEXT NOT NULL,
                      path TEXT NOT NULL,
+                     client_id TEXT NOT NULL,
                      content TEXT,
                      metadata TEXT,
                      hash TEXT,
                      mtime TIMESTAMP,
                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                      UNIQUE(vault_id, path),
+                     UNIQUE(vault_id, client_id),
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
                      FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
   (jdbc/execute! conn
                  ["CREATE INDEX idx_documents_vault ON documents(vault_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_documents_mtime ON documents(mtime)"]))
+                 ["CREATE INDEX idx_documents_client_id ON documents(vault_id, client_id)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_documents_mtime ON documents(mtime)"])
+  (jdbc/execute! conn
+                 ["CREATE TABLE document_links (
+                     id TEXT PRIMARY KEY,
+                     vault_id TEXT NOT NULL,
+                     source_client_id TEXT NOT NULL,
+                     target_client_id TEXT NOT NULL,
+                     target_path TEXT,
+                     link_type TEXT NOT NULL,
+                     display_text TEXT,
+                     original TEXT,
+                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                     FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_links_source ON document_links(vault_id, source_client_id)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_links_target ON document_links(vault_id, target_client_id)"]))
 
 (defn setup-test-db [f]
   (let [db (jdbc/get-datasource {:dbtype "sqlite" :dbname ":memory:"})
@@ -134,17 +155,18 @@
 (defn get-document-by-path [vault-id path]
   (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
 
-(defn upsert-document! [id tenant-id vault-id path content metadata hash mtime]
+(defn upsert-document! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!
-   ["INSERT INTO documents (id, tenant_id, vault_id, path, content, metadata, hash, mtime)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(vault_id, path) DO UPDATE SET
+   ["INSERT INTO documents (id, tenant_id, vault_id, path, client_id, content, metadata, hash, mtime)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(vault_id, client_id) DO UPDATE SET
+       path = excluded.path,
        content = excluded.content,
        metadata = excluded.metadata,
        hash = excluded.hash,
        mtime = excluded.mtime,
        updated_at = CURRENT_TIMESTAMP"
-    id tenant-id vault-id path content metadata hash mtime])
+    id tenant-id vault-id path client-id content metadata hash mtime])
   ;; Return the document
   (get-document-by-path vault-id path))
 
@@ -266,11 +288,12 @@
           _ (create-vault! vault-id tenant-id "Blog" "blog-insert.com" sync-key)
           doc-id (utils/generate-uuid)
           path "test.md"
+          client-id "test-client-1"
           content "# Test"
           metadata "{\"tags\":[]}"
           hash "abc123"
           mtime "2025-12-21T10:00:00Z"
-          result (upsert-document! doc-id tenant-id vault-id path content metadata hash mtime)]
+          result (upsert-document! doc-id tenant-id vault-id path client-id content metadata hash mtime)]
       (is (map? result))
       (is (= path (:path result)))))
 
@@ -281,10 +304,11 @@
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-update.com" sync-key)
           doc-id (utils/generate-uuid)
+          client-id "test-client-update"
           path "test.md"
-          _ (upsert-document! doc-id tenant-id vault-id path "# Old" "{}" "old" "2025-12-21T10:00:00Z")
+          _ (upsert-document! doc-id tenant-id vault-id path client-id "# Old" "{}" "old" "2025-12-21T10:00:00Z")
           new-content "# New"
-          result (upsert-document! (utils/generate-uuid) tenant-id vault-id path new-content "{}" "new" "2025-12-21T11:00:00Z")
+          result (upsert-document! (utils/generate-uuid) tenant-id vault-id path client-id new-content "{}" "new" "2025-12-21T11:00:00Z")
           fetched (get-document-by-path vault-id path)]
       (is (= new-content (:content fetched))))))
 
@@ -296,8 +320,9 @@
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-delete.com" sync-key)
           doc-id (utils/generate-uuid)
+          client-id "test-client-to-delete"
           path "to-delete.md"
-          _ (upsert-document! doc-id tenant-id vault-id path "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
+          _ (upsert-document! doc-id tenant-id vault-id path client-id "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
           _ (delete-document! vault-id path)
           result (get-document-by-path vault-id path)]
       (is (nil? result)))))
@@ -309,8 +334,8 @@
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-list.com" sync-key)
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" "# Doc 1" "{}" "hash1" "2025-12-21T10:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" "# Doc 2" "{}" "hash2" "2025-12-21T11:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" "client-1" "# Doc 1" "{}" "hash1" "2025-12-21T10:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" "client-2" "# Doc 2" "{}" "hash2" "2025-12-21T11:00:00Z")
           results (list-documents-by-vault vault-id)]
       (is (= 2 (count results)))
       (is (every? #(contains? % :path) results)))))
@@ -323,9 +348,10 @@
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-get.com" sync-key)
           doc-id (utils/generate-uuid)
+          client-id "test-client-get"
           path "test.md"
           content "# Test Document"
-          _ (upsert-document! doc-id tenant-id vault-id path content "{}" "hash" "2025-12-21T10:00:00Z")
+          _ (upsert-document! doc-id tenant-id vault-id path client-id content "{}" "hash" "2025-12-21T10:00:00Z")
           result (get-document doc-id)]
       (is (map? result))
       (is (= doc-id (:id result)))
@@ -334,3 +360,82 @@
   (testing "Get non-existent document"
     (let [result (get-document "non-existent-id")]
       (is (nil? result)))))
+
+;;; ============================================================
+;;; 测试反向链接功能
+;;; ============================================================
+
+(defn insert-document-link! [vault-id source-client-id target-client-id target-path link-type display-text original]
+  "插入文档链接（测试辅助函数）"
+  (let [id (utils/generate-uuid)]
+    (sql/insert! *conn* :document_links
+                 {:id id
+                  :vault_id vault-id
+                  :source_client_id source-client-id
+                  :target_client_id target-client-id
+                  :target_path target-path
+                  :link_type link-type
+                  :display_text display-text
+                  :original original}
+                 {:builder-fn rs/as-unqualified-lower-maps})))
+
+(defn get-backlinks-with-docs [vault-id client-id]
+  "获取反向链接及完整文档信息（测试用例）"
+  (let [results (jdbc/execute! *conn*
+                                ["SELECT d.*, dl.display_text, dl.link_type
+                                  FROM document_links dl
+                                  INNER JOIN documents d ON d.vault_id = dl.vault_id AND d.client_id = dl.source_client_id
+                                  WHERE dl.vault_id = ? AND dl.target_client_id = ?
+                                  ORDER BY d.path ASC"
+                                 vault-id client-id]
+                                {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
+(deftest test-get-backlinks-with-docs
+  (testing "获取反向链接及完整文档信息"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "backlinks.com" sync-key)
+
+          ;; 创建文档
+          target-doc-id (utils/generate-uuid)
+          target-client-id "target-client-123"
+          _ (upsert-document! target-doc-id tenant-id vault-id "Target.md" target-client-id "# Target Note" "{}" "hash1" "2025-12-21T10:00:00Z")
+
+          source-doc1-id (utils/generate-uuid)
+          source-client-id1 "source-client-1"
+          _ (upsert-document! source-doc1-id tenant-id vault-id "Source A.md" source-client-id1 "# Source A" "{}" "hash2" "2025-12-21T11:00:00Z")
+
+          source-doc2-id (utils/generate-uuid)
+          source-client-id2 "source-client-2"
+          _ (upsert-document! source-doc2-id tenant-id vault-id "Source B.md" source-client-id2 "# Source B" "{}" "hash3" "2025-12-21T12:00:00Z")
+
+          ;; 创建链接：Source A -> Target, Source B -> Target
+          _ (insert-document-link! vault-id source-client-id1 target-client-id "Target.md" "link" "Target" "[[Target]]")
+          _ (insert-document-link! vault-id source-client-id2 target-client-id "Target.md" "link" "Target Note" "[[Target|Target Note]]")
+
+          ;; 获取反向链接
+          backlinks (get-backlinks-with-docs vault-id target-client-id)]
+
+      (is (= 2 (count backlinks)))
+      (is (= #{"Source A.md" "Source B.md"} (set (map :path backlinks))))
+      (is (every? #(contains? % :content) backlinks))
+      (is (every? #(contains? % :display-text) backlinks)))))
+
+(deftest test-get-backlinks-with-docs-no-results
+  (testing "文档没有反向链接时返回空列表"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          sync-key (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "no-backlinks.com" sync-key)
+
+          doc-id (utils/generate-uuid)
+          client-id "lonely-doc"
+          _ (upsert-document! doc-id tenant-id vault-id "Lonely.md" client-id "# Lonely" "{}" "hash" "2025-12-21T10:00:00Z")
+
+          backlinks (get-backlinks-with-docs vault-id client-id)]
+
+      (is (= 0 (count backlinks))))))

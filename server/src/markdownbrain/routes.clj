@@ -20,10 +20,11 @@
 
 ;; Frontend 路由 (端口 8080)
 ;; 仅包含：公开的文档展示
+;; 使用单一的 catch-all 路由处理所有请求
+;; - / (无UUID): 返回 root document
+;; - /:id (有UUID): 返回指定文档，支持 ?stacked=xxx&stacked=yyy 参数
 (def frontend-routes
-  [["/" {:get frontend/home}]
-   ["/documents" {:get frontend/get-documents}]
-   ["/documents/:id" {:get frontend/get-document}]])
+  [["/*path" {:get frontend/get-note}]])
 
 ;; Admin 路由 (端口 9090)
 ;; 包含：管理后台、登录、Vault 管理、Obsidian 同步 API

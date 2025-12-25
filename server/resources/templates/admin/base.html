@@ -1,34 +1,43 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MarkdownBrain{% endblock %}</title>
-    <link rel="stylesheet" href="/css/app.css">
+    <title>{% block title %}Admin - MarkdownBrain{% endblock %}</title>
+
+    {# Admin CSS - Tailwind 构建产物 #}
+    <link rel="stylesheet" href="/admin/css/app.css">
+
+    {# HTMX - 动态交互 #}
     <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
-    <script src="/js/helpers.js"></script>
+
+    {# Lucide Icons #}
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    {# Admin JS #}
+    <script src="/admin/js/admin.js"></script>
 </head>
 <body class="antialiased bg-[#fafafa] min-h-screen">
     <script>
       // Initialize Lucide icons
       document.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
       });
 
       // Re-initialize icons after HTMX swaps
       document.body.addEventListener('htmx:afterSwap', () => {
-        lucide.createIcons();
-      });
-
-      // Global HTMX config for better UX
-      document.body.addEventListener('htmx:configRequest', (event) => {
-        // Add custom headers if needed
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
       });
 
       // Handle HTMX errors gracefully
       document.body.addEventListener('htmx:responseError', (event) => {
-        showNotification('操作失败，请重试', 'error');
+        if (typeof showNotification !== 'undefined') {
+          showNotification('操作失败，请重试', 'error');
+        }
       });
     </script>
 

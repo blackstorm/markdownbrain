@@ -1,0 +1,25 @@
+{# 导航栏组件 #}
+<nav class="navbar">
+  <div class="navbar-content">
+    <div class="navbar-left">
+      <a href="/" class="navbar-logo">
+        {{ vault.name|default:"MarkdownBrain" }}
+      </a>
+    </div>
+
+    <div class="navbar-right">
+      {% if show_back %}
+      <button onclick="history.back()" class="navbar-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 18-6-6 6-6"/>
+        </svg>
+        返回
+      </button>
+      {% endif %}
+
+      <a href="/" class="navbar-btn">
+        首页
+      </a>
+    </div>
+  </div>
+</nav>

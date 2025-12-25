@@ -1,0 +1,445 @@
+@import "tailwindcss";
+
+/* ============================================================
+   MarkdownBrain Frontend 自定义样式
+   Andy Matuschak 风格滑动面板 + Prose 样式
+   使用 Tailwind CSS + 自定义样式
+   ============================================================ */
+
+/* 自定义样式将在构建后追加到 Tailwind CSS 之后 */
+/* ============================================================
+   MarkdownBrain 自定义样式
+   Andy Matuschak 风格滑动面板 + Prose 样式
+   ============================================================ */
+
+/* ============================================================
+   导航栏
+   ============================================================ */
+
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  z-index: 1000;
+}
+
+.navbar-content {
+  max-width: 100%;
+  height: 100%;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+}
+
+.navbar-logo {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.navbar-logo:hover {
+  color: #2563eb;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.navbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.navbar-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+/* 为导航栏留出空间 */
+body {
+  padding-top: 60px;
+}
+
+/* ============================================================
+   笔记容器和面板
+   ============================================================ */
+
+.notes-container {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: calc(100vh - 60px);
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.note {
+  flex: 0 0 auto;
+  width: 100%;
+  overflow-y: auto;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+}
+
+@media (min-width: 768px) {
+  .note {
+    width: 625px;
+    max-width: 625px;
+  }
+}
+
+/* 笔记进入动画 */
+.note {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ============================================================
+   Prose 样式 - Markdown 内容渲染
+   ============================================================ */
+
+.prose {
+  color: #374151;
+  max-width: 65ch;
+}
+
+.prose h1 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #111827;
+}
+
+.prose h2 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: #111827;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.prose h3 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #111827;
+}
+
+.prose p {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  line-height: 1.75;
+}
+
+.prose a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-decoration-color: #93c5fd;
+  text-underline-offset: 2px;
+}
+
+.prose a:hover {
+  color: #1d4ed8;
+  text-decoration-color: #2563eb;
+}
+
+.prose strong {
+  font-weight: 600;
+  color: #111827;
+}
+
+.prose em {
+  font-style: italic;
+}
+
+.prose code {
+  background: #f3f4f6;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.875em;
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  color: #ef4444;
+}
+
+.prose pre {
+  background: #1f2937;
+  color: #f3f4f6;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1.5rem 0;
+}
+
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.prose ul, .prose ol {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  padding-left: 1.625rem;
+}
+
+.prose li {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  line-height: 1.75;
+}
+
+.prose blockquote {
+  font-style: italic;
+  border-left: 4px solid #e5e7eb;
+  padding-left: 1rem;
+  margin: 1.5rem 0;
+  color: #6b7280;
+}
+
+.prose table {
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+}
+
+.prose th {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+}
+
+.prose td {
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 0.75rem;
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 2rem 0;
+}
+
+.prose img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+/* ============================================================
+   内部链接样式
+   ============================================================ */
+
+.internal-link {
+  color: #2563eb;
+  text-decoration: none;
+  border-bottom: 1px dashed #93c5fd;
+  transition: all 0.2s;
+}
+
+.internal-link:hover {
+  color: #1d4ed8;
+  border-bottom-color: #2563eb;
+  border-bottom-style: solid;
+}
+
+.internal-link.broken {
+  color: #dc2626;
+  border-bottom-color: #fca5a5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   数学公式样式
+   ============================================================ */
+
+.math-block {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+}
+
+.math-inline {
+  display: inline-block;
+  margin: 0 0.125rem;
+}
+
+/* KaTeX 字体修正 */
+.katex {
+  font-size: 1.1em;
+}
+
+/* ============================================================
+   代码高亮增强
+   ============================================================ */
+
+.hljs {
+  padding: 1rem;
+  border-radius: 0.5rem;
+}
+
+/* ============================================================
+   反向链接区域
+   ============================================================ */
+
+.backlink-item {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s;
+}
+
+.backlink-item:hover {
+  transform: translateY(-1px);
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ============================================================
+   移动端优化
+   ============================================================ */
+
+@media (max-width: 767px) {
+  .notes-container {
+    scroll-snap-type: x mandatory;
+  }
+
+  .note {
+    scroll-snap-align: start;
+  }
+
+  /* 移动端隐藏反向链接的第二列 */
+  .note .grid-cols-1.md\:grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  /* 移动端 prose 优化 */
+  .prose {
+    font-size: 0.9375rem;
+  }
+
+  .prose h1 {
+    font-size: 1.5rem;
+  }
+
+  .prose h2 {
+    font-size: 1.25rem;
+  }
+
+  .prose h3 {
+    font-size: 1.125rem;
+  }
+
+  .prose pre {
+    margin-left: -1rem;
+    margin-right: -1rem;
+    border-radius: 0;
+  }
+}
+
+/* ============================================================
+   加载状态和错误状态
+   ============================================================ */
+
+.note.error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+.htmx-request .htmx-indicator {
+  display: inline;
+}
+
+.htmx-indicator {
+  display: none;
+}
+
+/* ============================================================
+   平滑滚动
+   ============================================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   打印样式
+   ============================================================ */
+
+@media print {
+  .notes-container {
+    display: block;
+    overflow: visible;
+    height: auto;
+  }
+
+  .note {
+    width: 100%;
+    max-width: 100%;
+    border: none;
+    page-break-inside: avoid;
+    page-break-after: always;
+  }
+
+  .note:last-child {
+    page-break-after: auto;
+  }
+}

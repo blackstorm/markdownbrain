@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MarkdownBrain{% endblock %}</title>
+
+    {# Frontend CSS - 纯 CSS，不使用 Tailwind #}
+    <link rel="stylesheet" href="/frontend/css/frontend.css">
+
+    {# Highlight.js - 代码高亮 #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+    {# KaTeX - 数学公式渲染 #}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    {# HTMX - 动态交互 #}
+    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+
+    {# Frontend JS - Andy Matuschak 滑动面板逻辑 #}
+    <script src="/frontend/js/frontend.js"></script>
+</head>
+<body>
+    {% include "templates/frontend/components/nav.html" %}
+    {% block content %}{% endblock %}
+</body>
+</html>
