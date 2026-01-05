@@ -1,4 +1,4 @@
-import { Plugin, TFile, Notice, PluginSettingTab, App, Setting, requestUrl } from 'obsidian';
+import { Plugin, TFile, Notice, PluginSettingTab, App, Setting, requestUrl, PluginManifest } from 'obsidian';
 
 interface MarkdownBrainSettings {
     serverUrl: string;
@@ -65,6 +65,31 @@ interface VaultInfo {
     name: string;
     domain: string;
     'created-at': string;
+}
+
+// Full Sync 请求
+interface FullSyncRequest {
+    clientIds: string[];
+}
+
+// Full Sync 响应
+interface FullSyncResponse {
+    success: boolean;
+    data?: {
+        'vault-id': string;
+        action: string;
+        'client-docs': number;
+        'deleted-count': number;
+        'remaining-docs': number;
+    };
+    error?: string;
+}
+
+// 同步统计
+interface SyncStats {
+    success: number;
+    failed: number;
+    skipped: number;
 }
 
 // 同步管理器
@@ -179,6 +204,79 @@ class SyncManager {
             return {
                 success: false,
                 error: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    }
+
+    /**
+     * 全量同步 - 清理孤儿文档
+     * @param clientIds 客户端所有文档的 client_ids 列表
+     * @returns 包含删除数量的响应
+     * @complexity O(1) - 单次网络请求
+     * @compatibility 降级处理 - 如果服务器返回 404，视为成功（旧服务器）
+     */
+    async fullSync(clientIds: string[]): Promise<FullSyncResponse> {
+        console.log('[MarkdownBrain] Starting full sync...', {
+            clientDocCount: clientIds.length
+        });
+
+        try {
+            const requestBody: FullSyncRequest = { clientIds };
+            const response = await requestUrl({
+                url: `${this.config.serverUrl}/obsidian/sync/full`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.config.syncKey}`
+                },
+                body: JSON.stringify(requestBody),
+                throw: false
+            });
+
+            // 向后兼容：旧服务器不支持 full-sync (404)
+            if (response.status === 404) {
+                console.warn('[MarkdownBrain] Full sync not supported by server (404), skipping orphan cleanup');
+                return {
+                    success: true,
+                    data: {
+                        'vault-id': '',
+                        action: 'full-sync',
+                        'client-docs': clientIds.length,
+                        'deleted-count': 0,
+                        'remaining-docs': clientIds.length
+                    }
+                };
+            }
+
+            if (response.status === 200) {
+                const data = response.json;
+                console.log('[MarkdownBrain] ✓ Full sync successful:', {
+                    deletedCount: data['deleted-count'],
+                    remainingDocs: data['remaining-docs']
+                });
+                return {
+                    success: true,
+                    data: data
+                };
+            } else {
+                const errorMsg = `HTTP ${response.status}: ${response.text || 'Full sync failed'}`;
+                console.error('[MarkdownBrain] ✗ Full sync failed:', {
+                    status: response.status,
+                    error: errorMsg
+                });
+                return {
+                    success: false,
+                    error: errorMsg
+                };
+            }
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            console.error('[MarkdownBrain] ✗ Full sync exception:', {
+                error: errorMsg
+            });
+            return {
+                success: false,
+                error: errorMsg
             };
         }
     }
@@ -402,18 +500,6 @@ export default class MarkdownBrainPlugin extends Plugin {
                 contentLength: content.length
             });
 
-            // 跳过空内容的文件
-            if (!content || content.trim().length === 0) {
-                console.log('[MarkdownBrain] Skipping empty file:', file.path);
-                return;
-            }
-
-            // 跳过"未命名.md"文件（如果内容为空）
-            if (file.path.includes('未命名') && content.trim().length === 0) {
-                console.log('[MarkdownBrain] Skipping untitled empty file:', file.path);
-                return;
-            }
-
             // 获取文件元数据 - 使用 Obsidian API
             const cachedMetadata = this.app.metadataCache.getFileCache(file);
             const metadata: DocumentMetadata = {};
@@ -617,48 +703,153 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
     }
 
-    async syncAllFiles() {
-        const files = this.app.vault.getMarkdownFiles();
-        console.log(`[MarkdownBrain] Starting batch sync for ${files.length} files`);
-        new Notice(`开始批量同步 ${files.length} 个文件...`);
-
-        let success = 0;
-        let failed = 0;
-        let skipped = 0;
-
-        // 批量处理，每次处理 10 个文件
-        const batchSize = 10;
-        for (let i = 0; i < files.length; i += batchSize) {
-            const batch = files.slice(i, i + batchSize);
-            const batchPromises = batch.map(async (file) => {
-                try {
-                    // 跳过空文件
-                    const content = await this.app.vault.read(file);
-                    if (!content || content.trim().length === 0) {
-                        console.log(`[MarkdownBrain] Skipping empty file: ${file.path}`);
-                        skipped++;
-                        return;
-                    }
-
-                    await this.performSync(file, 'modify');
-                    success++;
-                    console.log(`[MarkdownBrain] ✓ Synced (${success + failed + skipped}/${files.length}): ${file.path}`);
-                } catch (error) {
-                    failed++;
-                    console.error(`[MarkdownBrain] ✗ Failed to sync ${file.path}:`, error);
-                }
-            });
-
-            await Promise.all(batchPromises);
-
-            // 显示进度
-            const progress = Math.min(i + batchSize, files.length);
-            new Notice(`同步进度: ${progress}/${files.length} (成功: ${success}, 失败: ${failed}, 跳过: ${skipped})`);
+    async handleFileRename(file: TFile, oldPath: string) {
+        if (!this.settings.autoSync) {
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping rename:', oldPath, '->', file.path);
+            return;
         }
 
-        const finalMsg = `同步完成! 总计: ${files.length}, 成功: ${success}, 失败: ${failed}, 跳过: ${skipped}`;
+        console.log('[MarkdownBrain] File rename detected:', {
+            oldPath: oldPath,
+            newPath: file.path,
+            extension: file.extension
+        });
+
+        try {
+            // 1. 删除旧路径的文档
+            const oldClientId = await this.generateClientId(oldPath);
+            console.log('[MarkdownBrain] Deleting old path:', {
+                path: oldPath,
+                clientId: oldClientId
+            });
+
+            const deleteResult = await this.syncManager.sync({
+                path: oldPath,
+                clientId: oldClientId,
+                clientType: 'obsidian',
+                action: 'delete'
+            });
+
+            if (!deleteResult.success) {
+                console.error('[MarkdownBrain] ✗ Failed to delete old path:', oldPath, deleteResult.error);
+                new Notice(`重命名同步失败（删除旧文件）: ${oldPath}\n${deleteResult.error}`);
+                return;
+            }
+
+            console.log('[MarkdownBrain] ✓ Old path deleted:', oldPath);
+
+            // 2. 创建新路径的文档（使用 performSync，它会读取内容和元数据）
+            console.log('[MarkdownBrain] Creating new path:', file.path);
+            await this.performSync(file, 'create');
+
+            console.log('[MarkdownBrain] ✓ File rename synced:', oldPath, '->', file.path);
+        } catch (error) {
+            console.error('[MarkdownBrain] ✗ Rename sync exception:', {
+                oldPath: oldPath,
+                newPath: file.path,
+                error: error,
+                errorMessage: error instanceof Error ? error.message : 'Unknown error'
+            });
+            new Notice(`重命名同步错误: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    /**
+     * 全量同步所有文件
+     * @flow 收集 IDs → 清理孤儿 → 增量同步
+     * @complexity O(n) where n = 文件数量
+     */
+    async syncAllFiles() {
+        const files = this.app.vault.getMarkdownFiles();
+        console.log(`[MarkdownBrain] Starting full sync for ${files.length} files`);
+        new Notice(`开始全量同步 ${files.length} 个文件...`);
+
+        // 步骤 1: 收集 client_ids
+        const clientIds = await this.collectClientIds(files);
+        console.log(`[MarkdownBrain] Collected ${clientIds.length} client IDs`);
+
+        // 步骤 2: 清理孤儿文档 (O(1) 单次请求)
+        await this.cleanupOrphans(clientIds);
+
+        // 步骤 3: 增量同步
+        await this.incrementalSyncBatch(files);
+    }
+
+    /**
+     * 收集所有文件的 client_ids
+     * @complexity O(n) time, O(n) space
+     */
+    private async collectClientIds(files: TFile[]): Promise<string[]> {
+        const ids: string[] = [];
+        for (const file of files) {
+            try {
+                const content = await this.app.vault.read(file);
+                // 只包含非空文件
+                if (content?.trim().length > 0) {
+                    ids.push(await this.generateClientId(file.path));
+                }
+            } catch (error) {
+                console.error(`[MarkdownBrain] Failed to read ${file.path}:`, error);
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * 清理孤儿文档
+     * @complexity O(1) - 单次网络请求
+     */
+    private async cleanupOrphans(clientIds: string[]): Promise<void> {
+        try {
+            const result = await this.syncManager.fullSync(clientIds);
+            const deleted = result.data?.['deleted-count'] || 0;
+
+            if (deleted > 0) {
+                console.log(`[MarkdownBrain] ✓ Cleaned ${deleted} orphan documents`);
+                new Notice(`清理了 ${deleted} 个孤儿文档`);
+            } else if (result.success) {
+                console.log('[MarkdownBrain] ✓ No orphan documents found');
+            }
+        } catch (error) {
+            // Full-sync 失败不中断流程
+            console.error('[MarkdownBrain] Full sync error:', error);
+        }
+    }
+
+    /**
+     * 批量增量同步
+     * @complexity O(n) with batching
+     */
+    private async incrementalSyncBatch(files: TFile[]): Promise<void> {
+        const stats: SyncStats = { success: 0, failed: 0, skipped: 0 };
+        const batchSize = 10;
+
+        for (let i = 0; i < files.length; i += batchSize) {
+            const batch = files.slice(i, i + batchSize);
+            await Promise.all(batch.map(file => this.syncOneFile(file, stats)));
+
+            const progress = Math.min(i + batchSize, files.length);
+            new Notice(`同步进度: ${progress}/${files.length} (成功: ${stats.success}, 失败: ${stats.failed}, 跳过: ${stats.skipped})`);
+        }
+
+        const finalMsg = `同步完成! 总计: ${files.length}, 成功: ${stats.success}, 失败: ${stats.failed}, 跳过: ${stats.skipped}`;
         console.log(`[MarkdownBrain] ${finalMsg}`);
         new Notice(finalMsg, 8000);
+    }
+
+    /**
+     * 同步单个文件
+     */
+    private async syncOneFile(file: TFile, stats: SyncStats): Promise<void> {
+        try {
+            const content = await this.app.vault.read(file);
+
+            await this.performSync(file, 'modify');
+            stats.success++;
+        } catch (error) {
+            stats.failed++;
+            console.error(`[MarkdownBrain] ✗ Failed to sync ${file.path}:`, error);
+        }
     }
 
     // MD5 哈希函数（用于检测文件内容变化）

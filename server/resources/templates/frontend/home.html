@@ -57,13 +57,6 @@
         background: #fafafa;
     }
 
-    .doc-item-content {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 1rem;
-    }
-
     .doc-info {
         flex: 1;
         min-width: 0;
@@ -83,11 +76,6 @@
         font-size: 0.8125rem;
         color: var(--text-tertiary);
         margin: 0;
-    }
-
-    .doc-arrow {
-        flex-shrink: 0;
-        color: var(--text-tertiary);
     }
 
     .empty-state {
@@ -134,14 +122,9 @@
         <div class="doc-list">
             {% for doc in documents %}
             <a href="/{{ doc.id }}" class="doc-item internal-link" data-doc-id="{{ doc.id }}">
-                <div class="doc-item-content">
-                    <div class="doc-info">
-                        <h3 class="doc-title">{{ doc.path }}</h3>
-                        <p class="doc-meta">Last modified: {{ doc.mtime }}</p>
-                    </div>
-                    <div class="doc-arrow">
-                        <i data-lucide="chevron-right" class="icon-lg"></i>
-                    </div>
+                <div class="doc-info">
+                    <h3 class="doc-title">{{ doc.path }}</h3>
+                    <p class="doc-meta">Last modified: {{ doc.mtime }}</p>
                 </div>
             </a>
             {% endfor %}

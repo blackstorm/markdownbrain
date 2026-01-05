@@ -5,8 +5,9 @@ help:
 	@echo "MarkdownBrain Development Commands"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev              - 启动后端开发服务器"
-	@echo "  make backend-dev      - 启动后端开发服务器"
+	@echo "  make dev                              - 启动后端开发服务器（默认端口：8080/9090）"
+	@echo "  make dev FRONTEND_PORT=3000           - 使用自定义端口启动"
+	@echo "  make backend-dev                      - 启动后端开发服务器"
 	@echo "  make backend-repl     - 启动后端 REPL（不启动服务器）"
 	@echo "  make frontend-dev     - 启动前端 CSS watch 模式"
 	@echo "  make plugin-dev       - 启动 Obsidian 插件开发模式"
@@ -45,14 +46,20 @@ plugin-install:
 	@cd obsidian-plugin && npm install
 
 # 开发模式
+# 支持自定义端口: make dev FRONTEND_PORT=3000 ADMIN_PORT=4000
+FRONTEND_PORT ?= 4000
+ADMIN_PORT ?= 9090
+
 dev:
 	@echo "Starting backend development server..."
+	@echo "Frontend Port: $(FRONTEND_PORT), Admin Port: $(ADMIN_PORT)"
 	@echo "Use Ctrl+C to stop"
-	@cd server && clojure -M:dev
+	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) ADMIN_PORT=$(ADMIN_PORT) clojure -M:dev
 
 backend-dev:
 	@echo "Starting backend development server..."
-	@cd server && clojure -M:dev
+	@echo "Frontend Port: $(FRONTEND_PORT), Admin Port: $(ADMIN_PORT)"
+	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) ADMIN_PORT=$(ADMIN_PORT) clojure -M:dev
 
 backend-repl:
 	@echo "Starting backend REPL..."

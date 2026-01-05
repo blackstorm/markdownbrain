@@ -1,6 +1,7 @@
 (ns markdownbrain.db-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [markdownbrain.utils :as utils]
+            [markdownbrain.db :as db]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
             [next.jdbc.result-set :as rs]
@@ -379,6 +380,16 @@
                   :original original}
                  {:builder-fn rs/as-unqualified-lower-maps})))
 
+(defn get-document-links [vault-id source-client-id]
+  "获取从指定文档出发的所有链接（测试辅助函数）"
+  (let [results (jdbc/execute! *conn*
+                                ["SELECT * FROM document_links
+                                  WHERE vault_id = ? AND source_client_id = ?
+                                  ORDER BY created_at ASC"
+                                 vault-id source-client-id]
+                                {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
 (defn get-backlinks-with-docs [vault-id client-id]
   "获取反向链接及完整文档信息（测试用例）"
   (let [results (jdbc/execute! *conn*
@@ -390,6 +401,43 @@
                                  vault-id client-id]
                                 {:builder-fn rs/as-unqualified-lower-maps})]
     (map db-keys->clojure results)))
+
+;; Full Sync - 孤儿文档清理辅助函数（测试用）
+
+(defn list-document-client-ids-by-vault
+  "获取 vault 中所有文档的 client_ids（测试用）"
+  [vault-id]
+  (let [results (jdbc/execute! *conn*
+                                ["SELECT client_id FROM documents WHERE vault_id = ?" vault-id]
+                                {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
+(defn delete-documents-not-in-list!
+  "删除不在列表中的文档（测试用）"
+  [vault-id client-ids]
+  (if (empty? client-ids)
+    (jdbc/execute-one! *conn*
+                       ["DELETE FROM documents WHERE vault_id = ?" vault-id]
+                       {:builder-fn rs/as-unqualified-lower-maps})
+    (let [placeholders (str/join "," (repeat (count client-ids) "?"))
+          sql (str "DELETE FROM documents WHERE vault_id = ? AND client_id NOT IN (" placeholders ")")
+          params (into [vault-id] client-ids)]
+      (jdbc/execute-one! *conn*
+                         (into [sql] params)
+                         {:builder-fn rs/as-unqualified-lower-maps}))))
+
+(defn delete-orphan-links!
+  "清理指向不存在文档的链接（测试用）"
+  [vault-id]
+  (jdbc/execute-one! *conn*
+                     ["DELETE FROM document_links
+                       WHERE vault_id = ?
+                       AND NOT EXISTS (
+                         SELECT 1 FROM documents
+                         WHERE documents.vault_id = document_links.vault_id
+                         AND documents.client_id = document_links.target_client_id
+                       )" vault-id]
+                     {:builder-fn rs/as-unqualified-lower-maps}))
 
 (deftest test-get-backlinks-with-docs
   (testing "获取反向链接及完整文档信息"
@@ -439,3 +487,125 @@
           backlinks (get-backlinks-with-docs vault-id client-id)]
 
       (is (= 0 (count backlinks))))))
+
+;;; ============================================================
+;;; 测试孤儿文档清理功能 (Full Sync)
+;;; ============================================================
+
+(deftest test-list-document-client-ids-by-vault
+  (testing "返回 vault 中所有文档的 client_id"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "full-sync.com" "sync-key")
+          doc1-id (utils/generate-uuid)
+          doc2-id (utils/generate-uuid)
+          client1 "client-1"
+          client2 "client-2"]
+      ;; Given: 创建 2 个文档
+      (upsert-document! doc1-id tenant-id vault-id "a.md" client1 "c1" "{}" "h1" "2024-01-01T00:00:00Z")
+      (upsert-document! doc2-id tenant-id vault-id "b.md" client2 "c2" "{}" "h2" "2024-01-01T00:00:00Z")
+
+      ;; When: 查询 client_ids
+      (let [results (list-document-client-ids-by-vault vault-id)
+            client-ids (map :client-id results)]
+
+      ;; Then: 返回 2 个 client_id
+        (is (= 2 (count client-ids)))
+        (is (some #(= client1 %) client-ids))
+        (is (some #(= client2 %) client-ids))))))
+
+(deftest test-delete-documents-not-in-list
+  (testing "删除不在列表中的文档 (集合差集: server \\ client)"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "orphan-cleanup.com" "sync-key")
+          ;; Given: 服务器有 3 个文档 (c1, c2, c3)
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "a.md" "c1" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "b.md" "c2" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "c.md" "c3" "c" "{}" "h" "2024-01-01T00:00:00Z")
+
+          ;; 客户端只有 c1 和 c2
+          client-list ["c1" "c2"]
+
+          before-count (-> (jdbc/execute-one! *conn*
+                                          ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                          {:builder-fn rs/as-unqualified-lower-maps})
+                          :count)
+
+          ;; When: 删除不在列表中的文档
+          _ (delete-documents-not-in-list! vault-id client-list)
+
+          ;; Then: 删除了 c3，只剩 2 个文档
+          after-count (-> (jdbc/execute-one! *conn*
+                                           ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                           {:builder-fn rs/as-unqualified-lower-maps})
+                          :count)
+          remaining (jdbc/execute! *conn*
+                                 ["SELECT client_id FROM documents WHERE vault_id = ? ORDER BY client_id" vault-id]
+                                 {:builder-fn rs/as-unqualified-lower-maps})
+          remaining-ids (map :client_id remaining)]
+
+      (is (= 3 before-count))
+      (is (= 2 after-count))
+      (is (= ["c1" "c2"] remaining-ids)))))
+
+(deftest test-delete-documents-not-in-list-empty
+  (testing "空列表删除所有文档"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "empty-sync.com" "sync-key")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "a.md" "c1" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "b.md" "c2" "c" "{}" "h" "2024-01-01T00:00:00Z")
+
+          before-count (-> (jdbc/execute-one! *conn*
+                                          ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                          {:builder-fn rs/as-unqualified-lower-maps})
+                          :count)
+
+          ;; When: 空列表
+          _ (delete-documents-not-in-list! vault-id [])
+
+          ;; Then: 所有文档被删除
+          after-count (-> (jdbc/execute-one! *conn*
+                                             ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                             {:builder-fn rs/as-unqualified-lower-maps})
+                            :count
+                            )]
+
+      (is (= 2 before-count))
+      (is (= 0 after-count)))))
+
+(deftest test-delete-orphan-links
+  (testing "删除指向不存在文档的链接"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "orphan-links.com" "sync-key")
+
+          ;; Given: doc1 链接到 doc2
+          doc1-id (utils/generate-uuid)
+          doc2-id (utils/generate-uuid)
+          client1 "source-client"
+          client2 "target-client"
+          _ (upsert-document! doc1-id tenant-id vault-id "a.md" client1 "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-document! doc2-id tenant-id vault-id "b.md" client2 "c" "{}" "h" "2024-01-01T00:00:00Z")
+          link-id (utils/generate-uuid)
+          _ (insert-document-link! vault-id client1 client2 "b.md" "link" "text" "[[b]]")
+
+          before-count (count (get-document-links vault-id client1))
+
+          ;; When: 删除 doc2
+          _ (jdbc/execute-one! *conn*
+                             ["DELETE FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client2])
+
+          ;; 清理孤儿链接
+          _ (delete-orphan-links! vault-id)
+
+          ;; Then: 链接被清理
+          after-count (count (get-document-links vault-id client1))]
+
+      (is (= 1 before-count))
+      (is (= 0 after-count)))))

@@ -34,7 +34,8 @@
   [;; Obsidian 同步接口
    ["/obsidian"
     ["/vault/info" {:get sync/vault-info}]
-    ["/sync" {:post sync/sync-file}]]
+    ["/sync" {:post sync/sync-file}]
+    ["/sync/full" {:post sync/sync-full}]]
 
    ;; 管理后台
    ["/admin"

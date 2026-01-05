@@ -153,3 +153,48 @@
     (do
       (log/error "Missing authorization header")
       (resp/unauthorized "Missing authorization header"))))
+
+;; ============================================================
+;; Full Sync - 孤儿文档清理
+;; ============================================================
+
+(defn- delete-and-count
+  "删除孤儿文档并返回删除数量"
+  [vault-id client-ids]
+  (let [result (db/delete-documents-not-in-list! vault-id client-ids)]
+    (log/info "Delete result:" result)
+    (or (:update-count result) 0)))
+
+(defn- execute-full-sync
+  "执行 full-sync 并返回统计信息"
+  [vault body]
+  (let [vault-id (:id vault)
+        client-ids (get-in body [:clientIds])
+        server-count (count (db/list-document-client-ids-by-vault vault-id))
+        client-count (count client-ids)]
+    (log/info "Full sync - Vault:" vault-id "Server docs:" server-count "Client docs:" client-count)
+    (let [deleted (delete-and-count vault-id client-ids)]
+      (when (pos? deleted)
+        (log/info "Deleted" deleted "orphan documents")
+        (db/delete-orphan-links! vault-id))
+      (resp/success {:vault-id vault-id
+                     :action "full-sync"
+                     :client-docs client-count
+                     :deleted-count deleted
+                     :remaining-docs (- server-count deleted)}))))
+
+(defn sync-full
+  "Full sync - 清理孤儿文档
+   客户端发送完整文档列表，服务器删除不在列表中的文档"
+  [request]
+  (log/info "Full sync request received")
+  (if-let [sync-key (parse-sync-key request)]
+    (if-let [vault (validate-sync-key sync-key)]
+      (let [validation-result (validation/validate-full-sync-request (:body-params request))]
+        (if (:valid? validation-result)
+          (execute-full-sync vault (:body-params request))
+          (do
+            (log/error "Full-sync validation failed:" (:errors validation-result))
+            (resp/bad-request (:message validation-result) (:errors validation-result)))))
+      (resp/unauthorized "Invalid sync-key"))
+    (resp/unauthorized "Missing authorization header")))

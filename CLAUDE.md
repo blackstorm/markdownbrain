@@ -253,3 +253,4 @@ For development: Use `/etc/hosts` or Nginx/Caddy to route domains to localhost.
 - **Session Secret**: Generated automatically on first run, stored in config
 - **Default Port**: Backend runs on port 3000 by default
 - **SQLite Location**: Database file is `server/markdownbrain.db` (configurable in config.clj)
+- 测试驱动开发

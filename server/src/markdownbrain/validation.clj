@@ -44,3 +44,30 @@
      :message "Content is required for create/modify actions"}
     {:valid? true
      :data data}))
+
+;; ============================================================
+;; Full Sync 请求验证
+;; ============================================================
+
+(def full-sync-request-schema
+  "Full-sync 请求的 schema
+   客户端发送完整文档列表，服务器清理孤儿文档"
+  [:map
+   [:clientIds [:vector {:min 1} [:string {:min 1}]]]])
+
+(defn validate-full-sync-request
+  "验证 full-sync 请求数据
+   返回 {:valid? true/false :data data :errors errors :message message}"
+  [data]
+  (let [validator (m/validator full-sync-request-schema)
+        valid? (validator data)]
+    (if valid?
+      {:valid? true
+       :data data}
+      (let [explainer (m/explainer full-sync-request-schema)
+            explanation (explainer data)
+            errors (me/humanize explanation)]
+        (log/warn "Full-sync validation failed:" errors)
+        {:valid? false
+         :errors errors
+         :message "clientIds must be a non-empty array of non-empty strings"}))))

@@ -178,14 +178,6 @@
              (str "%" query "%")]))
 
 ;; Document Links 操作
-(defn delete-document-links-by-source! [vault-id source-client-id]
-  "删除指定源文档的所有链接"
-  (log/debug "Deleting all links - vault-id:" vault-id "source-client-id:" source-client-id)
-  (let [result (execute-one! ["DELETE FROM document_links WHERE vault_id = ? AND source_client_id = ?"
-                              vault-id source-client-id])]
-    (log/debug "Delete result:" result)
-    result))
-
 (defn delete-document-link-by-target! [vault-id source-client-id target-client-id]
   "删除指定源文档到指定目标文档的链接"
   (log/debug "Deleting specific link - source:" source-client-id "target:" target-client-id)
@@ -229,11 +221,6 @@
   (execute! ["SELECT * FROM document_links WHERE vault_id = ? AND source_client_id = ?"
              vault-id client-id]))
 
-(defn get-document-backlinks [vault-id client-id]
-  "获取文档的所有反向链接（入链）"
-  (execute! ["SELECT * FROM document_links WHERE vault_id = ? AND target_client_id = ?"
-             vault-id client-id]))
-
 (defn get-backlinks-with-docs [vault-id client-id]
   "获取反向链接及完整文档信息
    返回指向当前文档的所有文档（反向链接）的完整信息
@@ -252,3 +239,46 @@
               WHERE dl.vault_id = ? AND dl.target_client_id = ?
               ORDER BY d.path ASC"
              vault-id client-id]))
+
+;; Full Sync - 孤儿文档清理操作
+;; 算法：集合差集 A \\ B，其中 A = server_docs, B = client_docs
+;; 时间复杂度：O(n) where n = |client_ids|
+
+(defn list-document-client-ids-by-vault
+  "获取 vault 中所有文档的 client_ids
+   时间复杂度：O(n) where n = 文档数量
+   用于 full-sync 时对比服务器与客户端文档列表"
+  [vault-id]
+  (execute! ["SELECT client_id FROM documents WHERE vault_id = ?" vault-id]))
+
+(defn delete-documents-not-in-list!
+  "删除不在列表中的文档 (孤儿文档)
+   使用 SQL NOT IN 子句实现集合差集: server_docs \\ client_ids
+   时间复杂度：O(n) where n = |client_ids|
+   空间复杂度：O(1) - 由数据库引擎处理"
+  [vault-id client-ids]
+  (if (empty? client-ids)
+    (do
+      (log/warn "Full sync empty list - deleting ALL documents in vault:" vault-id)
+      (execute-one! ["DELETE FROM documents WHERE vault_id = ?" vault-id]))
+    (let [placeholders (str/join "," (repeat (count client-ids) "?"))
+          sql (str "DELETE FROM documents WHERE vault_id = ? AND client_id NOT IN (" placeholders ")")
+          params (into [vault-id] client-ids)]
+      (log/info "Deleting orphan documents - vault-id:" vault-id "keeping:" (count client-ids))
+      (execute-one! (into [sql] params)))))
+
+(defn delete-orphan-links!
+  "清理指向不存在文档的链接
+   使用 NOT EXISTS 子查询删除孤立的 document_links 记录
+   时间复杂度：O(m) where m = links count
+   用于 full-sync 后清理指向已删除文档的链接"
+  [vault-id]
+  (log/info "Deleting orphan links - vault-id:" vault-id)
+  (execute-one!
+    ["DELETE FROM document_links
+      WHERE vault_id = ?
+      AND NOT EXISTS (
+        SELECT 1 FROM documents
+        WHERE documents.vault_id = document_links.vault_id
+        AND documents.client_id = document_links.target_client_id
+      )" vault-id]))
