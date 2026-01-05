@@ -1,53 +1,34 @@
-{# 单个文档面板 - 用于 HTMX 滑动面板插入 #}
 <div
-  class="doc h-full grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white border-r border-gray-200"
-  id="doc-{{ doc.id }}"
-  data-doc-id="{{ doc.id }}"
+  class="note grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white sticky top-0"
+  id="note-{{ doc.id }}"
 >
-  <article class="p-4 md:p-8 prose prose-slate max-w-none">
-    <h1 class="text-2xl md:text-3xl font-bold mb-4">{{ doc.title }}</h1>
-
-    {# 渲染的 Markdown 内容 #}
-    <div class="markdown-content">
-      {{ doc.html-content|safe }}
-    </div>
-
-    {# 最后更新时间 #}
-    {% if doc.updated-at %}
-    <p class="text-xs text-gray-400 mt-8 pt-4">
-      Last updated: {{ doc.updated-at }}
-    </p>
-    {% endif %}
+  <article class="p-4 md:p-8 prose">
+    <h1>{{ doc.title }}</h1>
+    {{ doc.html-content|safe }}
+    <p class="last-updated">Last updated: {{ doc.updated-at }}</p>
   </article>
 
-  {# 反向链接区域 - Link to this doc #}
-  {% if backlinks %}
   {% if backlinks|length > 0 %}
-  <div class="p-4 md:p-8 mt-4 border-t border-gray-200">
-    <h2 class="text-lg font-bold text-gray-700 mb-4 px-2">
-      Link to this document
-    </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+  <div class="backlinks-section px-4 md:px-8">
+    <h2 class="backlinks-title">Links to this note</h2>
+    <div class="backlinks-grid">
       {% for backlink in backlinks %}
-      <div class="p-3 bg-white hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors duration-150">
+      <div class="backlink-item">
         <a
           href="/{{ backlink.id }}"
-          class="block backlink-item"
-          data-doc-id="{{ backlink.id }}"
+          hx-get="/{{ backlink.id }}"
+          hx-headers='{"X-From-Note-Id": "{{ doc.id }}"}'
+          hx-target="#notes"
+          hx-swap="beforeend"
         >
-          <p class="text-sm font-semibold text-gray-900 mb-1">
-            {{ backlink.title }}
-          </p>
+          <span class="backlink-title">{{ backlink.title }}</span>
           {% if backlink.description %}
-          <p class="text-xs text-gray-600 line-clamp-2">
-            {{ backlink.description }}
-          </p>
+          <p class="backlink-desc">{{ backlink.description }}</p>
           {% endif %}
         </a>
       </div>
       {% endfor %}
     </div>
   </div>
-  {% endif %}
   {% endif %}
 </div>

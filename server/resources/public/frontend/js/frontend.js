@@ -1,147 +1,73 @@
-/**
- * MarkdownBrain - Andy Matuschak Style Sliding Panels
- *
- * URL Scheme: /doc-a+doc-b+doc-c
- *
- * Features:
- * 1. Click internal links to add new panels on the right
- * 2. Remove all panels to the right when clicking existing doc
- * 3. Update URL with + separated document IDs
- * 4. Prevent duplicate loading of existing docs
- * 5. Highlight existing docs when clicked again
- * 6. SEO-friendly URLs in HTML (/doc-id)
- * 7. HTMX handles history and URL updates automatically
- */
+window.NOTE_WIDTH = 625;
+window.NOTE_OVERLAP = 75;
 
-// Get all visible doc IDs (left to right)
-function getCurrentDocIds() {
-  const docs = document.querySelectorAll('.doc[data-doc-id]');
-  return Array.from(docs).map(doc => doc.dataset.docId);
-}
-
-// Build + separated path from doc IDs
-function buildDocPath(docIds) {
-  if (docIds.length === 0) return '/';
-  return '/' + docIds.join('+');
-}
-
-// Update URL with + separated path
-// Path: /doc-a+doc-b+target-doc
-// Leftmost doc is first, rightmost doc is last
-function updateUrlWithDoc(targetDocId) {
-  const currentIds = getCurrentDocIds();
-  const allIds = [...currentIds, targetDocId];
-  return buildDocPath(allIds);
-}
-
-// Highlight specified doc (visual feedback when already exists)
-function highlightDoc(docId) {
-  const doc = document.getElementById(`doc-${docId}`);
-  if (doc) {
-    doc.style.transition = 'background-color 0.3s ease, transform 0.3s ease';
-    doc.style.backgroundColor = '#fef3c7'; // yellow-100
-    doc.style.transform = 'scale(1.01)';
-
-    // Scroll to the doc
-    doc.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-
-    setTimeout(() => {
-      doc.style.backgroundColor = '';
-      doc.style.transform = 'scale(1)';
-    }, 500);
-  }
-}
-
-// HTMX: Intercept before request
-htmx.on('htmx:beforeRequest', (evt) => {
-  const target = evt.detail.elt;
-
-  // Only handle internal links and backlinks
-  if (!target.classList.contains('internal-link') && !target.classList.contains('backlink-item')) {
+function noteWindowSizeAdjust() {
+  const windowWidth = window.innerWidth;
+  const notesContainer = document.querySelector("#notes");
+  if (!notesContainer) return;
+  
+  const allNotes = notesContainer.querySelectorAll(".note");
+  const noteCount = allNotes.length;
+  
+  if (windowWidth <= NOTE_WIDTH) {
+    allNotes.forEach((note, i) => {
+      note.classList.remove("stacked");
+      if (i < noteCount - 1) {
+        note.classList.add("hidden");
+      } else {
+        note.classList.remove("hidden");
+      }
+      note.style.left = "";
+    });
+    notesContainer.style.width = "";
     return;
   }
-
-  const targetDocId = target.dataset.docId;
-  if (!targetDocId) return;
-
-  // Check if doc is already open
-  const existingDoc = document.getElementById(`doc-${targetDocId}`);
-  if (existingDoc) {
-    // Already exists, cancel request and highlight
-    evt.preventDefault();
-    highlightDoc(targetDocId);
-    return;
-  }
-
-  // Build new path with + separator
-  const newPath = updateUrlWithDoc(targetDocId);
-
-  // Update request path to /doc-id
-  evt.detail.path = `/${targetDocId}`;
-
-  // Set hx-push-url to the new + separated path
-  target.setAttribute('hx-push-url', newPath);
-});
-
-// HTMX: Before swap (remove panels to the right)
-htmx.on('htmx:beforeSwap', (evt) => {
-  const target = evt.detail.target;
-
-  // Ensure target is docs-container
-  if (!target.classList.contains('docs-container')) {
-    return;
-  }
-
-  // Get the last doc (rightmost)
-  const docs = target.querySelectorAll('.doc');
-  const lastDoc = docs[docs.length - 1];
-
-  if (lastDoc) {
-    // Remove all docs to the right of this doc
-    let sibling = lastDoc.nextElementSibling;
-    while (sibling) {
-      const toRemove = sibling;
-      sibling = sibling.nextElementSibling;
-      toRemove.remove();
-    }
-  }
-});
-
-// HTMX: After swap (update browser title and URL)
-htmx.on('htmx:afterSwap', (evt) => {
-  // Update browser title with all doc titles
-  const docs = document.querySelectorAll('.doc');
-  const titles = Array.from(docs)
-    .map(doc => {
-      const h1 = doc.querySelector('article h1');
-      return h1 ? h1.textContent.trim() : '';
-    })
-    .filter(t => t);
-
-  if (titles.length > 0) {
-    document.title = titles.join(' | ');
-  }
-
-  // Initialize HTMX attributes for newly loaded links
-  document.querySelectorAll('.internal-link, .backlink-item').forEach(link => {
-    if (!link.hasAttribute('hx-get')) {
-      link.setAttribute('hx-get', link.getAttribute('href'));
-      link.setAttribute('hx-target', '.docs-container');
-      link.setAttribute('hx-swap', 'beforeend');
+  
+  const fullWidth = noteCount * NOTE_WIDTH;
+  const needsStacking = windowWidth < fullWidth;
+  
+  allNotes.forEach((note, i) => {
+    note.classList.remove("hidden");
+    
+    if (needsStacking) {
+      note.style.left = (i * NOTE_OVERLAP) + "px";
+      note.classList.add("stacked");
+    } else {
+      note.style.left = (i * NOTE_WIDTH) + "px";
+      note.classList.remove("stacked");
     }
   });
 
-  // Reprocess HTMX for new elements
-  if (typeof htmx !== 'undefined') {
-    htmx.process(document.body);
-  }
+  const totalWidth = needsStacking 
+    ? (noteCount - 1) * NOTE_OVERLAP + NOTE_WIDTH
+    : noteCount * NOTE_WIDTH;
+  notesContainer.style.width = Math.max(totalWidth, windowWidth) + "px";
+  
+  requestAnimationFrame(() => {
+    notesContainer.scrollTo({
+      left: notesContainer.scrollWidth,
+      behavior: "smooth",
+    });
+  });
+}
 
-  // Initialize syntax highlighting and math rendering
-  initializeSyntaxHighlighting();
-  initializeMathRendering();
-});
+function highlightNoteById(id) {
+  const note = document.getElementById(id);
+  if (!note) return null;
+  
+  note.style.transition = "background-color 0.3s ease, transform 0.3s ease";
+  note.style.backgroundColor = "lightyellow";
+  note.style.transform = "scale(1.01)";
+  
+  setTimeout(() => {
+    note.style.backgroundColor = "";
+    note.style.transform = "scale(1)";
+  }, 500);
 
-// Initialize syntax highlighting (Highlight.js)
+  note.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  return note;
+}
+
 function initializeSyntaxHighlighting() {
   if (typeof hljs !== 'undefined') {
     document.querySelectorAll('pre code').forEach((block) => {
@@ -152,10 +78,8 @@ function initializeSyntaxHighlighting() {
   }
 }
 
-// Initialize math rendering (KaTeX)
 function initializeMathRendering() {
-  if (typeof renderMathInElement !== 'undefined') {
-    // Render block formulas
+  if (typeof katex !== 'undefined') {
     document.querySelectorAll('.math-block').forEach((el) => {
       if (!el.classList.contains('katex-rendered')) {
         const expr = el.dataset.expr || el.textContent;
@@ -171,7 +95,6 @@ function initializeMathRendering() {
       }
     });
 
-    // Render inline formulas
     document.querySelectorAll('.math-inline').forEach((el) => {
       if (!el.classList.contains('katex-rendered')) {
         const expr = el.dataset.expr || el.textContent;
@@ -189,21 +112,113 @@ function initializeMathRendering() {
   }
 }
 
-// Initialize on page load
+htmx.on("htmx:beforeSwap", (evt) => {
+  const target = evt.target;
+  if (target.className && target.className.includes("note") && target.id && target.id.startsWith("note")) {
+    const targetElement = document.getElementById(target.id);
+    if (targetElement) {
+      let nextSibling = targetElement.nextElementSibling;
+      while (nextSibling) {
+        const elementToRemove = nextSibling;
+        nextSibling = nextSibling.nextElementSibling;
+        elementToRemove.parentNode.removeChild(elementToRemove);
+      }
+    }
+  }
+});
+
+htmx.on("htmx:afterSwap", (evt) => {
+  const notes = document.querySelectorAll(".note");
+  const titles = [];
+  notes.forEach(note => {
+    const h1 = note.querySelector('article h1');
+    if (h1) {
+      titles.push(h1.textContent);
+    }
+  });
+  if (titles.length > 0) {
+    document.title = titles.join(' | ');
+  }
+  
+  initializeSyntaxHighlighting();
+  initializeMathRendering();
+  noteWindowSizeAdjust();
+});
+
+htmx.on("htmx:beforeRequest", (evt) => {
+  const target = evt.target;
+  const href = target.getAttribute("href");
+  if (!href) return;
+  
+  const noteId = href.split('/')[1];
+  if (!noteId) return;
+  
+  const pathSegments = window.location.pathname.split('+').filter(s => s);
+  for (let path of pathSegments) {
+    const cleanPath = path.replace(/^\//, '');
+    if (cleanPath === noteId) {
+      evt.preventDefault();
+      highlightNoteById(`note-${noteId}`);
+      return;
+    }
+  }
+  
+  const currentNote = target.closest('.note');
+  removeNotesAfter(currentNote);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   initializeSyntaxHighlighting();
   initializeMathRendering();
-
-  // Add HTMX attributes to all internal links
-  document.querySelectorAll('.internal-link, .backlink-item').forEach(link => {
-    link.setAttribute('hx-get', link.getAttribute('href'));
-    link.setAttribute('hx-target', '.docs-container');
-    link.setAttribute('hx-swap', 'beforeend');
-    // hx-push-url will be set dynamically in beforeRequest
-  });
-
-  // Reprocess HTMX
-  if (typeof htmx !== 'undefined') {
-    htmx.process(document.body);
-  }
+  noteWindowSizeAdjust();
+  setupInternalLinkInterception();
 });
+
+function setupInternalLinkInterception() {
+  document.body.addEventListener('click', handleInternalLinkClick);
+}
+
+function removeNotesAfter(noteElement) {
+  if (!noteElement) return;
+  let nextSibling = noteElement.nextElementSibling;
+  while (nextSibling) {
+    const toRemove = nextSibling;
+    nextSibling = nextSibling.nextElementSibling;
+    toRemove.remove();
+  }
+}
+
+function handleInternalLinkClick(e) {
+  const link = e.target.closest('a.internal-link');
+  if (!link) return;
+  
+  e.preventDefault();
+  
+  const href = link.getAttribute('href');
+  if (!href) return;
+  
+  const noteId = href.replace(/^\//, '').split('/')[0];
+  if (!noteId) return;
+  
+  const pathSegments = window.location.pathname.split('+').filter(s => s && s !== '/');
+  for (let path of pathSegments) {
+    const cleanPath = path.replace(/^\//, '');
+    if (cleanPath === noteId) {
+      highlightNoteById(`note-${noteId}`);
+      return;
+    }
+  }
+  
+  const currentNote = link.closest('.note');
+  removeNotesAfter(currentNote);
+  
+  const fromNoteId = currentNote?.id?.replace('note-', '');
+  
+  htmx.ajax('GET', `/${noteId}`, {
+    target: '#notes',
+    swap: 'beforeend',
+    headers: fromNoteId ? { 'X-From-Note-Id': fromNoteId } : {}
+  });
+}
+
+window.addEventListener('resize', noteWindowSizeAdjust);

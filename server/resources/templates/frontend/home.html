@@ -1,139 +1,37 @@
 {% extends "templates/frontend/base.html" %}
 
-{% block title %}{{ vault.name }} - MarkdownBrain{% endblock %}
+{% block title %}{{ vault.name }} - Documents{% endblock %}
 
 {% block content %}
-<style>
-    .site-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 3rem 1.5rem;
-    }
+<div class="max-w-4xl mx-auto p-6 md:p-12">
+  <header class="pb-6 border-b border-gray-200 mb-8">
+    <h1 class="text-3xl font-semibold text-gray-900 mb-2">{{ vault.name }}</h1>
+    <p class="text-sm text-gray-500">{{ vault.domain }}</p>
+  </header>
 
-    .site-header {
-        padding-bottom: 2rem;
-        border-bottom: 1px solid var(--border-color);
-        margin-bottom: 2rem;
-    }
+  <section>
+    <h2 class="text-xl font-semibold text-gray-900 mb-6">Documents</h2>
 
-    .site-title {
-        font-size: 2rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 0.5rem;
-        line-height: 1.2;
-    }
-
-    .site-domain {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin: 0;
-    }
-
-    .section-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 1.5rem;
-    }
-
-    .doc-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .doc-item {
-        display: block;
-        padding: 1rem 1.25rem;
-        border: 1px solid var(--border-color);
-        background: white;
-        text-decoration: none;
-        color: var(--text-primary);
-    }
-
-    .doc-item:hover {
-        border-color: var(--border-hover);
-        background: #fafafa;
-    }
-
-    .doc-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .doc-title {
-        font-size: 0.9375rem;
-        font-weight: 500;
-        color: var(--text-primary);
-        margin: 0 0 0.25rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .doc-meta {
-        font-size: 0.8125rem;
-        color: var(--text-tertiary);
-        margin: 0;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 4rem 1rem;
-    }
-
-    .empty-icon {
-        width: 4rem;
-        height: 4rem;
-        margin: 0 auto 1rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid var(--border-color);
-    }
-
-    .empty-state h3 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        color: var(--text-primary);
-        margin: 0 0 0.5rem;
-    }
-
-    .empty-state p {
-        font-size: 0.875rem;
-        color: var(--text-secondary);
-        margin: 0;
-    }
-</style>
-
-<div class="site-container">
-    <!-- Site Header -->
-    <header class="site-header">
-        <h1 class="site-title">{{ vault.name }}</h1>
-        <p class="site-domain">{{ vault.domain }}</p>
-    </header>
-
-    <!-- Documents Section -->
-    <section>
-        <h2 class="section-title">Documents</h2>
-
-        {% if documents %}
-        <div class="doc-list">
-            {% for doc in documents %}
-            <a href="/{{ doc.id }}" class="doc-item internal-link" data-doc-id="{{ doc.id }}">
-                <div class="doc-info">
-                    <h3 class="doc-title">{{ doc.path }}</h3>
-                    <p class="doc-meta">Last modified: {{ doc.mtime }}</p>
-                </div>
-            </a>
-            {% endfor %}
-        </div>
-        {% else %}
-        {% with icon="file-text" title="No documents" message="Please use the Obsidian plugin to sync your notes" %}
-          {% include "templates/components/empty-state.html" %}
-        {% endwith %}
-        {% endif %}
-    </section>
+    {% if documents %}
+    <div class="flex flex-col gap-2">
+      {% for doc in documents %}
+      <a href="/{{ doc.id }}" class="block p-4 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors">
+        <h3 class="text-base font-medium text-gray-900 mb-1">{{ doc.path }}</h3>
+        <p class="text-sm text-gray-500">Last modified: {{ doc.mtime }}</p>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-16">
+      <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center border border-gray-200 rounded-lg">
+        <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">No documents</h3>
+      <p class="text-sm text-gray-500">Please use the Obsidian plugin to sync your notes</p>
+    </div>
+    {% endif %}
+  </section>
 </div>
 {% endblock %}

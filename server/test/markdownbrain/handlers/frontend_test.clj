@@ -54,7 +54,7 @@
           response (frontend/get-doc request)]
       (is (= 404 (:status response)))
       (is (string? (:body response)))
-      (is (clojure.string/includes? (:body response) "未找到站点"))))
+      (is (clojure.string/includes? (:body response) "Site not found"))))
 
   (testing "Missing Host header"
     (let [request (mock/request :get "/")

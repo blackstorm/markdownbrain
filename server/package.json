@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "latest",
+    "@tailwindcss/typography": "^0.5.19",
     "tailwindcss": "latest"
   },
   "dependencies": {

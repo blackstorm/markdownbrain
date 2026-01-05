@@ -1,36 +1,31 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}MarkdownBrain{% endblock %}</title>
-
-    {# SEO: Canonical URL - 指向最后一篇文档 #}
-    {% if docs %}
-    {% with last_doc=docs|last %}
-    <link rel="canonical" href="https://{{ vault.domain }}/{{ last_doc.doc.id }}">
-    {% endwith %}
-    {% endif %}
-
-    {# Frontend CSS #}
-    <link rel="stylesheet" href="/frontend/css/frontend.css">
-
-    {# Highlight.js - Code highlighting #}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-
-    {# KaTeX - Math formula rendering #}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-
-    {# HTMX - Dynamic interactions #}
-    <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
-
-    {# Frontend JS - Andy Matuschak sliding panels #}
-    <script src="/frontend/js/frontend.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}MarkdownBrain{% endblock %}</title>
+  <meta name="description" content="{{ description|default:vault.name }}">
+  <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/frontend/css/frontend.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
 </head>
-<body class="min-h-screen max-h-screen flex flex-col">
-    {% include "templates/frontend/components/nav.html" %}
+<body>
+  <div id="app">
+    <header class="navbar">
+      <div class="navbar-content px-4 md:px-8">
+        <div class="navbar-left">
+          <a href="/" class="navbar-logo">{{ vault.name|default:"MarkdownBrain" }}</a>
+        </div>
+        <div class="navbar-right">
+          <small class="navbar-link">Powered by <a href="https://github.com/blackstorm/markdownbrain" target="_blank">MarkdownBrain</a></small>
+        </div>
+      </div>
+    </header>
     {% block content %}{% endblock %}
+  </div>
+  <script src="/frontend/js/frontend.js"></script>
 </body>
 </html>
