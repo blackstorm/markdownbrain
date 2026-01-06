@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS vaults (
   domain TEXT UNIQUE,
   sync_key TEXT UNIQUE NOT NULL,
   client_type TEXT NOT NULL DEFAULT 'obsidian',  -- 客户端类型: obsidian, logseq, notion 等
-  root_doc_id TEXT,                              -- 首页展示的根文档 ID (document.client_id)
+  root_note_id TEXT,                              -- 首页展示的根笔记 ID (notes.client_id)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS vaults (
 CREATE INDEX IF NOT EXISTS idx_vaults_domain ON vaults(domain);
 CREATE INDEX IF NOT EXISTS idx_vaults_sync_key ON vaults(sync_key);
 
--- Documents (markdown files)
-CREATE TABLE IF NOT EXISTS documents (
+-- Notes (markdown files)
+CREATE TABLE IF NOT EXISTS notes (
   id TEXT PRIMARY KEY,                  -- 服务器端 UUID
   tenant_id TEXT NOT NULL,
   vault_id TEXT NOT NULL,
@@ -51,18 +51,18 @@ CREATE TABLE IF NOT EXISTS documents (
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_documents_vault ON documents(vault_id);
-CREATE INDEX IF NOT EXISTS idx_documents_client_id ON documents(vault_id, client_id);
-CREATE INDEX IF NOT EXISTS idx_documents_path ON documents(vault_id, path);
-CREATE INDEX IF NOT EXISTS idx_documents_mtime ON documents(mtime);
+CREATE INDEX IF NOT EXISTS idx_notes_vault ON notes(vault_id);
+CREATE INDEX IF NOT EXISTS idx_notes_client_id ON notes(vault_id, client_id);
+CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(vault_id, path);
+CREATE INDEX IF NOT EXISTS idx_notes_mtime ON notes(mtime);
 
--- Document links (双向链接关系)
-CREATE TABLE IF NOT EXISTS document_links (
+-- Note links (双向链接关系)
+CREATE TABLE IF NOT EXISTS note_links (
   id TEXT PRIMARY KEY,
   vault_id TEXT NOT NULL,
-  source_client_id TEXT NOT NULL,    -- 源文档的 client_id
-  target_client_id TEXT NOT NULL,    -- 目标文档的 client_id
-  target_path TEXT,                  -- 目标路径（用于显示，可能不存在对应文档）
+  source_client_id TEXT NOT NULL,    -- 源笔记的 client_id
+  target_client_id TEXT NOT NULL,    -- 目标笔记的 client_id
+  target_path TEXT,                  -- 目标路径（用于显示，可能不存在对应笔记）
   link_type TEXT NOT NULL,           -- 链接类型: 'link' 或 'embed'
   display_text TEXT,                 -- 显示文本
   original TEXT,                     -- 原始链接文本
@@ -72,6 +72,6 @@ CREATE TABLE IF NOT EXISTS document_links (
 );
 
 -- 为链接查询创建索引
-CREATE INDEX IF NOT EXISTS idx_links_source ON document_links(vault_id, source_client_id);
-CREATE INDEX IF NOT EXISTS idx_links_target ON document_links(vault_id, target_client_id);
-CREATE INDEX IF NOT EXISTS idx_links_both ON document_links(vault_id, source_client_id, target_client_id);
+CREATE INDEX IF NOT EXISTS idx_links_source ON note_links(vault_id, source_client_id);
+CREATE INDEX IF NOT EXISTS idx_links_target ON note_links(vault_id, target_client_id);
+CREATE INDEX IF NOT EXISTS idx_links_both ON note_links(vault_id, source_client_id, target_client_id);

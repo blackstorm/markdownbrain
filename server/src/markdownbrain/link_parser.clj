@@ -9,7 +9,7 @@
    设计原则：
    - 纯函数，无副作用
    - 每个函数只做一件事
-   - 输出格式可直接写入 document_links 表"
+    - 输出格式可直接写入 note_links 表"
   (:require [clojure.string :as str]))
 
 ;;; ============================================================
@@ -89,48 +89,41 @@
       (str/split #"/")
       last))
 
-(defn- build-document-index
-  "构建文档索引用于快速查找
-   
-   返回:
-   {:by-full-path {\"folder/note a\" {:client-id ...}}
-    :by-filename {\"note a\" {:client-id ...}}}"
-  [documents]
-  {:by-full-path (into {} (map (fn [doc]
-                                 [(normalize-path (:path doc)) doc])
-                               documents))
-   :by-filename (into {} (map (fn [doc]
-                                [(extract-filename (:path doc)) doc])
-                              documents))})
+(defn- build-note-index
+  [notes]
+  {:by-full-path (into {} (map (fn [note]
+                                 [(normalize-path (:path note)) note])
+                               notes))
+   :by-filename (into {} (map (fn [note]
+                                [(extract-filename (:path note)) note])
+                              notes))})
 
-(defn- find-document
+(defn- find-note
   "查找文档：先精确匹配完整路径，再按文件名匹配（Obsidian 风格）"
-  [path doc-index]
+  [path note-index]
   (let [normalized (normalize-path path)
         filename (extract-filename path)]
     (or
-     ;; 1. 精确匹配完整路径
-     (get-in doc-index [:by-full-path normalized])
-     ;; 2. Obsidian 风格：只用文件名匹配
-     (get-in doc-index [:by-filename filename]))))
+     (get-in note-index [:by-full-path normalized])
+     (get-in note-index [:by-filename filename]))))
 
 (defn resolve-links
   "将提取的链接解析到 target_client_id
    
    输入: 
    - links: extract-links 的输出
-   - documents: vault 中的文档列表 [{:client-id :path} ...]
+    - notes: vault 中的笔记列表 [{:client-id :path} ...]
    
    输出: [{:target-client-id \"...\" 或 nil
            :target-path \"...\"
            :link-type \"link\"/\"embed\"
            :display-text \"...\"
            :original \"[[...]]\"} ...]"
-  [links documents]
-  (let [doc-index (build-document-index documents)]
+  [links notes]
+  (let [note-index (build-note-index notes)]
     (mapv (fn [link]
-            (let [target-doc (find-document (:path link) doc-index)]
-              {:target-client-id (:client-id target-doc)
+            (let [target-note (find-note (:path link) note-index)]
+              {:target-client-id (:client-id target-note)
                :target-path (:path link)
                :link-type (:link-type link)
                :display-text (:display link)

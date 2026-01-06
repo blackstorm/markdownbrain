@@ -84,11 +84,11 @@
   ([tenant-id domain]
    (create-test-vault! tenant-id "Test Vault" domain)))
 
-(defn create-test-document!
-  "创建测试文档"
+(defn create-test-note!
+  "创建测试笔记"
   [tenant-id vault-id path content]
-  (let [doc-id (utils/generate-uuid)]
-    (db/upsert-document! doc-id tenant-id vault-id path content "{}"
+  (let [note-id (utils/generate-uuid)]
+    (db/upsert-note! note-id tenant-id vault-id path content "{}"
                         (str "hash-" (utils/generate-uuid))
                         "2025-12-21T10:00:00Z")
-    doc-id))
+    note-id))

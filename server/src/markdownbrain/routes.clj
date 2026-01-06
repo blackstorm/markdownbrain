@@ -10,7 +10,6 @@
             [markdownbrain.handlers.frontend :as frontend]
             [markdownbrain.middleware :as middleware]))
 
-;; 自定义 Muuntaja 实例，确保 UTF-8 编码
 (def muuntaja-instance
   (m/create
    (assoc-in
@@ -18,26 +17,15 @@
     [:formats "application/json" :decoder-opts]
     {:decode-key-fn true})))
 
-;; Frontend 路由 (端口 8080)
-;; 仅包含：公开的文档展示
-;; URL 方案:
-;; - / : 根路径，重定向到 /root-doc-id 或显示文档列表
-;; - /{*path} : 主路由，支持 + 分隔符叠加
-;;   例如: /doc-a, /doc-a+doc-b, /doc-a+doc-b+doc-c
-;;   HTMX 请求时返回 HTML 片段，普通请求返回完整页面
 (def frontend-routes
-  [["/{*path}" {:get frontend/get-doc}]])
+  [["/{*path}" {:get frontend/get-note}]])
 
-;; Admin 路由 (端口 9090)
-;; 包含：管理后台、登录、Vault 管理、Obsidian 同步 API
 (def admin-routes
-  [;; Obsidian 同步接口
-   ["/obsidian"
+  [["/obsidian"
     ["/vault/info" {:get sync/vault-info}]
     ["/sync" {:post sync/sync-file}]
     ["/sync/full" {:post sync/sync-full}]]
 
-   ;; 管理后台
    ["/admin"
     ["" {:middleware [middleware/wrap-auth]
          :get admin/admin-home}]
@@ -53,14 +41,13 @@
     ["/vaults/:id" {:middleware [middleware/wrap-auth]
                     :put admin/update-vault
                     :delete admin/delete-vault}]
-    ["/vaults/:id/documents" {:middleware [middleware/wrap-auth]
-                              :get admin/search-vault-documents}]
-    ["/vaults/:id/root-doc" {:middleware [middleware/wrap-auth]
-                             :put admin/update-vault-root-doc}]
-    ["/vaults/:id/root-doc-selector" {:middleware [middleware/wrap-auth]
-                                      :get admin/get-root-doc-selector}]]])
+    ["/vaults/:id/notes" {:middleware [middleware/wrap-auth]
+                          :get admin/search-vault-notes}]
+    ["/vaults/:id/root-note" {:middleware [middleware/wrap-auth]
+                              :put admin/update-vault-root-note}]
+    ["/vaults/:id/root-note-selector" {:middleware [middleware/wrap-auth]
+                                       :get admin/get-root-note-selector}]]])
 
-;; Frontend App (8080)
 (def frontend-app
   (ring/ring-handler
    (ring/router frontend-routes
@@ -69,7 +56,6 @@
                                      muuntaja/format-middleware]}})
    (ring/create-default-handler)))
 
-;; Admin App (9090)
 (def admin-app
   (ring/ring-handler
    (ring/router admin-routes

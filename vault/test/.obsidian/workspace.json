@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "什么是 MarkdownBrain？.md",
+                "file": "自托管方案.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "什么是 MarkdownBrain？"
+              "title": "自托管方案"
             }
           }
         ]
@@ -185,8 +185,8 @@
   },
   "active": "68d9ec601f93ec4f",
   "lastOpenFiles": [
-    "自托管方案.md",
     "什么是 MarkdownBrain？.md",
+    "自托管方案.md",
     "新的名字.md",
     "创建新的笔记.md",
     "未命名 1.md",

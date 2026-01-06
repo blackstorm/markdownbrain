@@ -1,0 +1,20 @@
+{% if notes|not-empty %}
+<select name="rootNoteId"
+        class="home-page-select"
+        hx-put="/admin/vaults/{{vault-id}}/root-note"
+        hx-trigger="change"
+        hx-swap="none"
+        hx-on::after-request="if(event.detail.successful) showNotification('Homepage updated', 'success'); else showNotification('Update failed', 'error');">
+  <option value="" {% if not root-note-id %}selected{% endif %}>Select note</option>
+  {% for note in notes %}
+  <option value="{{note.client-id}}" {% if note.client-id = root-note-id %}selected{% endif %}>
+    {{note.path}}
+  </option>
+  {% endfor %}
+</select>
+{% else %}
+<div class="warning-box">
+  <i data-lucide="alert-triangle" class="icon-xs shrink-0"></i>
+  <span>No notes synced yet. Please use the Obsidian plugin to sync files before setting a homepage.</span>
+</div>
+{% endif %}

@@ -258,7 +258,7 @@
   (let [href (if anchor
                (format "/%s#%s" target-client-id anchor)
                (format "/%s" target-client-id))]
-    (format "<a href=\"%s\" class=\"internal-link\" data-doc-id=\"%s\">%s</a>"
+    (format "<a href=\"%s\" class=\"internal-link\" data-note-id=\"%s\">%s</a>"
             href
             target-client-id
             (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"}))))
@@ -277,7 +277,7 @@
    输入: 目标 client-id、显示文本
    输出: HTML 字符串"
   [target-client-id display-text]
-  (format "<img src=\"/documents/%s/content\" alt=\"%s\" class=\"obsidian-embed\">"
+  (format "<img src=\"/notes/%s/content\" alt=\"%s\" class=\"obsidian-embed\">"
           target-client-id
           (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})))
 
@@ -292,7 +292,7 @@
    - [[链接#锚点]] -> 带锚点的链接
    - ![[图片]] -> 图片嵌入
    
-   注意: links 参数来自 document_links 表，只包含已解析的有效链接
+    注意: links 参数来自 note_links 表，只包含已解析的有效链接
          不在列表中的链接将显示为 broken link"
   [content links]
   (let [link-index (build-link-index links)

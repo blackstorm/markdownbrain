@@ -38,7 +38,7 @@
   (jdbc/execute! conn
                  ["CREATE INDEX idx_vaults_sync_key ON vaults(sync_key)"])
   (jdbc/execute! conn
-                 ["CREATE TABLE documents (
+                 ["CREATE TABLE notes (
                      id TEXT PRIMARY KEY,
                      tenant_id TEXT NOT NULL,
                      vault_id TEXT NOT NULL,
@@ -54,13 +54,13 @@
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
                      FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_documents_vault ON documents(vault_id)"])
+                 ["CREATE INDEX idx_notes_vault ON notes(vault_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_documents_client_id ON documents(vault_id, client_id)"])
+                 ["CREATE INDEX idx_notes_client_id ON notes(vault_id, client_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_documents_mtime ON documents(mtime)"])
+                 ["CREATE INDEX idx_notes_mtime ON notes(mtime)"])
   (jdbc/execute! conn
-                 ["CREATE TABLE document_links (
+                 ["CREATE TABLE note_links (
                      id TEXT PRIMARY KEY,
                      vault_id TEXT NOT NULL,
                      source_client_id TEXT NOT NULL,
@@ -73,9 +73,9 @@
                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                      FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_links_source ON document_links(vault_id, source_client_id)"])
+                 ["CREATE INDEX idx_links_source ON note_links(vault_id, source_client_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_links_target ON document_links(vault_id, target_client_id)"]))
+                 ["CREATE INDEX idx_links_target ON note_links(vault_id, target_client_id)"]))
 
 (defn setup-test-db [f]
   (let [db (jdbc/get-datasource {:dbtype "sqlite" :dbname ":memory:"})
@@ -150,15 +150,15 @@
   ;; Return the created vault
   (get-vault-by-id id))
 
-(defn get-document [id]
-  (execute-one! ["SELECT * FROM documents WHERE id = ?" id]))
+(defn get-note [id]
+  (execute-one! ["SELECT * FROM notes WHERE id = ?" id]))
 
-(defn get-document-by-path [vault-id path]
-  (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
+(defn get-note-by-path [vault-id path]
+  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND path = ?" vault-id path]))
 
-(defn upsert-document! [id tenant-id vault-id path client-id content metadata hash mtime]
+(defn upsert-note! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!
-   ["INSERT INTO documents (id, tenant_id, vault_id, path, client_id, content, metadata, hash, mtime)
+   ["INSERT INTO notes (id, tenant_id, vault_id, path, client_id, content, metadata, hash, mtime)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(vault_id, client_id) DO UPDATE SET
        path = excluded.path,
@@ -168,14 +168,14 @@
        mtime = excluded.mtime,
        updated_at = CURRENT_TIMESTAMP"
     id tenant-id vault-id path client-id content metadata hash mtime])
-  ;; Return the document
-  (get-document-by-path vault-id path))
+  ;; Return the note
+  (get-note-by-path vault-id path))
 
-(defn delete-document! [vault-id path]
-  (execute-one! ["DELETE FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
+(defn delete-note! [vault-id path]
+  (execute-one! ["DELETE FROM notes WHERE vault_id = ? AND path = ?" vault-id path]))
 
-(defn list-documents-by-vault [vault-id]
-  (jdbc/execute! *conn* ["SELECT * FROM documents WHERE vault_id = ?" vault-id]
+(defn list-notes-by-vault [vault-id]
+  (jdbc/execute! *conn* ["SELECT * FROM notes WHERE vault_id = ?" vault-id]
                  {:builder-fn rs/as-unqualified-lower-maps}))
 
 ;; Tenant 测试
@@ -279,97 +279,97 @@
       (is (= 2 (count results)))
       (is (every? map? results)))))
 
-;; Document 测试
-(deftest test-upsert-document
-  (testing "Insert new document"
+;; Note 测试
+(deftest test-upsert-note
+  (testing "Insert new note"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-insert.com" sync-key)
-          doc-id (utils/generate-uuid)
+          note-id (utils/generate-uuid)
           path "test.md"
           client-id "test-client-1"
           content "# Test"
           metadata "{\"tags\":[]}"
           hash "abc123"
           mtime "2025-12-21T10:00:00Z"
-          result (upsert-document! doc-id tenant-id vault-id path client-id content metadata hash mtime)]
+          result (upsert-note! note-id tenant-id vault-id path client-id content metadata hash mtime)]
       (is (map? result))
       (is (= path (:path result)))))
 
-  (testing "Update existing document"
+  (testing "Update existing note"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-update.com" sync-key)
-          doc-id (utils/generate-uuid)
+          note-id (utils/generate-uuid)
           client-id "test-client-update"
           path "test.md"
-          _ (upsert-document! doc-id tenant-id vault-id path client-id "# Old" "{}" "old" "2025-12-21T10:00:00Z")
+          _ (upsert-note! note-id tenant-id vault-id path client-id "# Old" "{}" "old" "2025-12-21T10:00:00Z")
           new-content "# New"
-          result (upsert-document! (utils/generate-uuid) tenant-id vault-id path client-id new-content "{}" "new" "2025-12-21T11:00:00Z")
-          fetched (get-document-by-path vault-id path)]
+          result (upsert-note! (utils/generate-uuid) tenant-id vault-id path client-id new-content "{}" "new" "2025-12-21T11:00:00Z")
+          fetched (get-note-by-path vault-id path)]
       (is (= new-content (:content fetched))))))
 
-(deftest test-delete-document
-  (testing "Delete document"
+(deftest test-delete-note
+  (testing "Delete note"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-delete.com" sync-key)
-          doc-id (utils/generate-uuid)
+          note-id (utils/generate-uuid)
           client-id "test-client-to-delete"
           path "to-delete.md"
-          _ (upsert-document! doc-id tenant-id vault-id path client-id "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
-          _ (delete-document! vault-id path)
-          result (get-document-by-path vault-id path)]
+          _ (upsert-note! note-id tenant-id vault-id path client-id "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
+          _ (delete-note! vault-id path)
+          result (get-note-by-path vault-id path)]
       (is (nil? result)))))
 
-(deftest test-list-documents
-  (testing "List documents by vault"
+(deftest test-list-notes
+  (testing "List notes by vault"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-list.com" sync-key)
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" "client-1" "# Doc 1" "{}" "hash1" "2025-12-21T10:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" "client-2" "# Doc 2" "{}" "hash2" "2025-12-21T11:00:00Z")
-          results (list-documents-by-vault vault-id)]
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "note1.md" "client-1" "# Note 1" "{}" "hash1" "2025-12-21T10:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "note2.md" "client-2" "# Note 2" "{}" "hash2" "2025-12-21T11:00:00Z")
+          results (list-notes-by-vault vault-id)]
       (is (= 2 (count results)))
       (is (every? #(contains? % :path) results)))))
 
-(deftest test-get-document
-  (testing "Get document by ID"
+(deftest test-get-note
+  (testing "Get note by ID"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "blog-get.com" sync-key)
-          doc-id (utils/generate-uuid)
+          note-id (utils/generate-uuid)
           client-id "test-client-get"
           path "test.md"
-          content "# Test Document"
-          _ (upsert-document! doc-id tenant-id vault-id path client-id content "{}" "hash" "2025-12-21T10:00:00Z")
-          result (get-document doc-id)]
+          content "# Test Note"
+          _ (upsert-note! note-id tenant-id vault-id path client-id content "{}" "hash" "2025-12-21T10:00:00Z")
+          result (get-note note-id)]
       (is (map? result))
-      (is (= doc-id (:id result)))
+      (is (= note-id (:id result)))
       (is (= content (:content result)))))
 
-  (testing "Get non-existent document"
-    (let [result (get-document "non-existent-id")]
+  (testing "Get non-existent note"
+    (let [result (get-note "non-existent-id")]
       (is (nil? result)))))
 
 ;;; ============================================================
 ;;; 测试反向链接功能
 ;;; ============================================================
 
-(defn insert-document-link! [vault-id source-client-id target-client-id target-path link-type display-text original]
-  "插入文档链接（测试辅助函数）"
+(defn insert-note-link! [vault-id source-client-id target-client-id target-path link-type display-text original]
+  "插入笔记链接（测试辅助函数）"
   (let [id (utils/generate-uuid)]
-    (sql/insert! *conn* :document_links
+    (sql/insert! *conn* :note_links
                  {:id id
                   :vault_id vault-id
                   :source_client_id source-client-id
@@ -380,134 +380,134 @@
                   :original original}
                  {:builder-fn rs/as-unqualified-lower-maps})))
 
-(defn get-document-links [vault-id source-client-id]
-  "获取从指定文档出发的所有链接（测试辅助函数）"
+(defn get-note-links [vault-id source-client-id]
+  "获取从指定笔记出发的所有链接（测试辅助函数）"
   (let [results (jdbc/execute! *conn*
-                                ["SELECT * FROM document_links
+                                ["SELECT * FROM note_links
                                   WHERE vault_id = ? AND source_client_id = ?
                                   ORDER BY created_at ASC"
                                  vault-id source-client-id]
                                 {:builder-fn rs/as-unqualified-lower-maps})]
     (map db-keys->clojure results)))
 
-(defn get-backlinks-with-docs [vault-id client-id]
-  "获取反向链接及完整文档信息（测试用例）"
+(defn get-backlinks-with-notes [vault-id client-id]
+  "获取反向链接及完整笔记信息（测试用例）"
   (let [results (jdbc/execute! *conn*
                                 ["SELECT d.*, dl.display_text, dl.link_type
-                                  FROM document_links dl
-                                  INNER JOIN documents d ON d.vault_id = dl.vault_id AND d.client_id = dl.source_client_id
+                                  FROM note_links dl
+                                  INNER JOIN notes d ON d.vault_id = dl.vault_id AND d.client_id = dl.source_client_id
                                   WHERE dl.vault_id = ? AND dl.target_client_id = ?
                                   ORDER BY d.path ASC"
                                  vault-id client-id]
                                 {:builder-fn rs/as-unqualified-lower-maps})]
     (map db-keys->clojure results)))
 
-;; Full Sync - 孤儿文档清理辅助函数（测试用）
+;; Full Sync - 孤儿笔记清理辅助函数（测试用）
 
-(defn list-document-client-ids-by-vault
-  "获取 vault 中所有文档的 client_ids（测试用）"
+(defn list-note-client-ids-by-vault
+  "获取 vault 中所有笔记的 client_ids（测试用）"
   [vault-id]
   (let [results (jdbc/execute! *conn*
-                                ["SELECT client_id FROM documents WHERE vault_id = ?" vault-id]
+                                ["SELECT client_id FROM notes WHERE vault_id = ?" vault-id]
                                 {:builder-fn rs/as-unqualified-lower-maps})]
     (map db-keys->clojure results)))
 
-(defn delete-documents-not-in-list!
-  "删除不在列表中的文档（测试用）"
+(defn delete-notes-not-in-list!
+  "删除不在列表中的笔记（测试用）"
   [vault-id client-ids]
   (if (empty? client-ids)
     (jdbc/execute-one! *conn*
-                       ["DELETE FROM documents WHERE vault_id = ?" vault-id]
+                       ["DELETE FROM notes WHERE vault_id = ?" vault-id]
                        {:builder-fn rs/as-unqualified-lower-maps})
     (let [placeholders (str/join "," (repeat (count client-ids) "?"))
-          sql (str "DELETE FROM documents WHERE vault_id = ? AND client_id NOT IN (" placeholders ")")
+          sql (str "DELETE FROM notes WHERE vault_id = ? AND client_id NOT IN (" placeholders ")")
           params (into [vault-id] client-ids)]
       (jdbc/execute-one! *conn*
                          (into [sql] params)
                          {:builder-fn rs/as-unqualified-lower-maps}))))
 
 (defn delete-orphan-links!
-  "清理指向不存在文档的链接（测试用）"
+  "清理指向不存在笔记的链接（测试用）"
   [vault-id]
   (jdbc/execute-one! *conn*
-                     ["DELETE FROM document_links
+                     ["DELETE FROM note_links
                        WHERE vault_id = ?
                        AND NOT EXISTS (
-                         SELECT 1 FROM documents
-                         WHERE documents.vault_id = document_links.vault_id
-                         AND documents.client_id = document_links.target_client_id
+                         SELECT 1 FROM notes
+                         WHERE notes.vault_id = note_links.vault_id
+                         AND notes.client_id = note_links.target_client_id
                        )" vault-id]
                      {:builder-fn rs/as-unqualified-lower-maps}))
 
-(deftest test-get-backlinks-with-docs
-  (testing "获取反向链接及完整文档信息"
+(deftest test-get-backlinks-with-notes
+  (testing "获取反向链接及完整笔记信息"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "backlinks.com" sync-key)
 
-          ;; 创建文档
-          target-doc-id (utils/generate-uuid)
+          ;; 创建笔记
+          target-note-id (utils/generate-uuid)
           target-client-id "target-client-123"
-          _ (upsert-document! target-doc-id tenant-id vault-id "Target.md" target-client-id "# Target Note" "{}" "hash1" "2025-12-21T10:00:00Z")
+          _ (upsert-note! target-note-id tenant-id vault-id "Target.md" target-client-id "# Target Note" "{}" "hash1" "2025-12-21T10:00:00Z")
 
-          source-doc1-id (utils/generate-uuid)
+          source-note1-id (utils/generate-uuid)
           source-client-id1 "source-client-1"
-          _ (upsert-document! source-doc1-id tenant-id vault-id "Source A.md" source-client-id1 "# Source A" "{}" "hash2" "2025-12-21T11:00:00Z")
+          _ (upsert-note! source-note1-id tenant-id vault-id "Source A.md" source-client-id1 "# Source A" "{}" "hash2" "2025-12-21T11:00:00Z")
 
-          source-doc2-id (utils/generate-uuid)
+          source-note2-id (utils/generate-uuid)
           source-client-id2 "source-client-2"
-          _ (upsert-document! source-doc2-id tenant-id vault-id "Source B.md" source-client-id2 "# Source B" "{}" "hash3" "2025-12-21T12:00:00Z")
+          _ (upsert-note! source-note2-id tenant-id vault-id "Source B.md" source-client-id2 "# Source B" "{}" "hash3" "2025-12-21T12:00:00Z")
 
           ;; 创建链接：Source A -> Target, Source B -> Target
-          _ (insert-document-link! vault-id source-client-id1 target-client-id "Target.md" "link" "Target" "[[Target]]")
-          _ (insert-document-link! vault-id source-client-id2 target-client-id "Target.md" "link" "Target Note" "[[Target|Target Note]]")
+          _ (insert-note-link! vault-id source-client-id1 target-client-id "Target.md" "link" "Target" "[[Target]]")
+          _ (insert-note-link! vault-id source-client-id2 target-client-id "Target.md" "link" "Target Note" "[[Target|Target Note]]")
 
           ;; 获取反向链接
-          backlinks (get-backlinks-with-docs vault-id target-client-id)]
+          backlinks (get-backlinks-with-notes vault-id target-client-id)]
 
       (is (= 2 (count backlinks)))
       (is (= #{"Source A.md" "Source B.md"} (set (map :path backlinks))))
       (is (every? #(contains? % :content) backlinks))
       (is (every? #(contains? % :display-text) backlinks)))))
 
-(deftest test-get-backlinks-with-docs-no-results
-  (testing "文档没有反向链接时返回空列表"
+(deftest test-get-backlinks-with-notes-no-results
+  (testing "笔记没有反向链接时返回空列表"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "no-backlinks.com" sync-key)
 
-          doc-id (utils/generate-uuid)
-          client-id "lonely-doc"
-          _ (upsert-document! doc-id tenant-id vault-id "Lonely.md" client-id "# Lonely" "{}" "hash" "2025-12-21T10:00:00Z")
+          note-id (utils/generate-uuid)
+          client-id "lonely-note"
+          _ (upsert-note! note-id tenant-id vault-id "Lonely.md" client-id "# Lonely" "{}" "hash" "2025-12-21T10:00:00Z")
 
-          backlinks (get-backlinks-with-docs vault-id client-id)]
+          backlinks (get-backlinks-with-notes vault-id client-id)]
 
       (is (= 0 (count backlinks))))))
 
 ;;; ============================================================
-;;; 测试孤儿文档清理功能 (Full Sync)
+;;; 测试孤儿笔记清理功能 (Full Sync)
 ;;; ============================================================
 
-(deftest test-list-document-client-ids-by-vault
-  (testing "返回 vault 中所有文档的 client_id"
+(deftest test-list-note-client-ids-by-vault
+  (testing "返回 vault 中所有笔记的 client_id"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "full-sync.com" "sync-key")
-          doc1-id (utils/generate-uuid)
-          doc2-id (utils/generate-uuid)
+          note1-id (utils/generate-uuid)
+          note2-id (utils/generate-uuid)
           client1 "client-1"
           client2 "client-2"]
-      ;; Given: 创建 2 个文档
-      (upsert-document! doc1-id tenant-id vault-id "a.md" client1 "c1" "{}" "h1" "2024-01-01T00:00:00Z")
-      (upsert-document! doc2-id tenant-id vault-id "b.md" client2 "c2" "{}" "h2" "2024-01-01T00:00:00Z")
+      ;; Given: 创建 2 个笔记
+      (upsert-note! note1-id tenant-id vault-id "a.md" client1 "c1" "{}" "h1" "2024-01-01T00:00:00Z")
+      (upsert-note! note2-id tenant-id vault-id "b.md" client2 "c2" "{}" "h2" "2024-01-01T00:00:00Z")
 
       ;; When: 查询 client_ids
-      (let [results (list-document-client-ids-by-vault vault-id)
+      (let [results (list-note-client-ids-by-vault vault-id)
             client-ids (map :client-id results)]
 
       ;; Then: 返回 2 个 client_id
@@ -515,35 +515,35 @@
         (is (some #(= client1 %) client-ids))
         (is (some #(= client2 %) client-ids))))))
 
-(deftest test-delete-documents-not-in-list
-  (testing "删除不在列表中的文档 (集合差集: server \\ client)"
+(deftest test-delete-notes-not-in-list
+  (testing "删除不在列表中的笔记 (集合差集: server \\ client)"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "orphan-cleanup.com" "sync-key")
-          ;; Given: 服务器有 3 个文档 (c1, c2, c3)
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "a.md" "c1" "c" "{}" "h" "2024-01-01T00:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "b.md" "c2" "c" "{}" "h" "2024-01-01T00:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "c.md" "c3" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          ;; Given: 服务器有 3 个笔记 (c1, c2, c3)
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "a.md" "c1" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "b.md" "c2" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "c.md" "c3" "c" "{}" "h" "2024-01-01T00:00:00Z")
 
           ;; 客户端只有 c1 和 c2
           client-list ["c1" "c2"]
 
           before-count (-> (jdbc/execute-one! *conn*
-                                          ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                          ["SELECT COUNT(*) as count FROM notes WHERE vault_id = ?" vault-id]
                                           {:builder-fn rs/as-unqualified-lower-maps})
                           :count)
 
-          ;; When: 删除不在列表中的文档
-          _ (delete-documents-not-in-list! vault-id client-list)
+          ;; When: 删除不在列表中的笔记
+          _ (delete-notes-not-in-list! vault-id client-list)
 
-          ;; Then: 删除了 c3，只剩 2 个文档
+          ;; Then: 删除了 c3，只剩 2 个笔记
           after-count (-> (jdbc/execute-one! *conn*
-                                           ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                           ["SELECT COUNT(*) as count FROM notes WHERE vault_id = ?" vault-id]
                                            {:builder-fn rs/as-unqualified-lower-maps})
                           :count)
           remaining (jdbc/execute! *conn*
-                                 ["SELECT client_id FROM documents WHERE vault_id = ? ORDER BY client_id" vault-id]
+                                 ["SELECT client_id FROM notes WHERE vault_id = ? ORDER BY client_id" vault-id]
                                  {:builder-fn rs/as-unqualified-lower-maps})
           remaining-ids (map :client_id remaining)]
 
@@ -551,26 +551,26 @@
       (is (= 2 after-count))
       (is (= ["c1" "c2"] remaining-ids)))))
 
-(deftest test-delete-documents-not-in-list-empty
-  (testing "空列表删除所有文档"
+(deftest test-delete-notes-not-in-list-empty
+  (testing "空列表删除所有笔记"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "empty-sync.com" "sync-key")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "a.md" "c1" "c" "{}" "h" "2024-01-01T00:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "b.md" "c2" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "a.md" "c1" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "b.md" "c2" "c" "{}" "h" "2024-01-01T00:00:00Z")
 
           before-count (-> (jdbc/execute-one! *conn*
-                                          ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                          ["SELECT COUNT(*) as count FROM notes WHERE vault_id = ?" vault-id]
                                           {:builder-fn rs/as-unqualified-lower-maps})
                           :count)
 
           ;; When: 空列表
-          _ (delete-documents-not-in-list! vault-id [])
+          _ (delete-notes-not-in-list! vault-id [])
 
-          ;; Then: 所有文档被删除
+          ;; Then: 所有笔记被删除
           after-count (-> (jdbc/execute-one! *conn*
-                                             ["SELECT COUNT(*) as count FROM documents WHERE vault_id = ?" vault-id]
+                                             ["SELECT COUNT(*) as count FROM notes WHERE vault_id = ?" vault-id]
                                              {:builder-fn rs/as-unqualified-lower-maps})
                             :count
                             )]
@@ -579,33 +579,33 @@
       (is (= 0 after-count)))))
 
 (deftest test-delete-orphan-links
-  (testing "删除指向不存在文档的链接"
+  (testing "删除指向不存在笔记的链接"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "orphan-links.com" "sync-key")
 
-          ;; Given: doc1 链接到 doc2
-          doc1-id (utils/generate-uuid)
-          doc2-id (utils/generate-uuid)
+          ;; Given: note1 链接到 note2
+          note1-id (utils/generate-uuid)
+          note2-id (utils/generate-uuid)
           client1 "source-client"
           client2 "target-client"
-          _ (upsert-document! doc1-id tenant-id vault-id "a.md" client1 "c" "{}" "h" "2024-01-01T00:00:00Z")
-          _ (upsert-document! doc2-id tenant-id vault-id "b.md" client2 "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! note1-id tenant-id vault-id "a.md" client1 "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! note2-id tenant-id vault-id "b.md" client2 "c" "{}" "h" "2024-01-01T00:00:00Z")
           link-id (utils/generate-uuid)
-          _ (insert-document-link! vault-id client1 client2 "b.md" "link" "text" "[[b]]")
+          _ (insert-note-link! vault-id client1 client2 "b.md" "link" "text" "[[b]]")
 
-          before-count (count (get-document-links vault-id client1))
+          before-count (count (get-note-links vault-id client1))
 
-          ;; When: 删除 doc2
+          ;; When: 删除 note2
           _ (jdbc/execute-one! *conn*
-                             ["DELETE FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client2])
+                             ["DELETE FROM notes WHERE vault_id = ? AND client_id = ?" vault-id client2])
 
           ;; 清理孤儿链接
           _ (delete-orphan-links! vault-id)
 
           ;; Then: 链接被清理
-          after-count (count (get-document-links vault-id client1))]
+          after-count (count (get-note-links vault-id client1))]
 
       (is (= 1 before-count))
       (is (= 0 after-count)))))
@@ -614,35 +614,35 @@
 ;;; 测试链接解析优化函数
 ;;; ============================================================
 
-(defn get-documents-for-link-resolution
+(defn get-notes-for-link-resolution
   "获取链接解析所需的最小数据（测试用）
    只返回 client_id 和 path，不返回 content 等大字段"
   [vault-id]
   (let [results (jdbc/execute! *conn*
-                               ["SELECT client_id, path FROM documents WHERE vault_id = ?"
+                               ["SELECT client_id, path FROM notes WHERE vault_id = ?"
                                 vault-id]
                                {:builder-fn rs/as-unqualified-lower-maps})]
     (map db-keys->clojure results)))
 
-(deftest test-get-documents-for-link-resolution
-  (testing "返回 vault 中所有文档的 client_id 和 path（不含 content）"
+(deftest test-get-notes-for-link-resolution
+  (testing "返回 vault 中所有笔记的 client_id 和 path（不含 content）"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "link-resolution.com" "sync-key")
 
-          ;; Given: 创建多个文档，包含较大的 content
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "folder/Note A.md" "client-a"
+          ;; Given: 创建多个笔记，包含较大的 content
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "folder/Note A.md" "client-a"
                               (apply str (repeat 10000 "Large content ")) "{}" "h1" "2024-01-01T00:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "Note B.md" "client-b"
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "Note B.md" "client-b"
                               (apply str (repeat 10000 "More large content ")) "{}" "h2" "2024-01-01T00:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "deep/nested/Note C.md" "client-c"
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "deep/nested/Note C.md" "client-c"
                               "Small content" "{}" "h3" "2024-01-01T00:00:00Z")
 
           ;; When: 获取链接解析所需数据
-          results (get-documents-for-link-resolution vault-id)]
+          results (get-notes-for-link-resolution vault-id)]
 
-      ;; Then: 返回 3 个文档
+      ;; Then: 返回 3 个笔记
       (is (= 3 (count results)))
 
       ;; 每个结果只包含 client-id 和 path
@@ -664,7 +664,7 @@
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Empty Blog" "empty-link.com" "sync-key-2")
 
-          results (get-documents-for-link-resolution vault-id)]
+          results (get-notes-for-link-resolution vault-id)]
 
       (is (= 0 (count results)))
       (is (empty? results))))
@@ -677,15 +677,15 @@
           _ (create-vault! vault-id-1 tenant-id "Blog 1" "isolation1.com" "sync-key-3")
           _ (create-vault! vault-id-2 tenant-id "Blog 2" "isolation2.com" "sync-key-4")
 
-          ;; vault-1 有 2 个文档
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id-1 "a.md" "v1-a" "c" "{}" "h" "2024-01-01T00:00:00Z")
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id-1 "b.md" "v1-b" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          ;; vault-1 有 2 个笔记
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id-1 "a.md" "v1-a" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id-1 "b.md" "v1-b" "c" "{}" "h" "2024-01-01T00:00:00Z")
 
-          ;; vault-2 有 1 个文档
-          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id-2 "c.md" "v2-c" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          ;; vault-2 有 1 个笔记
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id-2 "c.md" "v2-c" "c" "{}" "h" "2024-01-01T00:00:00Z")
 
-          results-1 (get-documents-for-link-resolution vault-id-1)
-          results-2 (get-documents-for-link-resolution vault-id-2)]
+          results-1 (get-notes-for-link-resolution vault-id-1)
+          results-2 (get-notes-for-link-resolution vault-id-2)]
 
       (is (= 2 (count results-1)))
       (is (= 1 (count results-2)))

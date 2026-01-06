@@ -32,7 +32,7 @@
           _ (db/create-vault! vault-id tenant-id "My Blog" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" domain}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))
       (is (clojure.string/includes? (:body response) "My Blog"))))
@@ -45,21 +45,21 @@
           _ (db/create-vault! vault-id tenant-id "Local Blog" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "localhost:3000"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))))
 
   (testing "Non-existent domain returns 404"
     (let [request (-> (mock/request :get "/")
                      (assoc :headers {"host" "nonexistent.com"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 404 (:status response)))
       (is (string? (:body response)))
       (is (clojure.string/includes? (:body response) "Site not found"))))
 
   (testing "Missing Host header"
     (let [request (mock/request :get "/")
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       ;; Depending on database state, could be 404 or 200
       (is (or (= 404 (:status response))
               (= 200 (:status response)))))))
@@ -88,7 +88,7 @@
           _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "example.com"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 200 (:status response)))))
 
   (testing "Parse domain with port"
@@ -99,7 +99,7 @@
           _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "exampleport.com:8080"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 200 (:status response)))))
 
   (testing "Parse IPv4 address"
@@ -110,7 +110,7 @@
           _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "192.168.1.1:3000"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 200 (:status response)))))
 
   (testing "Parse localhost"
@@ -121,7 +121,7 @@
           _ (db/create-vault! vault-id tenant-id "Local" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" "localhost:3000"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       (is (= 200 (:status response))))))
 
 ;; ============================================================
@@ -140,14 +140,14 @@
           ;; 创建文档 - 注意 id 和 client_id 是不同的
           internal-id (utils/generate-uuid)
           client-id "user-generated-client-id-12345"
-          _ (db/upsert-document! internal-id tenant-id vault-id "test.md" client-id 
+          _ (db/upsert-note! internal-id tenant-id vault-id "test.md" client-id 
                                  "# Test Content" nil "hash123" "2024-01-01T00:00:00Z")
           
           ;; 通过 client_id 访问文档（应该成功）
           request (-> (mock/request :get (str "/" client-id))
                      (assoc :headers {"host" domain})
                      (assoc :path-params {:path client-id}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       
       ;; 验证能通过 client_id 访问
       (is (= 200 (:status response)))
@@ -166,14 +166,14 @@
           ;; 创建文档
           internal-id (utils/generate-uuid)
           client-id "my-client-id-67890"
-          _ (db/upsert-document! internal-id tenant-id vault-id "test2.md" client-id 
+          _ (db/upsert-note! internal-id tenant-id vault-id "test2.md" client-id 
                                  "# Private Content" nil "hash456" "2024-01-01T00:00:00Z")
           
           ;; 尝试通过内部 id 访问（应该失败）
           request (-> (mock/request :get (str "/" internal-id))
                      (assoc :headers {"host" domain})
                      (assoc :path-params {:path internal-id}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       
       ;; 验证不能通过内部 id 访问
       (is (= 404 (:status response)))))
@@ -187,9 +187,9 @@
           _ (db/create-vault! vault-id tenant-id "Home Test" domain (utils/generate-uuid))
           
           ;; 创建多个文档
-          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
                                  "client-id-aaa" "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
-          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
                                  "client-id-bbb" "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
           
           ;; 访问根路径（没有 root_doc_id，显示文档列表）
@@ -197,7 +197,7 @@
           request (-> (mock/request :get "/")
                      (assoc :headers {"host" domain})
                      (assoc :path-params {:path "/"}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       
       ;; 验证返回成功
       (is (= 200 (:status response)))
@@ -215,23 +215,23 @@
           
           ;; 创建目标文档
           target-client-id "target-doc-client-id"
-          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "target.md" 
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "target.md" 
                                  target-client-id "# Target Doc" nil "hash-t" "2024-01-01T00:00:00Z")
           
           ;; 创建源文档（包含链接到目标）
           source-client-id "source-doc-client-id"
-          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "source.md" 
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "source.md" 
                                  source-client-id "# Source Doc" nil "hash-s" "2024-01-01T00:00:00Z")
           
           ;; 创建链接关系
-          _ (db/insert-document-link! vault-id source-client-id target-client-id 
+          _ (db/insert-note-link! vault-id source-client-id target-client-id 
                                       "target.md" "link" "Target Doc" "[[target]]")
           
           ;; 访问目标文档，查看 backlinks
           request (-> (mock/request :get (str "/" target-client-id))
                      (assoc :headers {"host" domain})
                      (assoc :path-params {:path target-client-id}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       
       ;; 验证返回成功
       (is (= 200 (:status response)))
@@ -249,9 +249,9 @@
           ;; 创建多个文档
           client-id-1 "stack-doc-1"
           client-id-2 "stack-doc-2"
-          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
                                  client-id-1 "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
-          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
                                  client-id-2 "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
           
           ;; 使用堆叠路径访问 (/{client_id}+{client_id})
@@ -259,7 +259,7 @@
           request (-> (mock/request :get (str "/" stacked-path))
                      (assoc :headers {"host" domain})
                      (assoc :path-params {:path stacked-path}))
-          response (frontend/get-doc request)]
+          response (frontend/get-note request)]
       
       ;; 验证返回成功（两个文档都应该被渲染）
       (is (= 200 (:status response)))

@@ -5,7 +5,6 @@
    [markdownbrain.utils :as utils]
    [selmer.parser :as selmer]))
 
-;; 初始化管理员用户
 (defn init-admin [request]
   (let [params (or (:body-params request) (:params request))
         {:keys [username password tenant-name]} params]
@@ -29,7 +28,6 @@
         (resp/success {:tenant-id tenant-id
                        :user-id user-id})))))
 
-;; 管理员登录
 (defn login [request]
   (let [params (or (:body-params request) (:params request))
         {:keys [username password]} params
@@ -40,18 +38,15 @@
                             :tenant-id (:tenant-id user)}}
                     {:user-id (:id user)
                      :tenant-id (:tenant-id user)})
-      ;; 登录失败，返回 200 状态码但 success 为 false
       {:status 200
        :body {:success false
               :error "Invalid username or password"}})))
 
-;; 管理员登出
 (defn logout [request]
   {:status 302
    :session nil
    :headers {"Location" "/admin/login"}})
 
-;; 管理后台首页
 (defn admin-home [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         tenant (db/get-tenant tenant-id)
@@ -59,39 +54,35 @@
         vaults-with-data (mapv (fn [vault]
                                  (let [sync-key (:sync-key vault)
                                        masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
-                                       documents (db/search-documents-by-vault (:id vault) "")]
+                                       notes (db/search-notes-by-vault (:id vault) "")]
                                    (assoc vault
                                           :masked-key masked
-                                          :documents documents)))
+                                          :notes notes)))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vaults.html"
                                     {:tenant tenant
                                      :vaults vaults-with-data}))))
 
-;; 登录页面
 (defn login-page [request]
   (resp/html (selmer/render-file "templates/admin/login.html" {})))
 
-;; 初始化页面
 (defn init-page [request]
   (resp/html (selmer/render-file "templates/admin/init.html" {})))
 
-;; 列出 vault
 (defn list-vaults [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vaults (db/list-vaults-by-tenant tenant-id)
         vaults-with-data (mapv (fn [vault]
                                  (let [sync-key (:sync-key vault)
                                        masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
-                                       documents (db/search-documents-by-vault (:id vault) "")]
+                                       notes (db/search-notes-by-vault (:id vault) "")]
                                    (assoc vault
                                           :masked-key masked
-                                          :documents documents)))
+                                          :notes notes)))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vault-list.html"
                                    {:vaults vaults-with-data}))))
 
-;; 创建 vault
 (defn create-vault [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         params (or (:body-params request) (:params request))
@@ -116,7 +107,6 @@
                                :domain domain
                                :sync-key sync-key}})))))
 
-;; 删除 vault
 (defn delete-vault [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -137,7 +127,6 @@
         (db/delete-vault! vault-id)
         (resp/success {:message "Site deleted"})))))
 
-;; 更新 vault
 (defn update-vault [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -175,8 +164,7 @@
                         :name name
                         :domain domain}}}))))
 
-;; 搜索 vault 中的文档
-(defn search-vault-documents [request]
+(defn search-vault-notes [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
         query (get-in request [:params :q])
@@ -198,15 +186,14 @@
               :error "Missing search query"}}
 
       :else
-      (let [documents (db/search-documents-by-vault vault-id query)]
-        (resp/success {:documents documents})))))
+      (let [notes (db/search-notes-by-vault vault-id query)]
+        (resp/success {:notes notes})))))
 
-;; 更新 vault 的首页文档
-(defn update-vault-root-doc [request]
+(defn update-vault-root-note [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
         params (or (:body-params request) (:params request))
-        root-doc-id (:rootDocId params)
+        root-note-id (:rootNoteId params)
         vault (db/get-vault-by-id vault-id)]
     (cond
       (nil? vault)
@@ -219,19 +206,18 @@
        :body {:success false
               :error "Permission denied"}}
 
-      (nil? root-doc-id)
+      (nil? root-note-id)
       {:status 200
        :body {:success false
-              :error "Missing rootDocId"}}
+              :error "Missing rootNoteId"}}
 
       :else
       (do
-        (db/update-vault-root-doc! vault-id root-doc-id)
-        (resp/success {:message "Root document updated"
-                       :rootDocId root-doc-id})))))
+        (db/update-vault-root-note! vault-id root-note-id)
+        (resp/success {:message "Root note updated"
+                       :rootNoteId root-note-id})))))
 
-;; 获取 vault 的首页文档选择器（返回 HTML 片段）
-(defn get-root-doc-selector [request]
+(defn get-root-note-selector [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
         vault (db/get-vault-by-id vault-id)]
@@ -247,11 +233,11 @@
        :body "<div class=\"alert alert-error\"><span>Permission denied</span></div>"}
 
       :else
-      (let [documents (db/search-documents-by-vault vault-id "")
-            root-doc-id (:root-doc-id vault)]
+      (let [notes (db/search-notes-by-vault vault-id "")
+            root-note-id (:root-note-id vault)]
         {:status 200
          :headers {"Content-Type" "text/html"}
-         :body (selmer/render-file "templates/admin/root-doc-selector.html"
-                                    {:documents documents
+         :body (selmer/render-file "templates/admin/root-note-selector.html"
+                                    {:notes notes
                                      :vault-id vault-id
-                                     :root-doc-id root-doc-id})}))))
+                                     :root-note-id root-note-id})}))))

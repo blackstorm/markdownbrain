@@ -1,30 +1,30 @@
 {% extends "templates/frontend/base.html" %}
 
-{% block title %}{{ docs.0.doc.title }} - {{ vault.name }}{% endblock %}
+{% block title %}{{ notes.0.note.title }} - {{ vault.name }}{% endblock %}
 
 {% block content %}
 <div class="notes-container grow flex overflow-x-auto overflow-y-hidden" id="notes">
-  {% for doc_data in docs %}
+  {% for note_data in notes %}
   <div
     class="note grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white sticky top-0"
-    id="note-{{ doc_data.doc.id }}"
+    id="note-{{ note_data.note.client-id }}"
   >
     <article class="p-4 md:p-8 prose">
-      <h1>{{ doc_data.doc.title }}</h1>
-      {{ doc_data.doc.html-content|safe }}
-      <p class="last-updated">Last updated: {{ doc_data.doc.updated-at }}</p>
+      <h1>{{ note_data.note.title }}</h1>
+      {{ note_data.note.html-content|safe }}
+      <p class="last-updated">Last updated: {{ note_data.note.updated-at }}</p>
     </article>
 
-    {% if doc_data.backlinks|length > 0 %}
+    {% if note_data.backlinks|length > 0 %}
     <div class="backlinks-section px-4 md:px-8">
       <h2 class="backlinks-title">Links to this note</h2>
       <div class="backlinks-grid">
-        {% for backlink in doc_data.backlinks %}
+        {% for backlink in note_data.backlinks %}
         <div class="backlink-item">
           <a
-            href="/{{ backlink.id }}"
-            hx-get="/{{ backlink.id }}"
-            hx-headers='{"X-From-Note-Id": "{{ doc_data.doc.id }}"}'
+            href="/{{ backlink.client-id }}"
+            hx-get="/{{ backlink.client-id }}"
+            hx-headers='{"X-From-Note-Id": "{{ note_data.note.client-id }}"}'
             hx-target="#notes"
             hx-swap="beforeend"
           >

@@ -19,7 +19,7 @@ interface SyncConfig {
     syncKey: string;
 }
 
-interface DocumentMetadata {
+interface NoteMetadata {
     tags?: Array<{
         tag: string;
         position: {
@@ -46,7 +46,7 @@ interface SyncData {
     content?: string;
     hash?: string;
     mtime?: string;
-    metadata?: DocumentMetadata;
+    metadata?: NoteMetadata;
     action: 'create' | 'modify' | 'delete';
 }
 
@@ -69,9 +69,9 @@ interface FullSyncResponse {
     data?: {
         'vault-id': string;
         action: string;
-        'client-docs': number;
+        'client-notes': number;
         'deleted-count': number;
-        'remaining-docs': number;
+        'remaining-notes': number;
     };
     error?: string;
 }
@@ -200,15 +200,15 @@ class SyncManager {
     }
 
     /**
-     * 全量同步 - 清理孤儿文档
-     * @param clientIds 客户端所有文档的 client_ids 列表
+     * 全量同步 - 清理孤儿笔记
+     * @param clientIds 客户端所有笔记的 client_ids 列表
      * @returns 包含删除数量的响应
      * @complexity O(1) - 单次网络请求
      * @compatibility 降级处理 - 如果服务器返回 404，视为成功（旧服务器）
      */
     async fullSync(clientIds: string[]): Promise<FullSyncResponse> {
         console.log('[MarkdownBrain] Starting full sync...', {
-            clientDocCount: clientIds.length
+            clientNoteCount: clientIds.length
         });
 
         try {
@@ -232,9 +232,9 @@ class SyncManager {
                     data: {
                         'vault-id': '',
                         action: 'full-sync',
-                        'client-docs': clientIds.length,
+                        'client-notes': clientIds.length,
                         'deleted-count': 0,
-                        'remaining-docs': clientIds.length
+                        'remaining-notes': clientIds.length
                     }
                 };
             }
@@ -243,7 +243,7 @@ class SyncManager {
                 const data = response.json;
                 console.log('[MarkdownBrain] ✓ Full sync successful:', {
                     deletedCount: data['deleted-count'],
-                    remainingDocs: data['remaining-docs']
+                    remainingNotes: data['remaining-notes']
                 });
                 return {
                     success: true,
@@ -433,7 +433,7 @@ export default class MarkdownBrainPlugin extends Plugin {
             });
 
             const cachedMetadata = this.app.metadataCache.getFileCache(file);
-            const metadata: DocumentMetadata = {};
+            const metadata: NoteMetadata = {};
 
             if (cachedMetadata) {
                 if (cachedMetadata.tags) {
@@ -611,7 +611,7 @@ export default class MarkdownBrainPlugin extends Plugin {
     }
 
     /**
-     * 清理孤儿文档
+     * 清理孤儿笔记
      * @complexity O(1) - 单次网络请求
      */
     private async cleanupOrphans(clientIds: string[]): Promise<void> {
@@ -620,10 +620,10 @@ export default class MarkdownBrainPlugin extends Plugin {
             const deleted = result.data?.['deleted-count'] || 0;
 
             if (deleted > 0) {
-                console.log(`[MarkdownBrain] ✓ Cleaned ${deleted} orphan documents`);
-                new Notice(`清理了 ${deleted} 个孤儿文档`);
+                console.log(`[MarkdownBrain] ✓ Cleaned ${deleted} orphan notes`);
+                new Notice(`清理了 ${deleted} 个孤儿笔记`);
             } else if (result.success) {
-                console.log('[MarkdownBrain] ✓ No orphan documents found');
+                console.log('[MarkdownBrain] ✓ No orphan notes found');
             }
         } catch (error) {
             // Full-sync 失败不中断流程

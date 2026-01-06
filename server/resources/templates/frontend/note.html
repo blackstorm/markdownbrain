@@ -1,11 +1,11 @@
 <div
   class="note grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white sticky top-0"
-  id="note-{{ doc.client-id }}"
+  id="note-{{ note.client-id }}"
 >
   <article class="p-4 md:p-8 prose">
-    <h1>{{ doc.title }}</h1>
-    {{ doc.html-content|safe }}
-    <p class="last-updated">Last updated: {{ doc.updated-at }}</p>
+    <h1>{{ note.title }}</h1>
+    {{ note.html-content|safe }}
+    <p class="last-updated">Last updated: {{ note.updated-at }}</p>
   </article>
 
   {% if backlinks|length > 0 %}
@@ -17,7 +17,7 @@
         <a
           href="/{{ backlink.client-id }}"
           hx-get="/{{ backlink.client-id }}"
-          hx-headers='{"X-From-Note-Id": "{{ doc.client-id }}"}'
+          hx-headers='{"X-From-Note-Id": "{{ note.client-id }}"}'
           hx-target="#notes"
           hx-swap="beforeend"
         >

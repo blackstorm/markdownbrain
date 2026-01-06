@@ -1,6 +1,6 @@
 {% extends "templates/frontend/base.html" %}
 
-{% block title %}{{ vault.name }} - Documents{% endblock %}
+{% block title %}{{ vault.name }} - Notes{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto p-6 md:p-12">
@@ -10,14 +10,14 @@
   </header>
 
   <section>
-    <h2 class="text-xl font-semibold text-gray-900 mb-6">Documents</h2>
+    <h2 class="text-xl font-semibold text-gray-900 mb-6">Notes</h2>
 
-    {% if documents %}
+    {% if notes %}
     <div class="flex flex-col gap-2">
-      {% for doc in documents %}
-      <a href="/{{ doc.client-id }}" class="block p-4 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors">
-        <h3 class="text-base font-medium text-gray-900 mb-1">{{ doc.path }}</h3>
-        <p class="text-sm text-gray-500">Last modified: {{ doc.mtime }}</p>
+      {% for note in notes %}
+      <a href="/{{ note.client-id }}" class="block p-4 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors">
+        <h3 class="text-base font-medium text-gray-900 mb-1">{{ note.path }}</h3>
+        <p class="text-sm text-gray-500">Last modified: {{ note.mtime }}</p>
       </a>
       {% endfor %}
     </div>
@@ -28,7 +28,7 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
         </svg>
       </div>
-      <h3 class="text-lg font-semibold text-gray-900 mb-2">No documents</h3>
+      <h3 class="text-lg font-semibold text-gray-900 mb-2">No notes</h3>
       <p class="text-sm text-gray-500">Please use the Obsidian plugin to sync your notes</p>
     </div>
     {% endif %}

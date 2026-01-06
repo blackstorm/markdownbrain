@@ -1,6 +1,6 @@
 <!-- Vault Card Component
   Parameters:
-  - vault: vault object with id, name, domain, sync-key, masked-key, root-doc-id, documents
+  - vault: vault object with id, name, domain, sync-key, masked-key, root-note-id, notes
 -->
 <div class="vault-card">
     <!-- Header -->
@@ -73,8 +73,8 @@
     <!-- Home Page Section -->
     <div class="vault-section">
       <span class="section-label">Home Page</span>
-      {% with vault-id=vault.id root-doc-id=vault.root-doc-id documents=vault.documents %}
-        {% include "templates/admin/root-doc-selector.html" %}
+      {% with vault-id=vault.id root-note-id=vault.root-note-id notes=vault.notes %}
+        {% include "templates/admin/root-note-selector.html" %}
       {% endwith %}
     </div>
 </div>
