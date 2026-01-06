@@ -136,7 +136,101 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('MarkdownBrain frontend initialized');
 });
 
+/**
+ * Open create modal
+ */
+function openCreateModal() {
+  const modal = document.getElementById('modal-create');
+  if (modal) {
+    modal.showModal();
+  }
+}
+
+/**
+ * Close create modal
+ */
+function closeCreateModal() {
+  const modal = document.getElementById('modal-create');
+  if (modal) {
+    modal.classList.add('closing');
+    modal.addEventListener('animationend', () => {
+      modal.close();
+      modal.classList.remove('closing');
+    }, { once: true });
+  }
+}
+
+/**
+ * Open edit modal with vault data
+ * @param {string} id - Vault ID
+ * @param {string} name - Vault name
+ * @param {string} domain - Vault domain
+ */
+function openEditModal(id, name, domain) {
+  const modal = document.getElementById('modal-edit');
+  if (modal) {
+    // Fill form fields
+    const vaultIdInput = document.getElementById('edit-vault-id');
+    const nameInput = document.getElementById('edit-name');
+    const domainInput = document.getElementById('edit-domain');
+
+    if (vaultIdInput) vaultIdInput.value = id;
+    if (nameInput) nameInput.value = name;
+    if (domainInput) domainInput.value = domain;
+
+    // Update form action URL
+    const form = document.getElementById('edit-form');
+    if (form) {
+      form.setAttribute('hx-put', `/admin/vaults/${id}`);
+    }
+
+    modal.showModal();
+  }
+}
+
+/**
+ * Close edit modal
+ */
+function closeEditModal() {
+  const modal = document.getElementById('modal-edit');
+  if (modal) {
+    modal.classList.add('closing');
+    modal.addEventListener('animationend', () => {
+      modal.close();
+      modal.classList.remove('closing');
+    }, { once: true });
+  }
+}
+
+// Setup backdrop click handlers
+document.addEventListener('DOMContentLoaded', () => {
+  const createModal = document.getElementById('modal-create');
+  const editModal = document.getElementById('modal-edit');
+
+  // Click outside modal content to close
+  [createModal, editModal].forEach(modal => {
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        // Check if clicked on content or its children
+        const clickedOnContent = e.target.closest('.modal-content');
+        if (!clickedOnContent) {
+          // Clicked on backdrop, close modal
+          if (modal.id === 'modal-create') {
+            closeCreateModal();
+          } else if (modal.id === 'modal-edit') {
+            closeEditModal();
+          }
+        }
+      });
+    }
+  });
+});
+
 // Expose global functions
 window.copyToClipboard = copyToClipboard;
 window.showNotification = showNotification;
 window.formatDate = formatDate;
+window.openCreateModal = openCreateModal;
+window.closeCreateModal = closeCreateModal;
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
