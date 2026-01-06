@@ -35,24 +35,6 @@
           hash (utils/hash-password password)]
       (is (true? (utils/verify-password "" hash))))))
 
-(deftest test-generate-dns-record
-  (testing "DNS record generation with subdomain"
-    (let [domain "blog.example.com"
-          server-ip "1.2.3.4"
-          record (utils/generate-dns-record domain server-ip)]
-      (is (string? record))
-      (is (clojure.string/includes? record "blog"))
-      (is (clojure.string/includes? record "1.2.3.4"))
-      (is (clojure.string/includes? record "A"))
-      (is (clojure.string/includes? record "CNAME"))))
-
-  (testing "DNS record generation with different IP"
-    (let [domain "test.example.com"
-          server-ip "192.168.1.100"
-          record (utils/generate-dns-record domain server-ip)]
-      (is (clojure.string/includes? record "192.168.1.100"))
-      (is (clojure.string/includes? record "test")))))
-
 (deftest test-parse-auth-header
   (testing "Valid Bearer token"
     (let [vault-id (utils/generate-uuid)

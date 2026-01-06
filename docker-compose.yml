@@ -6,15 +6,9 @@ services:
     expose:
       - "8080"
     volumes:
-      - markdownbrain-data:/app/data
+      - markdownbrain:/app/data
     environment:
-      - FRONTEND_PORT=8080
-      - ADMIN_PORT=9090
-      - DB_PATH=/app/data/markdownbrain.db
-      - SESSION_SECRET=${SESSION_SECRET:-change-me-in-production}
       - INTERNAL_TOKEN=${INTERNAL_TOKEN}
-      - ENVIRONMENT=production
-      - SERVER_IP=${SERVER_IP:-127.0.0.1}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/admin/health?token=$INTERNAL_TOKEN"]
@@ -31,8 +25,7 @@ services:
       - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy-data:/data
-      - caddy-config:/config
+      - caddy:/data
     environment:
       - INTERNAL_TOKEN=${INTERNAL_TOKEN}
     depends_on:
@@ -41,6 +34,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  markdownbrain-data:
-  caddy-data:
-  caddy-config:
+  markdownbrain:
+  caddy:

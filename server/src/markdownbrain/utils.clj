@@ -35,19 +35,6 @@
 (defn verify-password [password hash]
   (hashers/check password hash))
 
-(defn generate-dns-record [domain server-ip]
-  (let [subdomain (first (str/split domain #"\."))]
-    (str "请在您的 DNS 服务商添加以下记录：\n\n"
-         "类型: A\n"
-         "主机: " subdomain "\n"
-         "值: " server-ip "\n"
-         "TTL: 3600\n\n"
-         "或\n\n"
-         "类型: CNAME\n"
-         "主机: " subdomain "\n"
-         "值: server.yourdomain.com\n"
-         "TTL: 3600")))
-
 (defn parse-auth-header [header]
   (when header
     (let [token (str/replace header #"^Bearer\s+" "")

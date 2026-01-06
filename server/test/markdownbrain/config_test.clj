@@ -4,13 +4,23 @@
 
 ;; Get Config 测试
 (deftest test-get-config
-  (testing "Get server host"
-    (let [host (config/get-config :server :host)]
+  (testing "Get frontend server host"
+    (let [host (config/get-config :server :frontend :host)]
       (is (string? host))
       (is (not (clojure.string/blank? host)))))
 
-  (testing "Get server port"
-    (let [port (config/get-config :server :port)]
+  (testing "Get frontend server port"
+    (let [port (config/get-config :server :frontend :port)]
+      (is (number? port))
+      (is (pos? port))))
+
+  (testing "Get admin server host"
+    (let [host (config/get-config :server :admin :host)]
+      (is (string? host))
+      (is (not (clojure.string/blank? host)))))
+
+  (testing "Get admin server port"
+    (let [port (config/get-config :server :admin :port)]
       (is (number? port))
       (is (pos? port))))
 
@@ -18,26 +28,11 @@
     (let [db-name (config/get-config :database :dbname)]
       (is (string? db-name))))
 
-  (testing "Get session secret"
-    (let [secret (config/get-config :session :secret)]
-      (is (bytes? secret))
-      (is (= 16 (alength secret)))))
-
-  (testing "Get server IP"
-    (let [server-ip (config/get-config :server-ip)]
-      (is (string? server-ip))))
-
-  (testing "Get nested config with multiple keys"
-    (let [host (config/get-config :server :host)
-          port (config/get-config :server :port)]
-      (is (string? host))
-      (is (number? port))))
-
   (testing "Get top-level config"
     (let [server-config (config/get-config :server)]
       (is (map? server-config))
-      (is (contains? server-config :host))
-      (is (contains? server-config :port)))))
+      (is (contains? server-config :frontend))
+      (is (contains? server-config :admin)))))
 
 ;; Default Config Values 测试
 (deftest test-default-config-values
@@ -47,59 +42,79 @@
   (testing "Default database configuration exists"
     (is (some? (config/get-config :database))))
 
-  (testing "Default session configuration exists"
-    (is (some? (config/get-config :session))))
-
-  (testing "Default server IP exists"
-    (is (some? (config/get-config :server-ip)))))
+  (testing "Default environment configuration exists"
+    (is (some? (config/get-config :environment)))))
 
 ;; Config Structure 测试
 (deftest test-config-structure
   (testing "Server config has required keys"
     (let [server-config (config/get-config :server)]
-      (is (contains? server-config :host))
-      (is (contains? server-config :port))))
+      (is (contains? server-config :frontend))
+      (is (contains? server-config :admin))))
+
+  (testing "Frontend server config has required keys"
+    (let [frontend-config (config/get-config :server :frontend)]
+      (is (contains? frontend-config :host))
+      (is (contains? frontend-config :port))))
+
+  (testing "Admin server config has required keys"
+    (let [admin-config (config/get-config :server :admin)]
+      (is (contains? admin-config :host))
+      (is (contains? admin-config :port))))
 
   (testing "Database config has required keys"
     (let [db-config (config/get-config :database)]
       (is (contains? db-config :dbtype))
-      (is (contains? db-config :dbname))))
-
-  (testing "Session config has required keys"
-    (let [session-config (config/get-config :session)]
-      (is (contains? session-config :secret))
-      (is (contains? session-config :cookie-name))
-      (is (contains? session-config :max-age)))))
+      (is (contains? db-config :dbname)))))
 
 ;; Config Values Type Check 测试
 (deftest test-config-value-types
-  (testing "Server host is string"
-    (is (string? (config/get-config :server :host))))
+  (testing "Frontend server host is string"
+    (is (string? (config/get-config :server :frontend :host))))
 
-  (testing "Server port is number"
-    (is (number? (config/get-config :server :port))))
+  (testing "Frontend server port is number"
+    (is (number? (config/get-config :server :frontend :port))))
+
+  (testing "Admin server host is string"
+    (is (string? (config/get-config :server :admin :host))))
+
+  (testing "Admin server port is number"
+    (is (number? (config/get-config :server :admin :port))))
 
   (testing "Database name is string"
-    (is (string? (config/get-config :database :dbname))))
+    (is (string? (config/get-config :database :dbname)))))
 
-  (testing "Session secret is bytes"
-    (is (bytes? (config/get-config :session :secret))))
+;; Session & Token 函数测试
+(deftest test-session-and-token-functions
+  (testing "Session secret is bytes with 16 length"
+    (let [secret (config/session-secret)]
+      (is (bytes? secret))
+      (is (= 16 (alength secret)))))
 
-  (testing "Cookie name is string"
-    (is (string? (config/get-config :session :cookie-name))))
+  (testing "Internal token is string"
+    (let [token (config/internal-token)]
+      (is (string? token))
+      (is (not (clojure.string/blank? token))))))
 
-  (testing "Max age is number"
-    (is (number? (config/get-config :session :max-age)))))
+;; Environment helpers 测试
+(deftest test-environment-helpers
+  (testing "production? returns boolean"
+    (is (boolean? (config/production?))))
+
+  (testing "development? returns boolean"
+    (is (boolean? (config/development?))))
+
+  (testing "Either production or development is true"
+    ;; In test, environment is :development by default
+    (is (or (config/production?) (config/development?)))))
 
 ;; Environment-based Config 测试
 (deftest test-environment-config
   (testing "Config responds to environment variables"
-    ;; Test that config can be overridden (if implemented)
-    (let [host (config/get-config :server :host)]
+    (let [host (config/get-config :server :frontend :host)]
       (is (or (= "0.0.0.0" host) (= "localhost" host)))))
 
   (testing "Database name is configurable"
     (let [db-name (config/get-config :database :dbname)]
       (is (or (clojure.string/ends-with? db-name ".db")
               (= ":memory:" db-name))))))
-

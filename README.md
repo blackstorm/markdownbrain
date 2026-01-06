@@ -46,9 +46,8 @@ make build           # 构建所有项目
 
 | 变量 | 说明 | 必填 |
 |------|------|------|
-| `SESSION_SECRET` | Session 加密密钥 | 是 |
-| `INTERNAL_TOKEN` | 内部 API 认证 Token | 是 |
-| `SERVER_IP` | 服务器公网 IP | 否 |
+| `INTERNAL_TOKEN` | 内部 API 认证 Token (Caddy 域名验证用) | 是 |
+| `SESSION_SECRET` | Session 加密密钥 | 否 (自动生成) |
 
 ### 部署步骤
 
@@ -59,10 +58,9 @@ git clone https://github.com/example/markdownbrain.git
 cd markdownbrain
 ```
 
-2. 生成密钥
+2. 生成 Token
 
 ```bash
-export SESSION_SECRET=$(openssl rand -hex 16)
 export INTERNAL_TOKEN=$(openssl rand -hex 32)
 ```
 

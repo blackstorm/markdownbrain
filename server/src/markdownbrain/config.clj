@@ -1,13 +1,50 @@
 (ns markdownbrain.config
-  (:require [clojure.java.io :as io])
-  (:import [java.security MessageDigest]))
+  (:require [clojure.java.io :as io]
+            [clojure.edn :as edn])
+  (:import [java.security MessageDigest SecureRandom]))
 
-(defn string->16-bytes
-  "Convert a string to exactly 16 bytes for session cookie"
-  [s]
+(defn string->16-bytes [s]
   (let [md (MessageDigest/getInstance "MD5")
         bytes (.digest md (.getBytes s "UTF-8"))]
     bytes))
+
+(defn generate-random-hex [n]
+  (let [bytes (byte-array n)
+        _ (.nextBytes (SecureRandom.) bytes)]
+    (apply str (map #(format "%02x" %) bytes))))
+
+(defn- secrets-file []
+  (let [db-path (or (System/getenv "DB_PATH") "markdownbrain.db")
+        data-dir (.getParent (io/file db-path))]
+    (if data-dir
+      (io/file data-dir ".secrets.edn")
+      (io/file ".secrets.edn"))))
+
+(defn- load-secrets []
+  (let [f (secrets-file)]
+    (when (.exists f)
+      (edn/read-string (slurp f)))))
+
+(defn- save-secrets [secrets]
+  (let [f (secrets-file)]
+    (io/make-parents f)
+    (spit f (pr-str secrets))))
+
+(defn- get-or-generate-secrets []
+  (let [existing (load-secrets)
+        session-secret (or (System/getenv "SESSION_SECRET")
+                           (:session-secret existing)
+                           (generate-random-hex 16))
+        internal-token (or (System/getenv "INTERNAL_TOKEN")
+                           (:internal-token existing)
+                           (generate-random-hex 32))
+        secrets {:session-secret session-secret
+                 :internal-token internal-token}]
+    (when (not= secrets existing)
+      (save-secrets secrets))
+    secrets))
+
+(def ^:private secrets (delay (get-or-generate-secrets)))
 
 (def config
   {:server
@@ -22,29 +59,20 @@
    {:dbtype "sqlite"
     :dbname (or (System/getenv "DB_PATH") "markdownbrain.db")}
 
-   :session
-   {:secret (string->16-bytes (or (System/getenv "SESSION_SECRET") "change-me-in-production-very-secret"))
-    :cookie-name "mdbrain-session"
-    :max-age (* 60 60 24 7)}
-
-   :internal-token
-   (System/getenv "INTERNAL_TOKEN")
-
    :environment
-   (keyword (or (System/getenv "ENVIRONMENT") "development"))
-
-   :server-ip
-   (or (System/getenv "SERVER_IP") "123.45.67.89")})
+   (keyword (or (System/getenv "ENVIRONMENT") "development"))})
 
 (defn get-config [& path]
   (get-in config path))
 
-(defn production?
-  "判断是否为生产环境"
-  []
+(defn session-secret []
+  (string->16-bytes (:session-secret @secrets)))
+
+(defn internal-token []
+  (:internal-token @secrets))
+
+(defn production? []
   (= :production (get-config :environment)))
 
-(defn development?
-  "判断是否为开发环境"
-  []
+(defn development? []
   (= :development (get-config :environment)))

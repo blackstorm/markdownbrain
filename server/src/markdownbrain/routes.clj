@@ -23,12 +23,12 @@
   [["/{*path}" {:get frontend/get-note}]])
 
 (defn valid-internal-token? [req]
-  (let [token (config/get-config :internal-token)
+  (let [token (config/internal-token)
         req-token (or (get-in req [:headers "authorization"])
                       (get-in req [:query-params "token"]))]
-    (or (nil? token)
-        (= req-token token)
-        (= req-token (str "Bearer " token)))))
+    (and token
+         (or (= req-token token)
+             (= req-token (str "Bearer " token))))))
 
 (def admin-routes
   [["/obsidian"

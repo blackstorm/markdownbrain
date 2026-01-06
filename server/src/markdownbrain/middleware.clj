@@ -9,13 +9,12 @@
    [ring.middleware.session.cookie :as cookie]
    [ring.util.response :as response]))
 
-;; Session 配置
 (defn wrap-session-middleware [handler]
   (session/wrap-session
     handler
-    {:store (cookie/cookie-store {:key (config/get-config :session :secret)})
-     :cookie-name (config/get-config :session :cookie-name)
-     :cookie-attrs {:max-age (config/get-config :session :max-age)
+    {:store (cookie/cookie-store {:key (config/session-secret)})
+     :cookie-name "mdbrain-session"
+     :cookie-attrs {:max-age (* 60 60 24 7)
                     :http-only true
                     :same-site :lax
                     :secure (config/production?)}}))
