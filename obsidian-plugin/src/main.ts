@@ -1,5 +1,5 @@
 import { App, Notice, Plugin, PluginManifest, PluginSettingTab, requestUrl, Setting, TFile } from 'obsidian';
-import { getOrCreateClientId } from './src/core/client-id';
+import { CLIENT_ID_KEY, getOrCreateClientId } from './core/client-id';
 
 interface MarkdownBrainSettings {
     serverUrl: string;
@@ -282,11 +282,13 @@ export default class MarkdownBrainPlugin extends Plugin {
     syncManager!: SyncManager;
     private syncDebounceTimers: Map<string, NodeJS.Timeout>;
     private pendingSyncs: Set<string>;
+    private clientIdCache: Map<string, string>;
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.syncDebounceTimers = new Map();
         this.pendingSyncs = new Set();
+        this.clientIdCache = new Map();
     }
 
     async onload() {
@@ -391,8 +393,26 @@ export default class MarkdownBrainPlugin extends Plugin {
         });
         console.log('[MarkdownBrain] Commands registered');
 
+        await this.buildClientIdCache();
+
         console.log('[MarkdownBrain] ✓ Plugin loaded successfully');
         console.log('[MarkdownBrain] ========================================');
+    }
+
+    private async buildClientIdCache(): Promise<void> {
+        const files = this.app.vault.getMarkdownFiles();
+        let cached = 0;
+        
+        for (const file of files) {
+            const cache = this.app.metadataCache.getFileCache(file);
+            const clientId = cache?.frontmatter?.[CLIENT_ID_KEY];
+            if (clientId) {
+                this.clientIdCache.set(file.path, String(clientId).trim());
+                cached++;
+            }
+        }
+        
+        console.log(`[MarkdownBrain] ClientId cache built: ${cached}/${files.length} files`);
     }
 
     async handleFileChange(file: TFile, action: 'create' | 'modify') {
@@ -489,6 +509,7 @@ export default class MarkdownBrainPlugin extends Plugin {
             const result = await this.syncManager.sync(syncData);
 
             if (result.success) {
+                this.clientIdCache.set(file.path, clientId);
                 console.log('[MarkdownBrain] ✓ File synced successfully:', file.path);
             } else {
                 console.error('[MarkdownBrain] ✗ File sync failed:', file.path, result.error);
@@ -516,24 +537,25 @@ export default class MarkdownBrainPlugin extends Plugin {
             extension: file.extension
         });
 
-        try {
-            const content = await this.app.vault.read(file);
-            const clientId = await getOrCreateClientId(file, content, this.app);
+        const clientId = this.clientIdCache.get(file.path);
 
-            const result = await this.syncManager.sync({
-                path: file.path,
-                clientId: clientId,
-                clientType: 'obsidian',
-                action: 'delete'
-            });
+        if (!clientId) {
+            console.warn('[MarkdownBrain] Cannot sync deletion - clientId not in cache:', file.path);
+            return;
+        }
 
-            if (result.success) {
-                console.log('[MarkdownBrain] ✓ File deletion synced:', file.path);
-            } else {
-                console.error('[MarkdownBrain] ✗ File deletion sync failed:', file.path, result.error);
-            }
-        } catch (error) {
-            console.warn('[MarkdownBrain] Cannot sync file deletion (file already removed or never synced):', file.path);
+        const result = await this.syncManager.sync({
+            path: file.path,
+            clientId: clientId,
+            clientType: 'obsidian',
+            action: 'delete'
+        });
+
+        if (result.success) {
+            this.clientIdCache.delete(file.path);
+            console.log('[MarkdownBrain] ✓ File deletion synced:', file.path);
+        } else {
+            console.error('[MarkdownBrain] ✗ File deletion sync failed:', file.path, result.error);
         }
     }
 
@@ -549,11 +571,13 @@ export default class MarkdownBrainPlugin extends Plugin {
             extension: file.extension
         });
 
+        const cachedClientId = this.clientIdCache.get(oldPath);
+        if (cachedClientId) {
+            this.clientIdCache.delete(oldPath);
+            this.clientIdCache.set(file.path, cachedClientId);
+        }
+
         try {
-            // 使用 frontmatter UUID 后，重命名变得简单：
-            // UUID 存储在 frontmatter 中，不随路径变化
-            // 只需发送单个 modify 请求即可更新路径
-            // 服务端的 ON CONFLICT(vault_id, client_id) DO UPDATE SET path 会处理路径更新
             console.log('[MarkdownBrain] Syncing rename with frontmatter UUID');
             await this.performSync(file, 'modify');
 

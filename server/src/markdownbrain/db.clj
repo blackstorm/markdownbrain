@@ -238,16 +238,30 @@
   (execute! ["SELECT client_id FROM notes WHERE vault_id = ?" vault-id]))
 
 (defn delete-notes-not-in-list!
+  "删除不在列表中的笔记（孤儿笔记清理）
+   采用服务端对比方案：
+   1. 查询服务端所有 client_ids
+   2. 计算差集找出孤儿
+   3. 分批删除（避免 SQLite 参数限制）"
   [vault-id client-ids]
   (if (empty? client-ids)
     (do
       (log/warn "Full sync empty list - deleting ALL notes in vault:" vault-id)
       (execute-one! ["DELETE FROM notes WHERE vault_id = ?" vault-id]))
-    (let [placeholders (str/join "," (repeat (count client-ids) "?"))
-          sql (str "DELETE FROM notes WHERE vault_id = ? AND client_id NOT IN (" placeholders ")")
-          params (into [vault-id] client-ids)]
-      (log/info "Deleting orphan notes - vault-id:" vault-id "keeping:" (count client-ids))
-      (execute-one! (into [sql] params)))))
+    (let [client-id-set (set client-ids)
+          server-ids (map :client-id (list-note-client-ids-by-vault vault-id))
+          orphan-ids (remove client-id-set server-ids)
+          batch-size 500]
+      (log/info "Deleting orphan notes - vault-id:" vault-id 
+                "server:" (count server-ids) 
+                "client:" (count client-ids) 
+                "orphans:" (count orphan-ids))
+      (when (seq orphan-ids)
+        (doseq [batch (partition-all batch-size orphan-ids)]
+          (let [placeholders (str/join "," (repeat (count batch) "?"))
+                sql (str "DELETE FROM notes WHERE vault_id = ? AND client_id IN (" placeholders ")")]
+            (execute-one! (into [sql vault-id] batch)))))
+      {:update-count (count orphan-ids)})))
 
 (defn delete-orphan-links!
   [vault-id]
