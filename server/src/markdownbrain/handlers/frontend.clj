@@ -79,11 +79,13 @@
 (defn- prepare-doc-data
   "准备单个笔记的渲染数据
 
-   返回: {:doc {:id :title :html-content :path :updated-at}
+   返回: {:doc {:client-id :title :html-content :path :updated-at}
           :backlinks [...]}"
-  [doc vault-id all-docs]
-  (let [;; 渲染 Markdown
-        html-content (md/render-markdown (:content doc) all-docs)
+  [doc vault-id]
+  (let [;; 从 document_links 获取该文档的链接
+        links (db/get-document-links vault-id (:client-id doc))
+        ;; 渲染 Markdown（传入链接列表而非所有文档）
+        html-content (md/render-markdown (:content doc) links)
         ;; 提取标题
         title (or (md/extract-title (:content doc))
                   (-> (:path doc)
@@ -96,16 +98,9 @@
                                     (assoc backlink
                                            :title (or (md/extract-title (:content backlink))
                                                       (str/replace (:path backlink) #"\.md$" ""))
-                                           :description (when (:content backlink)
-                                                          (let [lines (str/split-lines (:content backlink))
-                                                                first-para (->> lines
-                                                                                (drop-while #(str/starts-with? % "#"))
-                                                                                (filter #(not (str/blank? %)))
-                                                                                first)]
-                                                            (when first-para
-                                                              (subs first-para 0 (min 100 (count first-para))))))))
+                                           :description (md/extract-description (:content backlink))))
                                   backlinks)]
-    {:doc {:id (:id doc)
+    {:doc {:client-id (:client-id doc)
            :title title
            :html-content html-content
            :path (:path doc)
@@ -124,36 +119,35 @@
    - 读取 HX-Current-URL header 获取当前 URL
    - 返回 HX-Push-Url header 用于更新浏览器地址栏
 
-   路径: /docs/:id
+   路径: /docs/:client-id
    响应: 单个 doc.html 片段 + HX-Push-Url header"
   [request]
-  (let [doc-id (get-in request [:path-params :id])
+  (let [client-id (get-in request [:path-params :id])
         vault (get-current-vault request)]
 
     (if-not vault
       {:status 404 :body "Site not found"}
 
-      (if-let [doc (db/get-document doc-id)]
-        (let [vault-id (:vault-id doc)
-              all-docs (db/list-documents-by-vault vault-id)
-              render-data (prepare-doc-data doc vault-id all-docs)
-              
-              ;; 获取 HTMX headers
-              from-note-id (get-in request [:headers "x-from-note-id"])
-              current-url (get-in request [:headers "hx-current-url"])
-              root-doc-id (:root-doc-id vault)
-              
-              ;; 构建 push URL
-              push-url (build-push-url current-url from-note-id doc-id root-doc-id)
-              
-              ;; 渲染 HTML
-              html-body (selmer/render-file "templates/frontend/doc.html" render-data)]
-          
-          {:status 200
-           :headers {"Content-Type" "text/html; charset=utf-8"
-                     "HX-Push-Url" push-url}
-           :body html-body})
-        {:status 404 :body "Document not found"}))))
+      (let [vault-id (:id vault)]
+        (if-let [doc (db/get-document-for-frontend vault-id client-id)]
+          (let [render-data (prepare-doc-data doc vault-id)
+                
+                ;; 获取 HTMX headers
+                from-note-id (get-in request [:headers "x-from-note-id"])
+                current-url (get-in request [:headers "hx-current-url"])
+                root-doc-id (:root-doc-id vault)
+                
+                ;; 构建 push URL
+                push-url (build-push-url current-url from-note-id client-id root-doc-id)
+                
+                ;; 渲染 HTML
+                html-body (selmer/render-file "templates/frontend/doc.html" render-data)]
+            
+            {:status 200
+             :headers {"Content-Type" "text/html; charset=utf-8"
+                       "HX-Push-Url" push-url}
+             :body html-body})
+          {:status 404 :body "Document not found"})))))
 
 ;; ============================================================
 ;; 主页面渲染
@@ -164,8 +158,10 @@
 
    URL 格式:
    - / : 根路径，显示 root document 或文档列表
-   - /{id} : 单个笔记
-   - /{id}+{id}+{id} : 堆叠笔记 (使用 + 分隔符)
+   - /{client-id} : 单个笔记
+   - /{client-id}+{client-id}+{client-id} : 堆叠笔记 (使用 + 分隔符)
+
+   注意: URL 中使用 client_id 而不是内部数据库 id，确保不暴露内部标识
 
    HTMX 请求:
    - 返回单个笔记 HTML 片段
@@ -178,90 +174,85 @@
   [request]
   (let [;; 解析路径参数
         path (get-in request [:path-params :path] "/")
-        path-ids (parse-path-ids path)
+        path-client-ids (parse-path-ids path)
         vault (get-current-vault request)
         is-htmx? (get-in request [:headers "hx-request"])]
 
     (if-not vault
       {:status 404 :body "Site not found"}
 
-      ;; 确定要显示的文档
-      (if (empty? path-ids)
-        ;; 根路径：显示 root document 或文档列表
-        (if-let [root-doc-id (:root-doc-id vault)]
-          (if-let [root-doc (db/get-document root-doc-id)]
-            ;; 有 root document：直接显示
-            (let [vault-id (:vault-id root-doc)
-                  all-docs (db/list-documents-by-vault vault-id)
-                  render-data (prepare-doc-data root-doc vault-id all-docs)]
-              (if is-htmx?
-                ;; HTMX 请求：返回片段
-                {:status 200
-                 :headers {"Content-Type" "text/html; charset=utf-8"}
-                 :body (selmer/render-file "templates/frontend/doc.html" render-data)}
-                ;; 普通请求：返回完整页面
-                (resp/html (selmer/render-file "templates/frontend/doc-page.html"
-                                                {:docs [render-data]
-                                                 :vault vault}))))
-            ;; root document 不存在：显示文档列表
-            (let [documents (db/list-documents-by-vault (:id vault))]
+      (let [vault-id (:id vault)]
+        ;; 确定要显示的文档
+        (if (empty? path-client-ids)
+          ;; 根路径：显示 root document 或文档列表
+          (if-let [root-client-id (:root-doc-id vault)]
+            (if-let [root-doc (db/get-document-for-frontend vault-id root-client-id)]
+              ;; 有 root document：直接显示
+              (let [render-data (prepare-doc-data root-doc vault-id)]
+                (if is-htmx?
+                  ;; HTMX 请求：返回片段
+                  {:status 200
+                   :headers {"Content-Type" "text/html; charset=utf-8"}
+                   :body (selmer/render-file "templates/frontend/doc.html" render-data)}
+                  ;; 普通请求：返回完整页面
+                  (resp/html (selmer/render-file "templates/frontend/doc-page.html"
+                                                  {:docs [render-data]
+                                                   :vault vault}))))
+              ;; root document 不存在：显示文档列表
+              (let [documents (db/list-documents-by-vault vault-id)]
+                (resp/html (selmer/render-file "templates/frontend/home.html"
+                                                {:vault vault
+                                                 :documents documents}))))
+            ;; 没有 root document：显示文档列表
+            (let [documents (db/list-documents-by-vault vault-id)]
               (resp/html (selmer/render-file "templates/frontend/home.html"
                                               {:vault vault
                                                :documents documents}))))
-          ;; 没有 root document：显示文档列表
-          (let [documents (db/list-documents-by-vault (:id vault))]
-            (resp/html (selmer/render-file "templates/frontend/home.html"
-                                            {:vault vault
-                                             :documents documents}))))
 
-        ;; 有 ID：显示堆叠的笔记
-        (let [;; 查询所有文档，过滤掉不存在的
-              valid-docs (keep db/get-document path-ids)
-              valid-ids (mapv :id valid-docs)
-              
-              ;; 如果有文档被删除，构建修正后的 URL
-              needs-correction? (not= (count valid-ids) (count path-ids))
-              corrected-path (when needs-correction?
-                               (if (empty? valid-ids)
-                                 "/"
-                                 (str "/" (str/join "+" valid-ids))))]
+          ;; 有 client-id：显示堆叠的笔记
+          (let [;; 通过 vault-id + client-id 查询文档，过滤掉不存在的
+                valid-docs (keep #(db/get-document-for-frontend vault-id %) path-client-ids)
+                valid-client-ids (mapv :client-id valid-docs)
+                
+                ;; 如果有文档被删除，构建修正后的 URL
+                needs-correction? (not= (count valid-client-ids) (count path-client-ids))
+                corrected-path (when needs-correction?
+                                 (if (empty? valid-client-ids)
+                                   "/"
+                                   (str "/" (str/join "+" valid-client-ids))))]
 
-          (cond
-            ;; 所有文档都不存在
-            (empty? valid-docs)
-            {:status 404 :body "Document not found"}
+            (cond
+              ;; 所有文档都不存在
+              (empty? valid-docs)
+              {:status 404 :body "Document not found"}
 
-            ;; HTMX 请求：返回最后一个笔记片段
-            is-htmx?
-            (let [vault-id (:vault-id (first valid-docs))
-                  all-docs (db/list-documents-by-vault vault-id)
-                  last-doc (last valid-docs)
-                  render-data (prepare-doc-data last-doc vault-id all-docs)
-                  
-                  ;; 获取 HTMX headers 构建 push URL
-                  from-note-id (get-in request [:headers "x-from-note-id"])
-                  current-url (get-in request [:headers "hx-current-url"])
-                  root-doc-id (:root-doc-id vault)
-                  push-url (or corrected-path
-                               (build-push-url current-url from-note-id (:id last-doc) root-doc-id))]
-              
-              {:status 200
-               :headers {"Content-Type" "text/html; charset=utf-8"
-                         "HX-Push-Url" push-url}
-               :body (selmer/render-file "templates/frontend/doc.html" render-data)})
-
-            ;; 普通请求：返回完整页面
-            :else
-            (let [vault-id (:vault-id (first valid-docs))
-                  all-docs (db/list-documents-by-vault vault-id)
-                  docs-data (mapv #(prepare-doc-data % vault-id all-docs) valid-docs)
-                  response-body (selmer/render-file "templates/frontend/doc-page.html"
-                                                    {:docs docs-data :vault vault})]
-              (if needs-correction?
-                ;; 需要修正 URL
+              ;; HTMX 请求：返回最后一个笔记片段
+              is-htmx?
+              (let [last-doc (last valid-docs)
+                    render-data (prepare-doc-data last-doc vault-id)
+                    
+                    ;; 获取 HTMX headers 构建 push URL
+                    from-note-id (get-in request [:headers "x-from-note-id"])
+                    current-url (get-in request [:headers "hx-current-url"])
+                    root-doc-id (:root-doc-id vault)
+                    push-url (or corrected-path
+                                 (build-push-url current-url from-note-id (:client-id last-doc) root-doc-id))]
+                
                 {:status 200
                  :headers {"Content-Type" "text/html; charset=utf-8"
-                           "HX-Replace-Url" corrected-path}
-                 :body response-body}
-                ;; 正常响应
-                (resp/html response-body)))))))))
+                           "HX-Push-Url" push-url}
+                 :body (selmer/render-file "templates/frontend/doc.html" render-data)})
+
+              ;; 普通请求：返回完整页面
+              :else
+              (let [docs-data (mapv #(prepare-doc-data % vault-id) valid-docs)
+                    response-body (selmer/render-file "templates/frontend/doc-page.html"
+                                                      {:docs docs-data :vault vault})]
+                (if needs-correction?
+                  ;; 需要修正 URL
+                  {:status 200
+                   :headers {"Content-Type" "text/html; charset=utf-8"
+                             "HX-Replace-Url" corrected-path}
+                   :body response-body}
+                  ;; 正常响应
+                  (resp/html response-body))))))))))

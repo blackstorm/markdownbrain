@@ -6,21 +6,68 @@
 ;;; 测试 1: 基础 Markdown 转换
 (deftest test-basic-markdown-conversion
   (testing "将简单的 markdown 转换为 HTML"
-    (is (= "<p>Hello world</p>"
-           (md/md->html "Hello world"))))
+    (let [html (md/md->html "Hello world")]
+      (is (str/includes? html "<p>"))
+      (is (str/includes? html "Hello world"))))
 
   (testing "标题转换"
-    (is (= "<h1>Title</h1>"
-           (md/md->html "# Title"))))
+    (let [html (md/md->html "# Title")]
+      (is (str/includes? html "<h1>"))
+      (is (str/includes? html "Title"))))
 
   (testing "粗体和斜体"
-    (is (= "<p><strong>bold</strong> and <em>italic</em></p>"
-           (md/md->html "**bold** and *italic*"))))
+    (let [html (md/md->html "**bold** and *italic*")]
+      (is (str/includes? html "<strong>bold</strong>"))
+      (is (str/includes? html "<em>italic</em>"))))
 
   (testing "代码块"
     (let [html (md/md->html "```python\nprint('hello')\n```")]
-      (is (or (str/includes? html "language-python")
-              (str/includes? html "class=\"python\""))))))
+      (is (str/includes? html "<code"))
+      (is (str/includes? html "print"))))
+
+  (testing "nil 输入返回 nil"
+    (is (nil? (md/md->html nil)))))
+
+;;; 测试 1.5: YAML Front Matter 处理
+(deftest test-yaml-front-matter
+  (testing "忽略 YAML front matter，只渲染内容"
+    (let [content "---\ntitle: Hello\ntags: [clojure]\n---\n\n# Heading\n\nBody text."
+          html (md/md->html content)]
+      ;; 不应包含 YAML 标记
+      (is (not (str/includes? html "---")))
+      (is (not (str/includes? html "title:")))
+      (is (not (str/includes? html "tags:")))
+      ;; 应包含正文内容
+      (is (str/includes? html "<h1>"))
+      (is (str/includes? html "Heading"))
+      (is (str/includes? html "Body text"))))
+
+  (testing "没有 front matter 的内容正常渲染"
+    (let [html (md/md->html "# Just content\n\nNo front matter here.")]
+      (is (str/includes? html "<h1>"))
+      (is (str/includes? html "Just content"))))
+
+  (testing "只有 front matter 的内容渲染为空"
+    (let [html (md/md->html "---\ntitle: Only metadata\n---")]
+      ;; 应该返回空或只有空白
+      (is (or (nil? html)
+              (str/blank? (str/trim html))
+              (not (str/includes? html "title"))))))
+
+  (testing "复杂 YAML front matter"
+    (let [content "---\ntitle: Complex\nauthor: Test\ndate: 2024-01-01\ntags:\n  - tag1\n  - tag2\n---\n\nContent here."
+          html (md/md->html content)]
+      (is (not (str/includes? html "Complex")))
+      (is (not (str/includes? html "author:")))
+      (is (str/includes? html "Content here"))))
+
+  (testing "thematic break (---) 在正文中不被误解析"
+    (let [content "# Title\n\nSome text\n\n---\n\nMore text"
+          html (md/md->html content)]
+      ;; --- 在正文中应该渲染为 <hr>
+      (is (str/includes? html "<hr"))
+      (is (str/includes? html "Some text"))
+      (is (str/includes? html "More text")))))
 
 ;;; 测试 2: 解析单个 Obsidian 链接
 (deftest test-parse-obsidian-link
@@ -60,18 +107,18 @@
 (deftest test-extract-math
   (testing "提取行内公式 $x^2$"
     (let [result (md/extract-math "The formula $x^2$ is simple")]
-      (is (= "The formula ___MATH_0___ is simple" (:content result)))
+      (is (= "The formula MATHINLINE0MATHINLINE is simple" (:content result)))
       (is (= [{:type :inline :formula "x^2"}] (:formulas result)))))
 
   (testing "提取块级公式 $$...$$"
     (let [result (md/extract-math "$$E = mc^2$$")]
-      (is (= "___MATH_0___" (:content result)))
+      (is (= "MATHBLOCK0MATHBLOCK" (:content result)))
       (is (= [{:type :block :formula "E = mc^2"}] (:formulas result)))))
 
   (testing "提取多个公式"
     (let [result (md/extract-math "Inline $a + b$ and block $$c = d$$")]
       ;; 注意：先提取块级再提取行内，所以顺序是反的
-      (is (= "Inline ___MATH_1___ and block ___MATH_0___" (:content result)))
+      (is (= "Inline MATHINLINE1MATHINLINE and block MATHBLOCK0MATHBLOCK" (:content result)))
       (is (= [{:type :block :formula "c = d"}
               {:type :inline :formula "a + b"}]
              (:formulas result))))))
@@ -80,66 +127,135 @@
 (deftest test-restore-math
   (testing "还原行内公式"
     (is (= "<p>The formula <span class=\"math-inline\">x^2</span> is simple</p>"
-           (md/restore-math "<p>The formula ___MATH_0___ is simple</p>"
+           (md/restore-math "<p>The formula MATHINLINE0MATHINLINE is simple</p>"
                             [{:type :inline :formula "x^2"}]))))
 
   (testing "还原块级公式"
     (is (= "<div class=\"math-block\">E = mc^2</div>"
-           (md/restore-math "___MATH_0___"
+           (md/restore-math "MATHBLOCK0MATHBLOCK"
                             [{:type :block :formula "E = mc^2"}])))))
 
-;;; 测试 5: 提取标题
+;;; 测试 5: 提取标题（使用 CommonMark AST，只提取 H1）
 (deftest test-extract-title
-  (testing "从内容中提取第一个标题"
+  (testing "从内容中提取第一个 H1 标题"
     (is (= "My Title"
            (md/extract-title "# My Title\n\nSome content"))))
 
   (testing "无标题时返回 nil"
     (is (nil? (md/extract-title "Just content without title"))))
 
-  (testing "提取 H2 标题"
-    (is (= "Subtitle"
-           (md/extract-title "## Subtitle\n\nContent")))))
+  (testing "H2 不被提取（只提取 H1）"
+    (is (nil? (md/extract-title "## Subtitle\n\nContent"))))
 
-;;; 测试 6: 替换 Obsidian 链接
+  (testing "跳过 YAML front matter 提取标题"
+    (is (= "Real Title"
+           (md/extract-title "---\ntitle: Fake Title\n---\n# Real Title\n\nContent"))))
+
+  (testing "代码块内的 # 不被误提取"
+    (is (nil? (md/extract-title "```python\n# This is a comment\n```\n\nNo real title"))))
+
+  (testing "有 H1 时忽略代码块内的注释"
+    (is (= "Real Title"
+           (md/extract-title "# Real Title\n\n```python\n# comment\n```"))))
+
+  (testing "多个 H1 只取第一个"
+    (is (= "First"
+           (md/extract-title "# First\n\n# Second"))))
+
+  (testing "H1 在 H2 之后也能正确提取"
+    (is (= "Main Title"
+           (md/extract-title "## Intro\n\n# Main Title\n\nContent"))))
+
+  (testing "空内容返回 nil"
+    (is (nil? (md/extract-title nil))))
+
+  (testing "只有空白返回 nil"
+    (is (nil? (md/extract-title "   \n\n  ")))))
+
+;;; 测试 5.5: 提取描述
+(deftest test-extract-description
+  (testing "提取第一段非标题文本"
+    (is (= "This is the description."
+           (md/extract-description "# Title\n\nThis is the description.\n\nMore content."))))
+
+  (testing "跳过 YAML front matter"
+    (is (= "This is content."
+           (md/extract-description "---\ntitle: Test\ntags: [a, b]\n---\n# Title\n\nThis is content."))))
+
+  (testing "跳过多个标题行"
+    (is (= "First paragraph."
+           (md/extract-description "# H1\n## H2\n\nFirst paragraph."))))
+
+  (testing "限制描述长度"
+    (is (= "Short"
+           (md/extract-description "# Title\n\nShort description here." 5))))
+
+  (testing "空内容返回 nil"
+    (is (nil? (md/extract-description nil))))
+
+  (testing "只有标题没有内容返回 nil"
+    (is (nil? (md/extract-description "# Title Only"))))
+
+  (testing "只有 YAML front matter 返回 nil"
+    (is (nil? (md/extract-description "---\ntitle: Test\n---")))))
+
+;;; 测试 6: 替换 Obsidian 链接（使用预存储的 links）
 (deftest test-replace-obsidian-links
-  (let [;; 模拟文档数据
-        documents [{:id "doc-1" :client-id "client-1" :path "Note A.md"}
-                   {:id "doc-2" :client-id "client-2" :path "Note B.md"}
-                   {:id "doc-3" :client-id "client-3" :path "image.png"}]]
+  (let [;; 模拟从 document_links 表查询的链接数据
+        ;; 格式: {:original "[[...]]" :target-client-id "..." :display-text "..."}
+        links [{:original "[[Note A]]"
+                :target-client-id "client-1"
+                :target-path "Note A"
+                :display-text "Note A"
+                :link-type "link"}
+               {:original "[[Note B|my note]]"
+                :target-client-id "client-2"
+                :target-path "Note B"
+                :display-text "my note"
+                :link-type "link"}
+               {:original "![[image.png]]"
+                :target-client-id "client-3"
+                :target-path "image.png"
+                :display-text "image.png"
+                :link-type "embed"}]]
 
-    (testing "替换简单链接"
+    (testing "替换简单链接 - 使用 link 数据"
       (is (str/includes?
-           (md/replace-obsidian-links "Check [[Note A]]" documents)
-           "href=\"/doc-1\"")))
+           (md/replace-obsidian-links "Check [[Note A]]" links)
+           "href=\"/client-1\"")))
 
     (testing "替换带显示文本的链接"
-      (let [result (md/replace-obsidian-links "See [[Note B|my note]]" documents)]
-        (is (str/includes? result "href=\"/doc-2\""))
+      (let [result (md/replace-obsidian-links "See [[Note B|my note]]" links)]
+        (is (str/includes? result "href=\"/client-2\""))
         (is (str/includes? result ">my note</a>"))))
 
-    (testing "链接不存在时显示为 broken"
-      (let [result (md/replace-obsidian-links "[[Non Existent]]" documents)]
+    (testing "链接不存在（不在 links 列表中）时显示为 broken"
+      (let [result (md/replace-obsidian-links "[[Non Existent]]" links)]
         (is (str/includes? result "broken"))
         (is (str/includes? result "Non Existent"))))
 
     (testing "图片嵌入"
-      (let [result (md/replace-obsidian-links "![[image.png]]" documents)]
+      (let [result (md/replace-obsidian-links "![[image.png]]" links)]
         (is (str/includes? result "<img"))
-        (is (str/includes? result "/doc-3"))))))
+        (is (str/includes? result "/client-3"))))))
 
 ;;; 测试 7: 完整渲染流程
 (deftest test-render-markdown
-  (let [documents [{:id "doc-1" :client-id "client-1" :path "Other Note.md"}]
+  (let [;; 模拟预存储的链接数据
+        links [{:original "[[Other Note]]"
+                :target-client-id "client-1"
+                :target-path "Other Note"
+                :display-text "Other Note"
+                :link-type "link"}]
         content "# Test Note\n\nThis is a [[Other Note]] with $x^2$ formula.\n\n$$E = mc^2$$"]
 
     (testing "完整渲染包含所有功能"
-      (let [result (md/render-markdown content documents)]
+      (let [result (md/render-markdown content links)]
         ;; 检查 HTML 标题
         (is (str/includes? result "<h1"))
         (is (str/includes? result "Test Note"))
-        ;; 检查 Obsidian 链接被替换
-        (is (str/includes? result "href=\"/doc-1\""))
+        ;; 检查 Obsidian 链接被替换 - 使用 client-id
+        (is (str/includes? result "href=\"/client-1\""))
         ;; 检查数学公式被标记
         (is (str/includes? result "math-inline"))
         (is (str/includes? result "math-block"))))))

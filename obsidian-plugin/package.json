@@ -9,7 +9,7 @@
     "copy-files": "mkdir -p dist && cp manifest.json dist/ && cp styles.css dist/ 2>/dev/null || true",
     "package": "npm run build && cd dist && zip -r ../markdownbrain-plugin.zip .",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
-    "test": "bun test",
+    "test": "bun test --preload ./src/__tests__/setup.ts",
     "test:watch": "bun test --watch"
   },
   "keywords": ["obsidian", "plugin", "sync"],

@@ -1,4 +1,4 @@
-import { Plugin, TFile, Notice, PluginSettingTab, App, Setting, requestUrl, PluginManifest } from 'obsidian';
+import { App, Notice, Plugin, PluginManifest, PluginSettingTab, requestUrl, Setting, TFile } from 'obsidian';
 import { getOrCreateClientId } from './src/core/client-id';
 
 interface MarkdownBrainSettings {
@@ -19,17 +19,7 @@ interface SyncConfig {
     syncKey: string;
 }
 
-// 文档元数据
 interface DocumentMetadata {
-    links?: Array<{
-        link: string;              // 链接目标路径
-        targetClientId: string;    // 目标文档的 client_id
-        original: string;          // 原始文本
-        displayText?: string;      // 显示文本
-        linkType: 'link' | 'embed'; // 链接类型
-        isMedia?: boolean;         // 是否是媒体文件
-        mediaType?: 'image' | 'video' | 'audio' | 'pdf' | 'other'; // 媒体类型
-    }>;
     tags?: Array<{
         tag: string;
         position: {
@@ -289,108 +279,14 @@ class SyncManager {
 
 export default class MarkdownBrainPlugin extends Plugin {
     settings!: MarkdownBrainSettings;
-    syncManager!: SyncManager;  // 改为 public，供设置面板使用
+    syncManager!: SyncManager;
     private syncDebounceTimers: Map<string, NodeJS.Timeout>;
-    private pendingSyncs: Set<string>;  // 跟踪待同步的文件
+    private pendingSyncs: Set<string>;
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.syncDebounceTimers = new Map();
         this.pendingSyncs = new Set();
-    }
-
-    /**
-     * 从路径获取或生成链接目标的 client_id
-     * 如果目标文件存在且在 vault 中，使用 frontmatter UUID
-     * 否则回退到路径哈希（用于未同步的文件或外部文件）
-     *
-     * @param path - 链接目标的路径
-     * @returns client_id
-     */
-    private async getTargetClientId(path: string): Promise<string> {
-        // 尝试从路径获取 TFile 对象
-        const targetFile = this.app.vault.getAbstractFileByPath(path);
-
-        // 如果找到文件且是 TFile，使用 frontmatter UUID
-        if (targetFile instanceof TFile) {
-            try {
-                const content = await this.app.vault.read(targetFile);
-                return await getOrCreateClientId(targetFile, content, this.app);
-            } catch (error) {
-                console.warn(`[MarkdownBrain] Failed to read target file ${path}, using fallback:`, error);
-            }
-        }
-
-        // 回退到路径哈希方法（用于未同步的文件或外部文件）
-        return await this.generateClientIdFromPath(path);
-    }
-
-    /**
-     * 从路径生成 client_id（后备方案）
-     * 仅用于以下情况：
-     * 1. 链接指向的文件不在 vault 中（外部文件或未同步的文件）
-     * 2. 文件已被删除，无法读取 frontmatter
-     *
-     * 注意：这是一个后备方案，优先使用 getOrCreateClientId 从 frontmatter 读取 UUID
-     *
-     * @param path - 文件路径
-     * @returns 基于 SHA-256(path) 生成的 client_id
-     */
-    async generateClientIdFromPath(path: string): Promise<string> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(path);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        // 格式化为 UUID 样式
-        return `${hashHex.substring(0, 8)}-${hashHex.substring(8, 12)}-${hashHex.substring(12, 16)}-${hashHex.substring(16, 20)}-${hashHex.substring(20, 32)}`;
-    }
-
-    // 标准化 Obsidian 链接路径
-    normalizeLinkPath(link: string): string {
-        // 移除可能的锚点和块引用
-        let path = link.split('#')[0].split('^')[0];
-
-        // 不要为非 markdown 文件添加 .md 扩展名
-        // 保留原始扩展名（如 .png, .jpg, .mp4 等）
-        if (!path.includes('.')) {
-            // 如果没有扩展名，假设是 markdown 文件
-            path = path + '.md';
-        }
-
-        return path;
-    }
-
-    // 判断是否是媒体文件
-    isMediaFile(path: string): boolean {
-        const mediaExtensions = [
-            // 图片
-            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp',
-            // 视频
-            '.mp4', '.webm', '.ogv', '.mov', '.mkv',
-            // 音频
-            '.mp3', '.wav', '.m4a', '.ogg', '.3gp', '.flac',
-            // 其他
-            '.pdf'
-        ];
-
-        const ext = path.substring(path.lastIndexOf('.')).toLowerCase();
-        return mediaExtensions.includes(ext);
-    }
-
-    // 获取媒体文件类型
-    getMediaType(path: string): 'image' | 'video' | 'audio' | 'pdf' | 'other' {
-        const ext = path.substring(path.lastIndexOf('.')).toLowerCase();
-
-        const imageExts = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg', '.webp'];
-        const videoExts = ['.mp4', '.webm', '.ogv', '.mov', '.mkv'];
-        const audioExts = ['.mp3', '.wav', '.m4a', '.ogg', '.3gp', '.flac'];
-
-        if (imageExts.includes(ext)) return 'image';
-        if (videoExts.includes(ext)) return 'video';
-        if (audioExts.includes(ext)) return 'audio';
-        if (ext === '.pdf') return 'pdf';
-        return 'other';
     }
 
     async onload() {
@@ -530,95 +426,16 @@ export default class MarkdownBrainPlugin extends Plugin {
         });
 
         try {
-            // 读取文件内容
             const content = await this.app.vault.read(file);
             console.log('[MarkdownBrain] File read successfully:', {
                 path: file.path,
                 contentLength: content.length
             });
 
-            // 获取文件元数据 - 使用 Obsidian API
             const cachedMetadata = this.app.metadataCache.getFileCache(file);
             const metadata: DocumentMetadata = {};
 
-            console.log('[MarkdownBrain] Raw cached metadata:', cachedMetadata);
-
             if (cachedMetadata) {
-                // 提取链接和嵌入，合并为统一的 links 数组
-                const allLinks: Array<{
-                    link: string;
-                    targetClientId: string;
-                    original: string;
-                    displayText?: string;
-                    linkType: 'link' | 'embed';
-                }> = [];
-
-                // 处理普通链接
-                if (cachedMetadata.links) {
-                    console.log('[MarkdownBrain] Found', cachedMetadata.links.length, 'links in metadata');
-                    for (const link of cachedMetadata.links) {
-                        console.log('[MarkdownBrain] Processing link:', link);
-                        const normalizedPath = this.normalizeLinkPath(link.link);
-                        console.log('[MarkdownBrain] Normalized path:', normalizedPath);
-                        const targetClientId = await this.getTargetClientId(normalizedPath);
-                        console.log('[MarkdownBrain] Generated targetClientId:', targetClientId);
-
-                        const isMedia = this.isMediaFile(normalizedPath);
-                        const linkData: any = {
-                            link: normalizedPath,
-                            targetClientId: targetClientId,
-                            original: link.original,
-                            displayText: link.displayText,
-                            linkType: 'link'
-                        };
-
-                        if (isMedia) {
-                            linkData.isMedia = true;
-                            linkData.mediaType = this.getMediaType(normalizedPath);
-                            console.log('[MarkdownBrain] Media file detected:', linkData.mediaType);
-                        }
-
-                        allLinks.push(linkData);
-                    }
-                }
-
-                // 处理嵌入
-                if (cachedMetadata.embeds) {
-                    console.log('[MarkdownBrain] Found', cachedMetadata.embeds.length, 'embeds in metadata');
-                    for (const embed of cachedMetadata.embeds) {
-                        console.log('[MarkdownBrain] Processing embed:', embed);
-                        const normalizedPath = this.normalizeLinkPath(embed.link);
-                        console.log('[MarkdownBrain] Normalized path:', normalizedPath);
-                        const targetClientId = await this.getTargetClientId(normalizedPath);
-                        console.log('[MarkdownBrain] Generated targetClientId:', targetClientId);
-
-                        const isMedia = this.isMediaFile(normalizedPath);
-                        const linkData: any = {
-                            link: normalizedPath,
-                            targetClientId: targetClientId,
-                            original: embed.original,
-                            linkType: 'embed'
-                        };
-
-                        if (isMedia) {
-                            linkData.isMedia = true;
-                            linkData.mediaType = this.getMediaType(normalizedPath);
-                            console.log('[MarkdownBrain] Media file detected:', linkData.mediaType);
-                        }
-
-                        allLinks.push(linkData);
-                    }
-                }
-
-                if (allLinks.length > 0) {
-                    metadata.links = allLinks;
-                    console.log('[MarkdownBrain] Total links to sync:', allLinks.length);
-                    console.log('[MarkdownBrain] Links data:', JSON.stringify(allLinks, null, 2));
-                } else {
-                    console.log('[MarkdownBrain] No links found in this document');
-                }
-
-                // 提取标签
                 if (cachedMetadata.tags) {
                     metadata.tags = cachedMetadata.tags.map(tag => ({
                         tag: tag.tag,
@@ -626,7 +443,6 @@ export default class MarkdownBrainPlugin extends Plugin {
                     }));
                 }
 
-                // 提取标题
                 if (cachedMetadata.headings) {
                     metadata.headings = cachedMetadata.headings.map(heading => ({
                         heading: heading.heading,
@@ -635,38 +451,30 @@ export default class MarkdownBrainPlugin extends Plugin {
                     }));
                 }
 
-                // 提取 frontmatter
                 if (cachedMetadata.frontmatter) {
                     metadata.frontmatter = cachedMetadata.frontmatter;
                 }
 
                 console.log('[MarkdownBrain] Metadata extracted:', {
                     path: file.path,
-                    linksCount: metadata.links?.length || 0,
                     tagsCount: metadata.tags?.length || 0,
                     headingsCount: metadata.headings?.length || 0,
                     hasFrontmatter: !!metadata.frontmatter
                 });
             }
 
-            // 获取文件统计信息
             const stat = file.stat;
             const hash = await this.hashString(content);
             const mtime = new Date(stat.mtime).toISOString();
-
-            // 生成或获取客户端 ID（从 frontmatter）
             const clientId = await getOrCreateClientId(file, content, this.app);
 
             console.log('[MarkdownBrain] File metadata:', {
                 path: file.path,
                 clientId: clientId,
                 hash: hash,
-                mtime: mtime,
-                hasMetadata: !!metadata,
-                linksCount: metadata.links?.length || 0
+                mtime: mtime
             });
 
-            // 准备同步数据
             const syncData = {
                 path: file.path,
                 clientId: clientId,
@@ -678,13 +486,6 @@ export default class MarkdownBrainPlugin extends Plugin {
                 action: action
             };
 
-            console.log('[MarkdownBrain] Sync data prepared:');
-            console.log('[MarkdownBrain] - Path:', syncData.path);
-            console.log('[MarkdownBrain] - ClientId:', syncData.clientId);
-            console.log('[MarkdownBrain] - Action:', syncData.action);
-            console.log('[MarkdownBrain] - Metadata:', JSON.stringify(syncData.metadata, null, 2));
-
-            // 调用同步函数
             const result = await this.syncManager.sync(syncData);
 
             if (result.success) {
@@ -716,17 +517,8 @@ export default class MarkdownBrainPlugin extends Plugin {
         });
 
         try {
-            // 获取客户端 ID（从 frontmatter）
-            // 注意：删除时文件可能已被删除，尝试读取可能失败
-            // 使用空字符串作为后备，让 getOrCreateClientId 尝试读取文件
-            let clientId: string;
-            try {
-                const content = await this.app.vault.read(file);
-                clientId = await getOrCreateClientId(file, content, this.app);
-            } catch {
-                // 文件已被删除，使用路径哈希作为后备
-                clientId = await this.generateClientIdFromPath(file.path);
-            }
+            const content = await this.app.vault.read(file);
+            const clientId = await getOrCreateClientId(file, content, this.app);
 
             const result = await this.syncManager.sync({
                 path: file.path,
@@ -741,11 +533,7 @@ export default class MarkdownBrainPlugin extends Plugin {
                 console.error('[MarkdownBrain] ✗ File deletion sync failed:', file.path, result.error);
             }
         } catch (error) {
-            console.error('[MarkdownBrain] ✗ Delete sync exception:', {
-                path: file.path,
-                error: error,
-                errorMessage: error instanceof Error ? error.message : 'Unknown error'
-            });
+            console.warn('[MarkdownBrain] Cannot sync file deletion (file already removed or never synced):', file.path);
         }
     }
 
@@ -869,7 +657,7 @@ export default class MarkdownBrainPlugin extends Plugin {
      */
     private async syncOneFile(file: TFile, stats: SyncStats): Promise<void> {
         try {
-            const content = await this.app.vault.read(file);
+            // const content = await this.app.vault.read(file);
 
             await this.performSync(file, 'modify');
             stats.success++;

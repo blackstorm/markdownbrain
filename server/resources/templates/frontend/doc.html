@@ -1,6 +1,6 @@
 <div
   class="note grow shrink-0 overflow-y-auto w-full md:w-[625px] md:max-w-[625px] bg-white sticky top-0"
-  id="note-{{ doc.id }}"
+  id="note-{{ doc.client-id }}"
 >
   <article class="p-4 md:p-8 prose">
     <h1>{{ doc.title }}</h1>
@@ -15,9 +15,9 @@
       {% for backlink in backlinks %}
       <div class="backlink-item">
         <a
-          href="/{{ backlink.id }}"
-          hx-get="/{{ backlink.id }}"
-          hx-headers='{"X-From-Note-Id": "{{ doc.id }}"}'
+          href="/{{ backlink.client-id }}"
+          hx-get="/{{ backlink.client-id }}"
+          hx-headers='{"X-From-Note-Id": "{{ doc.client-id }}"}'
           hx-target="#notes"
           hx-swap="beforeend"
         >

@@ -8,6 +8,7 @@
   [:map
    [:path [:string {:min 1}]]
    [:clientId [:string {:min 1}]]
+   [:clientType {:optional true} [:maybe :string]]
    [:action [:enum "create" "modify" "delete"]]
    ;; 以下字段是可选的
    [:content {:optional true} [:maybe :string]]
@@ -34,14 +35,13 @@
 
 ;; 验证 create/modify 请求必须包含 content
 (defn validate-content-required
-  "验证 create/modify action 必须包含 content"
+  "验证 create/modify action 必须包含 content 字段（允许空字符串）"
   [action data]
   (if (and (or (= action "create") (= action "modify"))
-           (or (nil? (:content data))
-               (empty? (:content data))))
+           (nil? (:content data)))
     {:valid? false
-     :errors {:content ["Content is required for create/modify actions"]}
-     :message "Content is required for create/modify actions"}
+     :errors {:content ["Content field is required for create/modify actions"]}
+     :message "Content field is required for create/modify actions"}
     {:valid? true
      :data data}))
 

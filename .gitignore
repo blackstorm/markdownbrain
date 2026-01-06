@@ -30,3 +30,5 @@ server/resources/public/css/app.css
 
 # System files
 .DS_Store
+
+./vault/test/.obsidian/

@@ -609,3 +609,85 @@
 
       (is (= 1 before-count))
       (is (= 0 after-count)))))
+
+;;; ============================================================
+;;; 测试链接解析优化函数
+;;; ============================================================
+
+(defn get-documents-for-link-resolution
+  "获取链接解析所需的最小数据（测试用）
+   只返回 client_id 和 path，不返回 content 等大字段"
+  [vault-id]
+  (let [results (jdbc/execute! *conn*
+                               ["SELECT client_id, path FROM documents WHERE vault_id = ?"
+                                vault-id]
+                               {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
+(deftest test-get-documents-for-link-resolution
+  (testing "返回 vault 中所有文档的 client_id 和 path（不含 content）"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "link-resolution.com" "sync-key")
+
+          ;; Given: 创建多个文档，包含较大的 content
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "folder/Note A.md" "client-a"
+                              (apply str (repeat 10000 "Large content ")) "{}" "h1" "2024-01-01T00:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "Note B.md" "client-b"
+                              (apply str (repeat 10000 "More large content ")) "{}" "h2" "2024-01-01T00:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id "deep/nested/Note C.md" "client-c"
+                              "Small content" "{}" "h3" "2024-01-01T00:00:00Z")
+
+          ;; When: 获取链接解析所需数据
+          results (get-documents-for-link-resolution vault-id)]
+
+      ;; Then: 返回 3 个文档
+      (is (= 3 (count results)))
+
+      ;; 每个结果只包含 client-id 和 path
+      (is (every? #(contains? % :client-id) results))
+      (is (every? #(contains? % :path) results))
+
+      ;; 不包含 content（这是优化的关键）
+      (is (every? #(not (contains? % :content)) results))
+
+      ;; 验证数据正确性
+      (let [by-client-id (into {} (map (fn [r] [(:client-id r) r]) results))]
+        (is (= "folder/Note A.md" (:path (get by-client-id "client-a"))))
+        (is (= "Note B.md" (:path (get by-client-id "client-b"))))
+        (is (= "deep/nested/Note C.md" (:path (get by-client-id "client-c")))))))
+
+  (testing "空 vault 返回空列表"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Empty Blog" "empty-link.com" "sync-key-2")
+
+          results (get-documents-for-link-resolution vault-id)]
+
+      (is (= 0 (count results)))
+      (is (empty? results))))
+
+  (testing "不同 vault 之间数据隔离"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id-1 (utils/generate-uuid)
+          vault-id-2 (utils/generate-uuid)
+          _ (create-vault! vault-id-1 tenant-id "Blog 1" "isolation1.com" "sync-key-3")
+          _ (create-vault! vault-id-2 tenant-id "Blog 2" "isolation2.com" "sync-key-4")
+
+          ;; vault-1 有 2 个文档
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id-1 "a.md" "v1-a" "c" "{}" "h" "2024-01-01T00:00:00Z")
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id-1 "b.md" "v1-b" "c" "{}" "h" "2024-01-01T00:00:00Z")
+
+          ;; vault-2 有 1 个文档
+          _ (upsert-document! (utils/generate-uuid) tenant-id vault-id-2 "c.md" "v2-c" "c" "{}" "h" "2024-01-01T00:00:00Z")
+
+          results-1 (get-documents-for-link-resolution vault-id-1)
+          results-2 (get-documents-for-link-resolution vault-id-2)]
+
+      (is (= 2 (count results-1)))
+      (is (= 1 (count results-2)))
+      (is (= #{"v1-a" "v1-b"} (set (map :client-id results-1))))
+      (is (= #{"v2-c"} (set (map :client-id results-2)))))))

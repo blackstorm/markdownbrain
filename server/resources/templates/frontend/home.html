@@ -15,7 +15,7 @@
     {% if documents %}
     <div class="flex flex-col gap-2">
       {% for doc in documents %}
-      <a href="/{{ doc.id }}" class="block p-4 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors">
+      <a href="/{{ doc.client-id }}" class="block p-4 border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors">
         <h3 class="text-base font-medium text-gray-900 mb-1">{{ doc.path }}</h3>
         <p class="text-sm text-gray-500">Last modified: {{ doc.mtime }}</p>
       </a>

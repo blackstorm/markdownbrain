@@ -1,0 +1,16 @@
+---
+markdownbrain-id: 921c2273-d1fc-4748-9cbf-422662245c12
+---
+MarkdownBrain 是一款开源的数字花园发布系统，由 Haoya 开发，旨在将你的数字花园公布在互联网上。
+
+MarkdownBrain 的同步策略默认是实时的，你也可以进行手动同步。
+
+## FAQ
+### markdownbarin 使用什么技术栈
+- Clojure
+- Typescript
+- sqlite
+- htmx
+
+## 下面发布你的数字花园
+[[自托管方案]]

@@ -1,22 +1,61 @@
 (ns markdownbrain.markdown
   "Markdown rendering with Obsidian syntax support
+   使用 commonmark-java 实现，支持 YAML front matter 自动忽略
    采用第一性原理：每个函数只做一件事，可独立测试"
-  (:require [markdown.core :as markdown]
-            [clojure.string :as str]))
+  (:require [clojure.string :as str])
+  (:import [org.commonmark.parser Parser]
+           [org.commonmark.renderer.html HtmlRenderer]
+           [org.commonmark.renderer.text TextContentRenderer]
+           [org.commonmark.node Heading Text]
+           [org.commonmark.ext.front.matter YamlFrontMatterExtension]))
+
+;;; ============================================================
+;;; 1. CommonMark 解析器初始化
+;;; ============================================================
+
+(def ^:private extensions
+  "CommonMark 扩展列表（含 YAML front matter 支持）"
+  [(YamlFrontMatterExtension/create)])
+
+(def ^:private parser
+  "线程安全的 Markdown 解析器（单例）
+   配置 YAML front matter 扩展用于识别和跳过 front matter"
+  (-> (Parser/builder)
+      (.extensions extensions)
+      (.build)))
+
+(def ^:private renderer
+  "线程安全的 HTML 渲染器（单例）
+   注意：不添加 YAML 扩展，这样 YamlFrontMatterBlock 节点将被忽略
+   配置 softbreak 为 <br> 以保留单行换行"
+  (-> (HtmlRenderer/builder)
+      (.softbreak "<br>\n")
+      (.build)))
+
+(def ^:private text-renderer
+  "线程安全的纯文本渲染器（单例）
+   用于从 AST 节点提取纯文本内容"
+  (-> (TextContentRenderer/builder)
+      (.build)))
 
 ;;; ============================================================
 ;;; 1. 基础 Markdown 转换
 ;;; ============================================================
 
 (defn md->html
-  "将 Markdown 转换为 HTML（基础版本）
+  "将 Markdown 转换为 HTML
    输入: Markdown 字符串
-   输出: HTML 字符串"
+   输出: HTML 字符串
+   
+   特性:
+   - 自动忽略 YAML front matter (--- ... ---)
+   - 支持 CommonMark 规范"
   [md-str]
   (when md-str
-    (-> md-str
-        str/trim
-        (markdown/md-to-html-string))))
+    (let [trimmed (str/trim md-str)
+          document (.parse parser trimmed)
+          html (.render renderer document)]
+      (str/trim html))))
 
 ;;; ============================================================
 ;;; 2. Obsidian 链接解析
@@ -77,14 +116,14 @@
                                (fn [[_ formula]]
                                  (let [idx (count @formulas)]
                                    (swap! formulas conj {:type :block :formula (str/trim formula)})
-                                   (str "___MATH_" idx "___"))))
+                                   (str "MATHBLOCK" idx "MATHBLOCK"))))
         ;; 2. 再提取行内公式 $...$
         content-2 (str/replace content-1
                                #"(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)"
                                (fn [[_ formula]]
                                  (let [idx (count @formulas)]
                                    (swap! formulas conj {:type :inline :formula (str/trim formula)})
-                                   (str "___MATH_" idx "___"))))]
+                                   (str "MATHINLINE" idx "MATHINLINE"))))]
     {:content content-2
      :formulas @formulas}))
 
@@ -93,14 +132,16 @@
    输入: HTML 字符串和公式列表
    输出: 替换后的 HTML
 
-   占位符格式: ___MATH_0___, ___MATH_1___, ...
+   占位符格式: MATHINLINE0MATHINLINE, MATHBLOCK0MATHBLOCK, ...
    输出格式:
    - 行内: <span class=\"math-inline\">formula</span>
    - 块级: <div class=\"math-block\">formula</div>"
   [html formulas]
   (reduce-kv
    (fn [result idx {:keys [type formula]}]
-     (let [placeholder (str "___MATH_" idx "___")
+     (let [placeholder (if (= type :inline)
+                         (str "MATHINLINE" idx "MATHINLINE")
+                         (str "MATHBLOCK" idx "MATHBLOCK"))
            replacement (if (= type :inline)
                          (format "<span class=\"math-inline\">%s</span>" formula)
                          (format "<div class=\"math-block\">%s</div>" formula))]
@@ -112,60 +153,114 @@
 ;;; 4. 提取元数据
 ;;; ============================================================
 
-(defn extract-title
-  "从 Markdown 内容中提取标题（第一个 # 开头的行）
+(defn- strip-yaml-front-matter
+  "移除 YAML front matter（--- ... ---）
    输入: Markdown 字符串
-   输出: 标题字符串或 nil"
+   输出: 移除 front matter 后的字符串"
   [content]
-  (when content
+  (if (str/starts-with? content "---")
     (let [lines (str/split-lines content)
-          title-line (first (filter #(str/starts-with? % "#") lines))]
-      (when title-line
-        (-> title-line
-            (str/replace #"^#+\s+" "")
-            str/trim)))))
+          ;; 找到第二个 --- 的位置
+          rest-lines (rest lines)
+          end-idx (loop [idx 0
+                         remaining rest-lines]
+                    (if (empty? remaining)
+                      nil
+                      (if (str/starts-with? (first remaining) "---")
+                        idx
+                        (recur (inc idx) (rest remaining)))))]
+      (if end-idx
+        (str/join "\n" (drop (+ 2 end-idx) lines))
+        content))
+    content))
+
+(defn- find-first-h1
+  "遍历 AST 找到第一个 H1 节点
+   输入: CommonMark Document 节点
+   输出: Heading 节点或 nil"
+  [document]
+  (loop [node (.getFirstChild document)]
+    (when node
+      (if (and (instance? Heading node)
+               (= 1 (.getLevel node)))
+        node
+        (recur (.getNext node))))))
+
+(defn- get-heading-text
+  "从 Heading 节点提取纯文本内容
+   输入: Heading 节点
+   输出: 文本字符串"
+  [heading]
+  (str/trim (.render text-renderer heading)))
+
+(defn extract-title
+  "从 Markdown 内容中提取 H1 标题（使用 CommonMark AST）
+   输入: Markdown 字符串
+   输出: H1 标题字符串或 nil
+   
+   特性:
+   - 只提取 H1（# 开头），H2-H6 不提取
+   - 自动跳过 YAML front matter
+   - 不会误提取代码块内的 # 注释
+   - 多个 H1 时返回第一个"
+  [content]
+  (when (and content (not (str/blank? content)))
+    (let [document (.parse parser (str/trim content))
+          h1-node (find-first-h1 document)]
+      (when h1-node
+        (get-heading-text h1-node)))))
+
+(defn extract-description
+  "从 Markdown 内容中提取描述（第一段非标题文本）
+   输入: Markdown 字符串, 可选的最大长度（默认 100）
+   输出: 描述字符串或 nil
+   
+   注意: 会跳过 YAML front matter 和标题行"
+  ([content] (extract-description content 100))
+  ([content max-length]
+   (when content
+     (let [body (strip-yaml-front-matter content)
+           lines (str/split-lines body)
+           first-para (->> lines
+                           (drop-while #(or (str/starts-with? % "#")
+                                            (str/blank? %)))
+                           (filter #(not (str/blank? %)))
+                           first)]
+       (when first-para
+         (subs first-para 0 (min max-length (count first-para))))))))
 
 ;;; ============================================================
 ;;; 5. Obsidian 链接替换
 ;;; ============================================================
 
-(defn- normalize-path
-  "规范化文件路径：移除 .md 扩展名，转小写
-   示例: 'Note A.md' -> 'note a'"
-  [path]
-  (-> path
-      str/trim
-      (str/replace #"\.md$" "")
-      str/lower-case))
-
-(defn- build-path-index
-  "从文档列表构建路径到文档的索引
-   输入: 文档列表
-   输出: {\"normalized-path\" {:id \"...\" :client-id \"...\" ...}}"
-  [documents]
+(defn- build-link-index
+  "从链接列表构建原始链接到链接数据的索引
+   输入: 链接列表 [{:original \"[[...]]\" :target-client-id \"...\" ...}]
+   输出: {\"[[Note A]]\" {:target-client-id \"...\" ...}}"
+  [links]
   (into {}
-        (map (fn [doc]
-               [(normalize-path (:path doc)) doc])
-             documents)))
+        (map (fn [link]
+               [(:original link) link])
+             links)))
 
-(defn- find-document-by-path
-  "通过路径查找文档
-   输入: 路径字符串和路径索引
-   输出: 文档 map 或 nil"
-  [path path-index]
-  (get path-index (normalize-path path)))
+(defn- find-link-by-original
+  "通过原始链接字符串查找链接数据
+   输入: 原始链接字符串（如 \"[[Note A]]\"）和链接索引
+   输出: 链接 map 或 nil"
+  [original link-index]
+  (get link-index original))
 
 (defn- render-internal-link
   "渲染内部链接为 HTML
-   输入: 目标文档、显示文本、可选锚点
+   输入: 目标 client-id、显示文本、可选锚点
    输出: HTML 字符串"
-  [target-doc display-text anchor]
+  [target-client-id display-text anchor]
   (let [href (if anchor
-               (format "/%s#%s" (:id target-doc) anchor)
-               (format "/%s" (:id target-doc)))]
+               (format "/%s#%s" target-client-id anchor)
+               (format "/%s" target-client-id))]
     (format "<a href=\"%s\" class=\"internal-link\" data-doc-id=\"%s\">%s</a>"
             href
-            (:id target-doc)
+            target-client-id
             (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"}))))
 
 (defn- render-broken-link
@@ -179,41 +274,46 @@
 
 (defn- render-image-embed
   "渲染图片嵌入为 HTML
-   输入: 目标文档、显示文本
+   输入: 目标 client-id、显示文本
    输出: HTML 字符串"
-  [target-doc display-text]
+  [target-client-id display-text]
   (format "<img src=\"/documents/%s/content\" alt=\"%s\" class=\"obsidian-embed\">"
-          (:id target-doc)
+          target-client-id
           (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})))
 
 (defn replace-obsidian-links
   "替换文本中的所有 Obsidian 链接为 HTML 链接
-   输入: 内容字符串、文档列表
+   输入: 内容字符串、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" :display-text \"...\" :link-type \"link\"/\"embed\"}]
    输出: 替换后的字符串
 
    处理:
    - [[链接]] -> 内部链接
    - [[链接|文本]] -> 带自定义文本的链接
    - [[链接#锚点]] -> 带锚点的链接
-   - ![[图片]] -> 图片嵌入"
-  [content documents]
-  (let [path-index (build-path-index documents)
+   - ![[图片]] -> 图片嵌入
+   
+   注意: links 参数来自 document_links 表，只包含已解析的有效链接
+         不在列表中的链接将显示为 broken link"
+  [content links]
+  (let [link-index (build-link-index links)
         ;; 匹配 [[...]] 和 ![[...]]
         pattern #"(!?)\[\[([^\]]+)\]\]"]
     (str/replace content pattern
-                 (fn [[_ is-embed link-text]]
-                   (let [parsed (parse-obsidian-link (str is-embed "[[" link-text "]]"))
-                         target-doc (find-document-by-path (:path parsed) path-index)]
+                 (fn [[full-match is-embed link-text]]
+                   (let [original full-match
+                         link-data (find-link-by-original original link-index)
+                         parsed (parse-obsidian-link original)]
                      (cond
-                       ;; 图片嵌入
-                       (and (:embed? parsed) target-doc)
-                       (render-image-embed target-doc (:display parsed))
+                       ;; 链接存在于预存储的列表中
+                       link-data
+                       (let [target-client-id (:target-client-id link-data)
+                             display-text (:display-text link-data)
+                             link-type (:link-type link-data)]
+                         (if (= link-type "embed")
+                           (render-image-embed target-client-id display-text)
+                           (render-internal-link target-client-id display-text (:anchor parsed))))
 
-                       ;; 普通链接，找到目标
-                       target-doc
-                       (render-internal-link target-doc (:display parsed) (:anchor parsed))
-
-                       ;; 链接不存在
+                       ;; 链接不存在（broken link）
                        :else
                        (render-broken-link (:path parsed) (:display parsed))))))))
 
@@ -223,7 +323,7 @@
 
 (defn render-markdown
   "完整的 Markdown 渲染流程
-   输入: Markdown 内容、文档列表
+   输入: Markdown 内容、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" ...}]
    输出: HTML 字符串
 
    处理流程:
@@ -231,12 +331,12 @@
    2. 替换 Obsidian 链接为 HTML 链接
    3. Markdown -> HTML 转换
    4. 还原数学公式为 KaTeX 标记"
-  [content documents]
+  [content links]
   (when content
     (let [;; 1. 提取数学公式
           {:keys [content formulas]} (extract-math content)
           ;; 2. 替换 Obsidian 链接
-          content-with-links (replace-obsidian-links content documents)
+          content-with-links (replace-obsidian-links content links)
           ;; 3. Markdown -> HTML
           html (md->html content-with-links)
           ;; 4. 还原数学公式

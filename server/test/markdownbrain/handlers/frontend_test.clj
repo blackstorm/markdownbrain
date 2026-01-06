@@ -1,5 +1,6 @@
 (ns markdownbrain.handlers.frontend-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [clojure.string :as str]
             [markdownbrain.db :as db]
             [markdownbrain.utils :as utils]
             [markdownbrain.handlers.frontend :as frontend]
@@ -122,3 +123,146 @@
                      (assoc :headers {"host" "localhost:3000"}))
           response (frontend/get-doc request)]
       (is (= 200 (:status response))))))
+
+;; ============================================================
+;; URL 使用 client_id 而非内部 id 测试
+;; ============================================================
+
+(deftest test-url-uses-client-id
+  (testing "URL 中应该使用 client_id 而不是内部 id"
+    (let [;; 创建测试数据
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          domain "clientid-test.com"
+          _ (db/create-vault! vault-id tenant-id "Client ID Test" domain (utils/generate-uuid))
+          
+          ;; 创建文档 - 注意 id 和 client_id 是不同的
+          internal-id (utils/generate-uuid)
+          client-id "user-generated-client-id-12345"
+          _ (db/upsert-document! internal-id tenant-id vault-id "test.md" client-id 
+                                 "# Test Content" nil "hash123" "2024-01-01T00:00:00Z")
+          
+          ;; 通过 client_id 访问文档（应该成功）
+          request (-> (mock/request :get (str "/" client-id))
+                     (assoc :headers {"host" domain})
+                     (assoc :path-params {:path client-id}))
+          response (frontend/get-doc request)]
+      
+      ;; 验证能通过 client_id 访问
+      (is (= 200 (:status response)))
+      ;; 验证模板数据包含 client-id（因为模板被 mock 了，检查数据而非渲染结果）
+      (is (str/includes? (:body response) ":client-id"))
+      (is (str/includes? (:body response) client-id))))
+  
+  (testing "通过内部 id 访问应该返回 404（不暴露内部 id）"
+    (let [;; 创建测试数据
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 2")
+          vault-id (utils/generate-uuid)
+          domain "internal-id-test.com"
+          _ (db/create-vault! vault-id tenant-id "Internal ID Test" domain (utils/generate-uuid))
+          
+          ;; 创建文档
+          internal-id (utils/generate-uuid)
+          client-id "my-client-id-67890"
+          _ (db/upsert-document! internal-id tenant-id vault-id "test2.md" client-id 
+                                 "# Private Content" nil "hash456" "2024-01-01T00:00:00Z")
+          
+          ;; 尝试通过内部 id 访问（应该失败）
+          request (-> (mock/request :get (str "/" internal-id))
+                     (assoc :headers {"host" domain})
+                     (assoc :path-params {:path internal-id}))
+          response (frontend/get-doc request)]
+      
+      ;; 验证不能通过内部 id 访问
+      (is (= 404 (:status response)))))
+  
+  (testing "home 页面文档列表应该使用 client_id"
+    (let [;; 创建测试数据
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 3")
+          vault-id (utils/generate-uuid)
+          domain "home-test.com"
+          _ (db/create-vault! vault-id tenant-id "Home Test" domain (utils/generate-uuid))
+          
+          ;; 创建多个文档
+          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
+                                 "client-id-aaa" "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
+          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
+                                 "client-id-bbb" "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
+          
+          ;; 访问根路径（没有 root_doc_id，显示文档列表）
+          ;; 根路径 path 为 "/" 或空
+          request (-> (mock/request :get "/")
+                     (assoc :headers {"host" domain})
+                     (assoc :path-params {:path "/"}))
+          response (frontend/get-doc request)]
+      
+      ;; 验证返回成功
+      (is (= 200 (:status response)))
+      ;; 验证链接使用 client_id 而非内部 id
+      (is (str/includes? (:body response) "client-id-aaa"))
+      (is (str/includes? (:body response) "client-id-bbb"))))
+  
+  (testing "backlinks 应该使用 client_id"
+    (let [;; 创建测试数据
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 4")
+          vault-id (utils/generate-uuid)
+          domain "backlinks-test.com"
+          _ (db/create-vault! vault-id tenant-id "Backlinks Test" domain (utils/generate-uuid))
+          
+          ;; 创建目标文档
+          target-client-id "target-doc-client-id"
+          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "target.md" 
+                                 target-client-id "# Target Doc" nil "hash-t" "2024-01-01T00:00:00Z")
+          
+          ;; 创建源文档（包含链接到目标）
+          source-client-id "source-doc-client-id"
+          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "source.md" 
+                                 source-client-id "# Source Doc" nil "hash-s" "2024-01-01T00:00:00Z")
+          
+          ;; 创建链接关系
+          _ (db/insert-document-link! vault-id source-client-id target-client-id 
+                                      "target.md" "link" "Target Doc" "[[target]]")
+          
+          ;; 访问目标文档，查看 backlinks
+          request (-> (mock/request :get (str "/" target-client-id))
+                     (assoc :headers {"host" domain})
+                     (assoc :path-params {:path target-client-id}))
+          response (frontend/get-doc request)]
+      
+      ;; 验证返回成功
+      (is (= 200 (:status response)))
+      ;; 验证 backlinks 使用 client_id (数据中包含 source-client-id)
+      (is (str/includes? (:body response) source-client-id))))
+  
+  (testing "堆叠路径应该使用 client_id"
+    (let [;; 创建测试数据
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 5")
+          vault-id (utils/generate-uuid)
+          domain "stacking-test.com"
+          _ (db/create-vault! vault-id tenant-id "Stacking Test" domain (utils/generate-uuid))
+          
+          ;; 创建多个文档
+          client-id-1 "stack-doc-1"
+          client-id-2 "stack-doc-2"
+          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
+                                 client-id-1 "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
+          _ (db/upsert-document! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
+                                 client-id-2 "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
+          
+          ;; 使用堆叠路径访问 (/{client_id}+{client_id})
+          stacked-path (str client-id-1 "+" client-id-2)
+          request (-> (mock/request :get (str "/" stacked-path))
+                     (assoc :headers {"host" domain})
+                     (assoc :path-params {:path stacked-path}))
+          response (frontend/get-doc request)]
+      
+      ;; 验证返回成功（两个文档都应该被渲染）
+      (is (= 200 (:status response)))
+      ;; 验证数据中包含两个 client-id
+      (is (str/includes? (:body response) client-id-1))
+      (is (str/includes? (:body response) client-id-2)))))

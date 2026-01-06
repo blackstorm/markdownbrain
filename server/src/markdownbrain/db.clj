@@ -149,6 +149,12 @@
 (defn delete-document-by-client-id! [vault-id client-id]
   (execute-one! ["DELETE FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
 
+(defn update-document-path! [vault-id client-id new-path]
+  "更新文档路径（用于文件重命名）"
+  (execute-one! ["UPDATE documents SET path = ?, updated_at = CURRENT_TIMESTAMP
+                  WHERE vault_id = ? AND client_id = ?"
+                 new-path vault-id client-id]))
+
 (defn delete-document! [vault-id path]
   (execute-one! ["DELETE FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
 
@@ -156,14 +162,31 @@
   (find-by :documents :id id))
 
 (defn list-documents-by-vault [vault-id]
-  (execute! ["SELECT id, path, hash, mtime FROM documents
+  (execute! ["SELECT client_id, path, hash, mtime FROM documents
               WHERE vault_id = ?
               ORDER BY path ASC" vault-id]))
+
+(defn get-documents-for-link-resolution
+  "获取链接解析所需的最小数据
+   只返回 client_id 和 path，不返回 content 等大字段
+   用于 sync 时解析 [[link]] 到 target_client_id
+   
+   优化点：
+   - 只查询 client_id 和 path（不含 content/metadata）
+   - 减少内存占用和网络传输"
+  [vault-id]
+  (execute! ["SELECT client_id, path FROM documents WHERE vault_id = ?" vault-id]))
 
 (defn get-document-by-path [vault-id path]
   (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND path = ?" vault-id path]))
 
 (defn get-document-by-client-id [vault-id client-id]
+  (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
+
+(defn get-document-for-frontend
+  "通过 vault_id 和 client_id 获取文档（用于前端路由）
+   不使用内部 id，确保不暴露内部标识"
+  [vault-id client-id]
   (execute-one! ["SELECT * FROM documents WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
 
 (defn search-documents-by-vault [vault-id query]
@@ -178,6 +201,14 @@
              (str "%" query "%")]))
 
 ;; Document Links 操作
+(defn delete-document-links-by-source! [vault-id source-client-id]
+  "删除指定源文档的所有链接"
+  (log/debug "Deleting all links from source:" source-client-id)
+  (let [result (execute-one! ["DELETE FROM document_links WHERE vault_id = ? AND source_client_id = ?"
+                              vault-id source-client-id])]
+    (log/debug "Delete result:" result)
+    result))
+
 (defn delete-document-link-by-target! [vault-id source-client-id target-client-id]
   "删除指定源文档到指定目标文档的链接"
   (log/debug "Deleting specific link - source:" source-client-id "target:" target-client-id)

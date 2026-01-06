@@ -1,12 +1,18 @@
-import { TFile, App } from 'obsidian';
+import { TFile, App, parseYaml } from 'obsidian';
 
 /**
- * Get or create a client ID from frontmatter.
- * If the file already has an 'id' field in frontmatter, return it.
- * Otherwise, generate a new UUID and write it to frontmatter.
+ * Get or create a client ID from frontmatter using Obsidian's official API.
+ *
+ * This function uses `app.fileManager.processFrontMatter` for writing, which is:
+ * - Atomic (prevents race conditions)
+ * - Safe (handles complex YAML correctly)
+ * - Compatible with Obsidian's "Properties" UI
+ *
+ * For reading, we use the metadataCache for fast lookups, falling back to
+ * parseYaml for cases where the cache hasn't updated yet.
  *
  * @param file - The file to get or create the client ID for
- * @param content - The current content of the file (used as fallback if file is empty)
+ * @param content - The current content of the file (used as fallback)
  * @param app - The Obsidian app instance
  * @returns The client ID (existing or newly created)
  */
@@ -15,36 +21,35 @@ export async function getOrCreateClientId(
   content: string,
   app: App
 ): Promise<string> {
-  // Read from file, but use the passed content as fallback for empty files (useful for tests)
+  // Step 1: Try to read existing markdownbrain-id from metadataCache (fastest)
+  const cache = app.metadataCache.getFileCache(file);
+  if (cache?.frontmatter?.['markdownbrain-id']) {
+    return String(cache.frontmatter['markdownbrain-id']).trim();
+  }
+
+  // Step 2: Cache might not be updated yet, try parsing directly
+  // This handles the case where we just wrote to the file
   const fileContent = await app.vault.read(file);
   const latestContent = fileContent || content;
 
-  // Step 1: Try to parse frontmatter and extract existing id
   const frontmatterMatch = latestContent.match(/^---\n([\s\S]*?)\n---/);
-
   if (frontmatterMatch) {
-    const frontmatter = frontmatterMatch[1];
-    const idMatch = frontmatter.match(/^id:\s*(.+)$/m);
-
-    if (idMatch) {
-      // ID exists in frontmatter, return it
-      return idMatch[1].trim();
+    try {
+      const frontmatter = parseYaml(frontmatterMatch[1]);
+      if (frontmatter?.['markdownbrain-id']) {
+        return String(frontmatter['markdownbrain-id']).trim();
+      }
+    } catch {
+      // YAML parse error, will generate new ID
     }
-
-    // Frontmatter exists but no ID, add it
-    const newId = crypto.randomUUID();
-    const newFrontmatter = frontmatter.trim() + `\nid: ${newId}`;
-    const newContent = latestContent.replace(
-      /^---\n[\s\S]*?\n---/,
-      `---\n${newFrontmatter}\n---`
-    );
-    await app.vault.process(file, () => newContent);
-    return newId;
   }
 
-  // Step 2: No frontmatter, create it with ID
+  // Step 3: No existing ID, generate a new one and write it using processFrontMatter
   const newId = crypto.randomUUID();
-  const newContent = `---\nid: ${newId}\n---\n\n${latestContent}`;
-  await app.vault.process(file, () => newContent);
+
+  await app.fileManager.processFrontMatter(file, (frontmatter) => {
+    frontmatter['markdownbrain-id'] = newId;
+  });
+
   return newId;
 }

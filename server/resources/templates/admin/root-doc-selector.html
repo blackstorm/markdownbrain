@@ -7,7 +7,7 @@
         hx-on::after-request="if(event.detail.successful) showNotification('Homepage updated', 'success'); else showNotification('Update failed', 'error');">
   <option value="" {% if not root-doc-id %}selected{% endif %}>Select document</option>
   {% for doc in documents %}
-  <option value="{{doc.id}}" {% if doc.id = root-doc-id %}selected{% endif %}>
+  <option value="{{doc.client-id}}" {% if doc.client-id = root-doc-id %}selected{% endif %}>
     {{doc.path}}
   </option>
   {% endfor %}

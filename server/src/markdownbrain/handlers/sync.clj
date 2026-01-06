@@ -2,7 +2,7 @@
   (:require [markdownbrain.db :as db]
             [markdownbrain.utils :as utils]
             [markdownbrain.response :as resp]
-            [markdownbrain.link-diff :as link-diff]
+            [markdownbrain.link-parser :as link-parser]
             [markdownbrain.validation :as validation]
             [clojure.data.json :as json]
             [clojure.tools.logging :as log]))
@@ -42,12 +42,16 @@
 (defn- handle-upsert [vault tenant-id vault-id clientId path content metadata hash mtime action]
   (log/info "Processing document upsert - Path:" path "ClientId:" clientId "Hash:" hash)
 
-  ;; 检查文档是否已存在且 hash 相同（避免不必要的更新）
-  (let [existing-doc (db/get-document-by-client-id vault-id clientId)]
-    (if (and existing-doc hash (= hash (:hash existing-doc)))
-      ;; Hash 相同，文件内容未变化，跳过更新
+  ;; 检查文档是否已存在
+  (let [existing-doc (db/get-document-by-client-id vault-id clientId)
+        hash-unchanged? (and existing-doc hash (= hash (:hash existing-doc)))
+        path-unchanged? (and existing-doc (= path (:path existing-doc)))]
+
+    (cond
+      ;; Hash 和路径都相同，跳过更新
+      (and hash-unchanged? path-unchanged?)
       (do
-        (log/info "Document unchanged (same hash) - Path:" path "Hash:" hash)
+        (log/info "Document unchanged (same hash and path) - Path:" path "Hash:" hash)
         (resp/success {:vault-id vault-id
                        :path path
                        :client-id clientId
@@ -55,7 +59,20 @@
                        :skipped true
                        :reason "unchanged"}))
 
-      ;; Hash 不同或文档不存在，执行 upsert
+      ;; Hash 相同但路径变化（文件重命名），只更新路径
+      (and hash-unchanged? (not path-unchanged?))
+      (do
+        (log/info "Document renamed - Old path:" (:path existing-doc) "New path:" path)
+        (db/update-document-path! vault-id clientId path)
+        (resp/success {:vault-id vault-id
+                       :path path
+                       :client-id clientId
+                       :action action
+                       :renamed true
+                       :old-path (:path existing-doc)}))
+
+      ;; Hash 不同或文档不存在，执行完整 upsert
+      :else
       (do
         (log/info "Upserting document - Path:" path "ClientId:" clientId)
         (let [doc-id (utils/generate-uuid)
@@ -66,39 +83,38 @@
           (db/upsert-document! doc-id tenant-id vault-id path clientId content metadata-str hash mtime)
           (log/info "Document upserted successfully")
 
-          ;; 处理链接关系 - 使用 diff 算法
-          (let [new-links (or (:links metadata) [])
-                existing-links (db/get-document-links vault-id clientId)
-                ;; 计算 diff
-                operations (link-diff/compute-link-diff existing-links new-links)
-                summary (link-diff/summarize-diff operations)]
+          ;; 服务端解析链接
+          (let [;; 获取 vault 中所有文档用于链接解析（只查 client_id 和 path）
+                all-docs (db/get-documents-for-link-resolution vault-id)
+                ;; 从 content 中提取链接
+                extracted-links (link-parser/extract-links content)
+                ;; 解析链接到 target_client_id
+                resolved-links (link-parser/resolve-links extracted-links all-docs)
+                ;; 不去重 - 每个链接语法需要单独存储用于渲染
+                ;; 例如 [[Target]] 和 ![[Target]] 都需要保留
+                ;; 过滤掉 broken links（target-client-id 为 nil 的）
+                valid-links (filter :target-client-id resolved-links)]
 
-            (log/info "Link diff analysis - Existing:" (count existing-links)
-                     "New:" (count new-links)
-                     "Operations:" (:total-operations summary)
-                     "Deletes:" (:deletes summary)
-                     "Inserts:" (:inserts summary)
-                     "Updates:" (:updates summary))
+            (log/info "Link parsing - Extracted:" (count extracted-links)
+                     "Resolved:" (count resolved-links)
+                     "Valid:" (count valid-links))
 
-            ;; 执行操作
-            (doseq [operation operations]
-              (case (:op operation)
-                :delete
-                (do
-                  (log/debug "Executing DELETE - Target:" (:target-client-id operation))
-                  (db/delete-document-link-by-target! vault-id clientId (:target-client-id operation)))
+            ;; 删除该源文档的所有旧链接
+            (db/delete-document-links-by-source! vault-id clientId)
 
-                :insert
-                (let [{:keys [target-client-id target-path link-type display-text original]} (:link-data operation)]
-                  (log/debug "Executing INSERT - Target:" target-client-id "Path:" target-path)
-                  (try
-                    (db/insert-document-link! vault-id clientId target-client-id target-path
-                                             link-type display-text original)
-                    (catch Exception e
-                      (log/error "Failed to insert link:" (.getMessage e))
-                      (log/error "Exception:" e))))))
+            ;; 插入新链接（只存储有效链接）
+            (doseq [link valid-links]
+              (try
+                (db/insert-document-link! vault-id clientId
+                                         (:target-client-id link)
+                                         (:target-path link)
+                                         (:link-type link)
+                                         (:display-text link)
+                                         (:original link))
+                (catch Exception e
+                  (log/error "Failed to insert link:" (.getMessage e)))))
 
-            (log/info "Links sync completed -" (:total-operations summary) "operations applied"))
+            (log/info "Links sync completed - Inserted:" (count valid-links)))
 
           (resp/success {:vault-id vault-id
                          :path path

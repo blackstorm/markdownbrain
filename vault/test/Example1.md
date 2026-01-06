@@ -1,3 +1,0 @@
-exmaple
-
-[[Example2]]
