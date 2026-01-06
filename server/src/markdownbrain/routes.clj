@@ -8,7 +8,9 @@
             [markdownbrain.handlers.admin :as admin]
             [markdownbrain.handlers.sync :as sync]
             [markdownbrain.handlers.frontend :as frontend]
-            [markdownbrain.middleware :as middleware]))
+            [markdownbrain.middleware :as middleware]
+            [markdownbrain.db :as db]
+            [markdownbrain.config :as config]))
 
 (def muuntaja-instance
   (m/create
@@ -20,6 +22,14 @@
 (def frontend-routes
   [["/{*path}" {:get frontend/get-note}]])
 
+(defn valid-internal-token? [req]
+  (let [token (config/get-config :internal-token)
+        req-token (or (get-in req [:headers "authorization"])
+                      (get-in req [:query-params "token"]))]
+    (or (nil? token)
+        (= req-token token)
+        (= req-token (str "Bearer " token)))))
+
 (def admin-routes
   [["/obsidian"
     ["/vault/info" {:get sync/vault-info}]
@@ -27,6 +37,17 @@
     ["/sync/full" {:post sync/sync-full}]]
 
    ["/admin"
+    ["/health" {:get (fn [req]
+                       (if (valid-internal-token? req)
+                         {:status 200 :body "ok"}
+                         {:status 401 :body "unauthorized"}))}]
+    ["/domain-check" {:get (fn [req]
+                             (if-not (valid-internal-token? req)
+                               {:status 401 :body "unauthorized"}
+                               (let [domain (get-in req [:query-params "domain"])]
+                                 (if (and domain (db/get-vault-by-domain domain))
+                                   {:status 200 :body "ok"}
+                                   {:status 404 :body "not found"}))))}]
     ["" {:middleware [middleware/wrap-auth]
          :get admin/admin-home}]
     ["/login" {:get admin/login-page

@@ -25,7 +25,10 @@
    :session
    {:secret (string->16-bytes (or (System/getenv "SESSION_SECRET") "change-me-in-production-very-secret"))
     :cookie-name "mdbrain-session"
-    :max-age (* 60 60 24 7)} ; 7 days
+    :max-age (* 60 60 24 7)}
+
+   :internal-token
+   (System/getenv "INTERNAL_TOKEN")
 
    :environment
    (keyword (or (System/getenv "ENVIRONMENT") "development"))

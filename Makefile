@@ -79,7 +79,7 @@ build: backend-build frontend-build plugin-build
 backend-build:
 	@echo "Building backend uberjar..."
 	@cd server && clojure -T:build uberjar
-	@echo "Backend built: server/target/markdownbrain-standalone.jar"
+	@echo "Backend built: server/target/server-standalone.jar"
 
 frontend-build:
 	@echo "Building frontend CSS..."
@@ -133,5 +133,5 @@ start: backend-dev
 release: clean install test build plugin-package
 	@echo ""
 	@echo "Release artifacts ready:"
-	@echo "  - Backend: server/target/markdownbrain-standalone.jar"
+	@echo "  - Backend: server/target/server-standalone.jar"
 	@echo "  - Plugin: obsidian-plugin/markdownbrain-plugin.zip"
