@@ -1,4 +1,5 @@
 import { Plugin, TFile, Notice, PluginSettingTab, App, Setting, requestUrl, PluginManifest } from 'obsidian';
+import { getOrCreateClientId } from './src/core/client-id';
 
 interface MarkdownBrainSettings {
     serverUrl: string;
@@ -298,8 +299,44 @@ export default class MarkdownBrainPlugin extends Plugin {
         this.pendingSyncs = new Set();
     }
 
-    // 生成客户端 ID（基于路径的 SHA-256 hash）
-    async generateClientId(path: string): Promise<string> {
+    /**
+     * 从路径获取或生成链接目标的 client_id
+     * 如果目标文件存在且在 vault 中，使用 frontmatter UUID
+     * 否则回退到路径哈希（用于未同步的文件或外部文件）
+     *
+     * @param path - 链接目标的路径
+     * @returns client_id
+     */
+    private async getTargetClientId(path: string): Promise<string> {
+        // 尝试从路径获取 TFile 对象
+        const targetFile = this.app.vault.getAbstractFileByPath(path);
+
+        // 如果找到文件且是 TFile，使用 frontmatter UUID
+        if (targetFile instanceof TFile) {
+            try {
+                const content = await this.app.vault.read(targetFile);
+                return await getOrCreateClientId(targetFile, content, this.app);
+            } catch (error) {
+                console.warn(`[MarkdownBrain] Failed to read target file ${path}, using fallback:`, error);
+            }
+        }
+
+        // 回退到路径哈希方法（用于未同步的文件或外部文件）
+        return await this.generateClientIdFromPath(path);
+    }
+
+    /**
+     * 从路径生成 client_id（后备方案）
+     * 仅用于以下情况：
+     * 1. 链接指向的文件不在 vault 中（外部文件或未同步的文件）
+     * 2. 文件已被删除，无法读取 frontmatter
+     *
+     * 注意：这是一个后备方案，优先使用 getOrCreateClientId 从 frontmatter 读取 UUID
+     *
+     * @param path - 文件路径
+     * @returns 基于 SHA-256(path) 生成的 client_id
+     */
+    async generateClientIdFromPath(path: string): Promise<string> {
         const encoder = new TextEncoder();
         const data = encoder.encode(path);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -523,7 +560,7 @@ export default class MarkdownBrainPlugin extends Plugin {
                         console.log('[MarkdownBrain] Processing link:', link);
                         const normalizedPath = this.normalizeLinkPath(link.link);
                         console.log('[MarkdownBrain] Normalized path:', normalizedPath);
-                        const targetClientId = await this.generateClientId(normalizedPath);
+                        const targetClientId = await this.getTargetClientId(normalizedPath);
                         console.log('[MarkdownBrain] Generated targetClientId:', targetClientId);
 
                         const isMedia = this.isMediaFile(normalizedPath);
@@ -552,7 +589,7 @@ export default class MarkdownBrainPlugin extends Plugin {
                         console.log('[MarkdownBrain] Processing embed:', embed);
                         const normalizedPath = this.normalizeLinkPath(embed.link);
                         console.log('[MarkdownBrain] Normalized path:', normalizedPath);
-                        const targetClientId = await this.generateClientId(normalizedPath);
+                        const targetClientId = await this.getTargetClientId(normalizedPath);
                         console.log('[MarkdownBrain] Generated targetClientId:', targetClientId);
 
                         const isMedia = this.isMediaFile(normalizedPath);
@@ -617,8 +654,8 @@ export default class MarkdownBrainPlugin extends Plugin {
             const hash = await this.hashString(content);
             const mtime = new Date(stat.mtime).toISOString();
 
-            // 生成客户端 ID
-            const clientId = await this.generateClientId(file.path);
+            // 生成或获取客户端 ID（从 frontmatter）
+            const clientId = await getOrCreateClientId(file, content, this.app);
 
             console.log('[MarkdownBrain] File metadata:', {
                 path: file.path,
@@ -679,8 +716,17 @@ export default class MarkdownBrainPlugin extends Plugin {
         });
 
         try {
-            // 生成客户端 ID
-            const clientId = await this.generateClientId(file.path);
+            // 获取客户端 ID（从 frontmatter）
+            // 注意：删除时文件可能已被删除，尝试读取可能失败
+            // 使用空字符串作为后备，让 getOrCreateClientId 尝试读取文件
+            let clientId: string;
+            try {
+                const content = await this.app.vault.read(file);
+                clientId = await getOrCreateClientId(file, content, this.app);
+            } catch {
+                // 文件已被删除，使用路径哈希作为后备
+                clientId = await this.generateClientIdFromPath(file.path);
+            }
 
             const result = await this.syncManager.sync({
                 path: file.path,
@@ -716,31 +762,12 @@ export default class MarkdownBrainPlugin extends Plugin {
         });
 
         try {
-            // 1. 删除旧路径的文档
-            const oldClientId = await this.generateClientId(oldPath);
-            console.log('[MarkdownBrain] Deleting old path:', {
-                path: oldPath,
-                clientId: oldClientId
-            });
-
-            const deleteResult = await this.syncManager.sync({
-                path: oldPath,
-                clientId: oldClientId,
-                clientType: 'obsidian',
-                action: 'delete'
-            });
-
-            if (!deleteResult.success) {
-                console.error('[MarkdownBrain] ✗ Failed to delete old path:', oldPath, deleteResult.error);
-                new Notice(`重命名同步失败（删除旧文件）: ${oldPath}\n${deleteResult.error}`);
-                return;
-            }
-
-            console.log('[MarkdownBrain] ✓ Old path deleted:', oldPath);
-
-            // 2. 创建新路径的文档（使用 performSync，它会读取内容和元数据）
-            console.log('[MarkdownBrain] Creating new path:', file.path);
-            await this.performSync(file, 'create');
+            // 使用 frontmatter UUID 后，重命名变得简单：
+            // UUID 存储在 frontmatter 中，不随路径变化
+            // 只需发送单个 modify 请求即可更新路径
+            // 服务端的 ON CONFLICT(vault_id, client_id) DO UPDATE SET path 会处理路径更新
+            console.log('[MarkdownBrain] Syncing rename with frontmatter UUID');
+            await this.performSync(file, 'modify');
 
             console.log('[MarkdownBrain] ✓ File rename synced:', oldPath, '->', file.path);
         } catch (error) {
@@ -786,7 +813,7 @@ export default class MarkdownBrainPlugin extends Plugin {
                 const content = await this.app.vault.read(file);
                 // 只包含非空文件
                 if (content?.trim().length > 0) {
-                    ids.push(await this.generateClientId(file.path));
+                    ids.push(await getOrCreateClientId(file, content, this.app));
                 }
             } catch (error) {
                 console.error(`[MarkdownBrain] Failed to read ${file.path}:`, error);

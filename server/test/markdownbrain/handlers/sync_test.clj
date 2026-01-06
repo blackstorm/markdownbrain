@@ -35,6 +35,7 @@
           _ (db/create-vault! vault-id tenant-id "Blog" "sync-list.com" sync-key)
           request (sync-request-with-header sync-key
                                            :body {:path "test.md"
+                                                 :clientId "test-client-1"
                                                  :content "# Test Content"
                                                  :metadata {:tags ["test"]}
                                                  :hash "abc123"
@@ -55,9 +56,10 @@
           sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "Blog" "sync-update.com" sync-key)
           doc-id (utils/generate-uuid)
-          _ (db/upsert-document! doc-id tenant-id vault-id "existing.md" "# Old Content" "{}" "old-hash" "2025-12-21T09:00:00Z")
+          _ (db/upsert-document! doc-id tenant-id vault-id "existing.md" "existing-client-id" "# Old Content" "{}" "old-hash" "2025-12-21T09:00:00Z")
           request (sync-request-with-header sync-key
                                            :body {:path "existing.md"
+                                                 :clientId "existing-client-id"
                                                  :content "# Updated Content"
                                                  :metadata {}
                                                  :hash "new-hash"
@@ -75,6 +77,7 @@
     (let [sync-key "invalid-sync-key"
           request (sync-request-with-header sync-key
                                            :body {:path "test.md"
+                                                 :clientId "test-client-invalid"
                                                  :content "# Content"
                                                  :metadata {}
                                                  :hash "hash"
@@ -94,6 +97,7 @@
           _ (db/create-vault! vault-id tenant-id "Blog" "sync-invalid.com" correct-key)
           request (sync-request-with-header wrong-key
                                            :body {:path "test.md"
+                                                 :clientId "test-client-wrong-key"
                                                  :content "# Content"
                                                  :metadata {}
                                                  :hash "hash"
@@ -112,9 +116,10 @@
           sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "Blog" "sync-delete.com" sync-key)
           doc-id (utils/generate-uuid)
-          _ (db/upsert-document! doc-id tenant-id vault-id "to-delete.md" "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
+          _ (db/upsert-document! doc-id tenant-id vault-id "to-delete.md" "delete-client-id" "# Delete Me" "{}" "hash" "2025-12-21T10:00:00Z")
           request (sync-request-with-header sync-key
                                            :body {:path "to-delete.md"
+                                                 :clientId "delete-client-id"
                                                  :action "delete"})
           response (sync/sync-file request)]
       (is (= 200 (:status response)))
@@ -130,6 +135,7 @@
           _ (db/create-vault! vault-id tenant-id "Blog" "sync-missing.com" sync-key)
           request (sync-request-with-header sync-key
                                            :body {:path "non-existent.md"
+                                                 :clientId "non-existent-client-id"
                                                  :action "delete"})
           response (sync/sync-file request)]
       (is (= 200 (:status response)))
@@ -142,9 +148,10 @@
           sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "Blog" "sync-duplicate.com" sync-key)
           doc-id (utils/generate-uuid)
-          _ (db/upsert-document! doc-id tenant-id vault-id "file.md" "# Content" "{}" "hash" "2025-12-21T10:00:00Z")
+          _ (db/upsert-document! doc-id tenant-id vault-id "file.md" "delete-token-client-id" "# Content" "{}" "hash" "2025-12-21T10:00:00Z")
           request (sync-request-with-header "wrong-key"
                                            :body {:path "file.md"
+                                                 :clientId "delete-token-client-id"
                                                  :action "delete"})
           response (sync/sync-file request)]
       (is (= 401 (:status response)))

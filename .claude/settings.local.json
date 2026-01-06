@@ -5,7 +5,9 @@
       "Bash(ls:*)",
       "Bash(clojure:*)",
       "Bash(npm view:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(bun install)",
+      "Bash(bun test)"
     ]
   }
 }
