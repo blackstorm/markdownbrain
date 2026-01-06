@@ -59,7 +59,8 @@
             <form hx-post="/admin/vaults"
                   hx-swap="none"
                   hx-disabled-elt="button[type=submit]"
-                  hx-indicator=".create-spinner">
+                  hx-indicator=".create-spinner"
+                  hx-on::after-request="if(event.detail.successful) { closeCreateModal(); this.reset(); htmx.trigger('body', 'refreshList'); showNotification('Site created', 'success'); }">
                 <div class="modal-body">
                     <div id="create-result"></div>
 
@@ -95,7 +96,8 @@
                   hx-put=""
                   hx-swap="none"
                   hx-disabled-elt="button[type=submit]"
-                  hx-indicator=".edit-spinner">
+                  hx-indicator=".edit-spinner"
+                  hx-on::after-request="if(event.detail.successful) { closeEditModal(); htmx.trigger('body', 'refreshList'); showNotification('Site updated', 'success'); }">
                 <input type="hidden" name="id" id="edit-vault-id">
                 <div class="modal-body">
                     <div id="edit-result"></div>

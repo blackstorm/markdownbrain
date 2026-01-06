@@ -6,28 +6,12 @@
 
 @import "tailwindcss";
 
-/* Custom Theme - Clean Line Design */
 @theme {
-  /* Typography System */
   --font-display: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Monaco", "Cascadia Code", monospace;
   --font-serif: "Merriweather", "Georgia", "Times New Roman", serif;
 
-  /* Colors */
-  --color-brand-500: #2563eb;
-  --color-brand-600: #1d4ed8;
-  --color-success: #10b981;
-  --color-error: #ef4444;
-  --color-warning: #f59e0b;
-  --color-bg-canvas: #fafafa;
-  --color-text-primary: #1f2937;
-  --color-text-secondary: #6b7280;
-  --color-text-tertiary: #9ca3af;
-  --color-border-default: #e5e7eb;
-  --color-border-hover: #d1d5db;
-
-  /* Aliases for template compatibility */
   --border-color: #e5e7eb;
   --border-hover: #d1d5db;
   --text-primary: #1f2937;
@@ -41,7 +25,6 @@
 }
 
 @layer components {
-  /* Typography */
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     @apply font-semibold tracking-tight;
@@ -62,7 +45,6 @@
     @apply text-sm;
   }
 
-  /* Button Components */
   .btn {
     @apply inline-flex items-center gap-2 px-4 py-2 text-sm font-medium;
     @apply border border-[var(--border-color)] bg-white text-[var(--text-primary)];
@@ -107,7 +89,6 @@
     @apply text-[var(--text-primary)];
   }
 
-  /* Form Components */
   .form-field {
     @apply mb-5;
   }
@@ -132,20 +113,6 @@
     @apply outline-2 outline-[var(--accent)] -outline-offset-1 border-transparent;
   }
 
-  /* Card Components */
-  .card {
-    @apply bg-white border border-[var(--border-color)] p-6;
-  }
-
-  .card:hover {
-    @apply border-[var(--border-hover)];
-  }
-
-  .card-header {
-    @apply pb-5 border-b border-[var(--border-color)] mb-5;
-  }
-
-  /* Modal Components */
   .modal-dialog {
     @apply fixed z-50 bg-transparent;
     @apply max-w-[480px] w-full;
@@ -167,7 +134,6 @@
     box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
   }
 
-  /* Dialog animation */
   .modal-dialog[open] {
     animation: modal-in 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
   }
@@ -217,7 +183,6 @@
     @apply flex gap-3 justify-end;
   }
 
-  /* Alert/Notification Components */
   .alert {
     @apply px-4 py-3 mb-5 border text-sm;
     @apply flex items-center gap-2;
@@ -239,7 +204,55 @@
     @apply bg-blue-50 border-blue-300 text-blue-800;
   }
 
-  /* Empty State */
+  .toast {
+    @apply px-4 py-3 mb-2 border text-sm min-w-[280px];
+    @apply flex items-center gap-2;
+    @apply shadow-md;
+    animation: toast-in 0.2s ease-out;
+  }
+
+  .toast-success {
+    @apply bg-green-50 border-green-300 text-green-800;
+  }
+
+  .toast-error {
+    @apply bg-red-50 border-red-300 text-red-800;
+  }
+
+  .toast-warning {
+    @apply bg-amber-50 border-amber-300 text-amber-800;
+  }
+
+  .toast-info {
+    @apply bg-blue-50 border-blue-300 text-blue-800;
+  }
+
+  .toast-out {
+    animation: toast-out 0.2s ease-in forwards;
+  }
+
+  @keyframes toast-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes toast-out {
+    from {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(100%);
+      opacity: 0;
+    }
+  }
+
   .empty-state {
     @apply text-center py-16 px-4;
     @apply flex flex-col items-center justify-center;
@@ -262,13 +275,11 @@
     @apply text-[var(--text-secondary)];
   }
 
-  /* Section Label */
   .section-label {
     @apply block text-xs font-semibold uppercase tracking-wide mb-2.5;
     @apply text-[var(--text-tertiary)];
   }
 
-  /* Action Menu */
   .action-menu {
     @apply hidden absolute top-full right-0 mt-1 min-w-[160px];
     @apply bg-white border border-[var(--border-color)] shadow-md z-10;
@@ -297,7 +308,6 @@
     @apply border-t border-[var(--border-color)];
   }
 
-  /* Loading Spinner */
   .spinner {
     @apply hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full;
     animation: spin 0.6s linear infinite;
@@ -311,7 +321,6 @@
     to { transform: rotate(360deg); }
   }
 
-  /* Layout Components */
   .app-header {
     @apply bg-white border-b border-[var(--border-color)];
     @apply sticky top-0 z-40;
@@ -372,7 +381,6 @@
     @apply text-[var(--text-tertiary)];
   }
 
-  /* Vault Components */
   .vault-grid {
     @apply grid grid-cols-1 lg:grid-cols-2 gap-6;
   }
@@ -456,45 +464,6 @@
     @apply flex items-center gap-2;
   }
 
-  /* Document List */
-  .doc-list {
-    @apply flex flex-col gap-2;
-  }
-
-  .doc-item {
-    @apply block px-5 py-4 border border-[var(--border-color)];
-    @apply bg-white no-underline;
-    @apply text-[var(--text-primary)];
-  }
-
-  .doc-item:hover {
-    @apply border-[var(--border-hover)] bg-gray-50;
-  }
-
-  .doc-item-content {
-    @apply flex justify-between items-center gap-4;
-  }
-
-  .doc-info {
-    @apply flex-1 min-w-0;
-  }
-
-  .doc-title {
-    @apply text-base font-medium m-0 mb-1;
-    @apply text-[var(--text-primary)];
-    @apply overflow-hidden text-ellipsis whitespace-nowrap;
-  }
-
-  .doc-meta {
-    @apply text-xs m-0;
-    @apply text-[var(--text-tertiary)];
-  }
-
-  .doc-arrow {
-    @apply flex-shrink-0;
-    @apply text-[var(--text-tertiary)];
-  }
-
   .home-page-select {
     @apply w-full px-2.5 py-2 text-sm;
     @apply border border-[var(--border-color)] bg-white cursor-pointer;
@@ -505,7 +474,6 @@
     @apply outline-2 outline-[var(--accent)] -outline-offset-1 border-transparent;
   }
 
-  /* Auth Pages */
   body.auth-page {
     @apply bg-gray-50 min-h-screen;
     @apply flex items-center justify-center p-4;
@@ -515,7 +483,6 @@
     @apply bg-gray-50 min-h-screen;
   }
 
-  /* Login Page */
   .login-container {
     @apply w-full max-w-md;
     @apply bg-white border border-[var(--border-color)];
@@ -537,7 +504,6 @@
     @apply w-full;
   }
 
-  /* Init Page */
   .init-container {
     @apply w-full max-w-[480px];
     @apply bg-white border border-[var(--border-color)];
@@ -565,31 +531,6 @@
     @apply border border-[var(--border-color)];
   }
 
-  /* Frontend Home Page */
-  .site-container {
-    @apply max-w-[900px] mx-auto px-6 py-12;
-  }
-
-  .site-header {
-    @apply pb-8 border-b border-[var(--border-color)] mb-8;
-  }
-
-  .site-title {
-    @apply text-4xl font-semibold m-0 mb-2 leading-tight;
-    @apply text-[var(--text-primary)];
-  }
-
-  .site-domain {
-    @apply text-sm m-0;
-    @apply text-[var(--text-secondary)];
-  }
-
-  .section-title {
-    @apply text-xl font-semibold m-0 mb-6;
-    @apply text-[var(--text-primary)];
-  }
-
-  /* HTMX Loading States */
   .htmx-indicator,
   .create-spinner,
   .edit-spinner {
@@ -620,7 +561,6 @@
     @apply opacity-100;
   }
 
-  /* Icon Sizes */
   .icon-xs {
     @apply w-3.5 h-3.5;
   }

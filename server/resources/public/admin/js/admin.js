@@ -31,57 +31,32 @@ function copyToClipboard(text) {
   }
 }
 
-/**
- * Show notification with auto-dismiss
- * @param {string} message - Notification message
- * @param {string} type - Notification type: 'success', 'error', 'warning', 'info'
- * @param {number} duration - Duration in milliseconds (default: 3000)
- */
 function showNotification(message, type = 'info', duration = 3000) {
   const container = document.getElementById('notification-container');
   if (!container) return;
 
-  const notification = document.createElement('div');
-
-  const colors = {
-    success: { bg: '#f0fdf4', border: '#86efac', text: '#166534', icon: 'check-circle' },
-    error: { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', icon: 'alert-circle' },
-    info: { bg: '#eff6ff', border: '#93c5fd', text: '#1e40af', icon: 'info' },
-    warning: { bg: '#fef3c7', border: '#fbbf24', text: '#92400e', icon: 'alert-triangle' }
+  const icons = {
+    success: 'check-circle',
+    error: 'alert-circle',
+    info: 'info',
+    warning: 'alert-triangle'
   };
 
-  const colorScheme = colors[type] || colors.info;
-
-  notification.style.cssText = `
-    background: ${colorScheme.bg};
-    border: 1px solid ${colorScheme.border};
-    color: ${colorScheme.text};
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.875rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 280px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-    animation: slideIn 0.2s ease-out;
-  `;
-
+  const notification = document.createElement('div');
+  notification.className = `toast toast-${type}`;
   notification.innerHTML = `
-    <i data-lucide="${colorScheme.icon}" style="width: 1rem; height: 1rem; flex-shrink: 0;"></i>
+    <i data-lucide="${icons[type] || icons.info}" class="icon-sm"></i>
     <span>${message}</span>
   `;
 
   container.appendChild(notification);
 
-  // Initialize icons if lucide is available
   if (typeof lucide !== 'undefined') {
     lucide.createIcons();
   }
 
-  // Auto-dismiss
   setTimeout(() => {
-    notification.style.animation = 'slideOut 0.2s ease-in';
+    notification.classList.add('toast-out');
     setTimeout(() => notification.remove(), 200);
   }, duration);
 }
@@ -104,34 +79,6 @@ function formatDate(dateStr) {
   });
 }
 
-// Add CSS for animations
-const style = document.createElement('style');
-style.textContent = `
-  @keyframes slideIn {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-
-  @keyframes slideOut {
-    from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-    to {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-  }
-`;
-document.head.appendChild(style);
-
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
   console.log('MarkdownBrain frontend initialized');
 });
@@ -182,6 +129,8 @@ function openEditModal(id, name, domain) {
     const form = document.getElementById('edit-form');
     if (form) {
       form.setAttribute('hx-put', `/admin/vaults/${id}`);
+      // Re-process HTMX attributes after dynamic update
+      htmx.process(form);
     }
 
     modal.showModal();
