@@ -1,8 +1,10 @@
 (ns markdownbrain.handlers.frontend
   (:require
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [markdownbrain.db :as db]
    [markdownbrain.markdown :as md]
+   [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
    [selmer.parser :as selmer]))
 
@@ -94,6 +96,31 @@
              :body html-body})
           {:status 404 :body "Note not found"})))))
 
+(defn get-resource
+  "Serve a resource file (image, pdf, etc.) from S3 by path.
+   Route: GET /r/{*path}"
+  [request]
+  (let [path (get-in request [:path-params :path])
+        vault (get-current-vault request)]
+    (if-not vault
+      {:status 404 :body "Site not found"}
+      (let [vault-id (:id vault)
+            normalized-path (object-store/normalize-path path)]
+        (if (str/blank? normalized-path)
+          {:status 400 :body "Invalid path"}
+          (if-let [resource (db/get-resource-by-path vault-id normalized-path)]
+            (let [object-key (:object-key resource)
+                  s3-result (object-store/get-object vault-id object-key)]
+              (if s3-result
+                {:status 200
+                 :headers {"Content-Type" (or (:content-type resource) "application/octet-stream")
+                           "Cache-Control" "public, max-age=31536000, immutable"}
+                 :body (:Body s3-result)}
+                (do
+                  (log/warn "Resource exists in DB but not in S3 - vault:" vault-id "path:" normalized-path)
+                  {:status 404 :body "Resource not found"})))
+            {:status 404 :body "Resource not found"}))))))
+
 (defn get-note
   [request]
   (let [path (get-in request [:path-params :path] "/")
@@ -105,17 +132,19 @@
       {:status 404 :body "Site not found"}
 
       (let [vault-id (:id vault)]
-        (if (empty? path-client-ids)
+          (if (empty? path-client-ids)
           (if-let [root-client-id (:root-note-id vault)]
             (if-let [root-note (db/get-note-for-frontend vault-id root-client-id)]
-              (let [render-data (prepare-note-data root-note vault-id)]
+              (let [render-data (prepare-note-data root-note vault-id)
+                    description (md/extract-description (:content root-note) 160)]
                 (if is-htmx?
                   {:status 200
                    :headers {"Content-Type" "text/html; charset=utf-8"}
                    :body (selmer/render-file "templates/frontend/note.html" render-data)}
                   (resp/html (selmer/render-file "templates/frontend/note-page.html"
                                                   {:notes [render-data]
-                                                   :vault vault}))))
+                                                   :vault vault
+                                                   :description description}))))
               (let [notes (db/list-notes-by-vault vault-id)]
                 (resp/html (selmer/render-file "templates/frontend/home.html"
                                                 {:vault vault
@@ -155,8 +184,12 @@
 
               :else
               (let [notes-data (mapv #(prepare-note-data % vault-id) valid-notes)
+                    first-note (first valid-notes)
+                    description (md/extract-description (:content first-note) 160)
                     response-body (selmer/render-file "templates/frontend/note-page.html"
-                                                      {:notes notes-data :vault vault})]
+                                                      {:notes notes-data
+                                                       :vault vault
+                                                       :description description})]
                 (if needs-correction?
                   {:status 200
                    :headers {"Content-Type" "text/html; charset=utf-8"

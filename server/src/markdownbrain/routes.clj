@@ -19,8 +19,22 @@
     [:formats "application/json" :decoder-opts]
     {:decode-key-fn true})))
 
+(defn frontend-dispatch
+  "Dispatch requests based on path prefix.
+   /r/* -> get-resource
+   /* -> get-note"
+  [request]
+  (let [path (get-in request [:path-params :path] "")]
+    (if (clojure.string/starts-with? path "r/")
+      ;; Resource path: strip 'r/' prefix and call get-resource
+      (let [resource-path (subs path 2)]
+        (frontend/get-resource (assoc-in request [:path-params :path] resource-path)))
+      ;; Note path: call get-note as-is
+      (frontend/get-note request))))
+
 (def frontend-routes
-  [["/{*path}" {:get frontend/get-note}]])
+  [["/" {:get frontend/get-note}]
+   ["/{*path}" {:get frontend-dispatch}]])
 
 (defn valid-internal-token? [req]
   (let [token (config/internal-token)
@@ -34,7 +48,8 @@
   [["/obsidian"
     ["/vault/info" {:get sync/vault-info}]
     ["/sync" {:post sync/sync-file}]
-    ["/sync/full" {:post sync/sync-full}]]
+    ["/sync/full" {:post sync/sync-full}]
+    ["/resources/sync" {:post sync/sync-resource}]]
 
    ["/admin"
     ["/health" {:get (fn [req]
@@ -67,12 +82,18 @@
     ["/vaults/:id/root-note" {:middleware [middleware/wrap-auth]
                               :put admin/update-vault-root-note}]
     ["/vaults/:id/root-note-selector" {:middleware [middleware/wrap-auth]
-                                       :get admin/get-root-note-selector}]]])
+                                        :get admin/get-root-note-selector}]
+    ["/vaults/:id/logo" {:get admin/get-vault-logo
+                         :post {:middleware [middleware/wrap-auth]
+                                :handler admin/upload-vault-logo}
+                         :delete {:middleware [middleware/wrap-auth]
+                                  :handler admin/delete-vault-logo}}]]])
 
 (def frontend-app
   (ring/ring-handler
    (ring/router frontend-routes
-                {:data {:muuntaja muuntaja-instance
+                {:conflicts nil
+                 :data {:muuntaja muuntaja-instance
                         :middleware [parameters/parameters-middleware
                                      muuntaja/format-middleware]}})
    (ring/create-default-handler)))

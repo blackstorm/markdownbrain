@@ -33,6 +33,7 @@
                      name TEXT NOT NULL,
                      domain TEXT UNIQUE,
                      sync_key TEXT UNIQUE NOT NULL,
+                     logo_object_key TEXT,
                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id))"])
   (jdbc/execute! conn
@@ -75,7 +76,27 @@
   (jdbc/execute! conn
                  ["CREATE INDEX idx_links_source ON note_links(vault_id, source_client_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_links_target ON note_links(vault_id, target_client_id)"]))
+                 ["CREATE INDEX idx_links_target ON note_links(vault_id, target_client_id)"])
+  (jdbc/execute! conn
+                 ["CREATE TABLE resources (
+                     id TEXT PRIMARY KEY,
+                     tenant_id TEXT NOT NULL,
+                     vault_id TEXT NOT NULL,
+                     path TEXT NOT NULL,
+                     object_key TEXT NOT NULL,
+                     size_bytes INTEGER NOT NULL,
+                     content_type TEXT NOT NULL,
+                     sha256 TEXT NOT NULL,
+                     deleted_at INTEGER,
+                     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                     updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                     UNIQUE(vault_id, path),
+                     FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+                     FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_resources_vault ON resources(vault_id)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_resources_path ON resources(vault_id, path)"]))
 
 (defn setup-test-db [f]
   (let [db (jdbc/get-datasource {:dbtype "sqlite" :dbname ":memory:"})
@@ -691,3 +712,212 @@
       (is (= 1 (count results-2)))
       (is (= #{"v1-a" "v1-b"} (set (map :client-id results-1))))
       (is (= #{"v2-c"} (set (map :client-id results-2)))))))
+
+;;; ============================================================
+;;; Resource 测试
+;;; ============================================================
+
+(defn upsert-resource! [id tenant-id vault-id path object-key size-bytes content-type sha256]
+  (execute-one!
+    ["INSERT INTO resources (id, tenant_id, vault_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+      ON CONFLICT(vault_id, path) DO UPDATE SET
+        object_key = excluded.object_key,
+        size_bytes = excluded.size_bytes,
+        content_type = excluded.content_type,
+        sha256 = excluded.sha256,
+        deleted_at = NULL,
+        updated_at = strftime('%s', 'now')"
+     id tenant-id vault-id path object-key size-bytes content-type sha256]))
+
+(defn soft-delete-resource! [vault-id path]
+  (execute-one!
+    ["UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+      WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+     vault-id path]))
+
+(defn get-resource-by-path [vault-id path]
+  (execute-one!
+    ["SELECT * FROM resources WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+     vault-id path]))
+
+(defn list-resources-by-vault [vault-id]
+  (let [results (jdbc/execute! *conn*
+                               ["SELECT path, sha256, size_bytes FROM resources
+                                 WHERE vault_id = ? AND deleted_at IS NULL
+                                 ORDER BY path ASC"
+                                vault-id]
+                               {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
+(deftest test-upsert-resource
+  (testing "Insert new resource"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "res-insert.com" (utils/generate-uuid))
+          resource-id (utils/generate-uuid)
+          path "images/photo.png"
+          object-key "resources/images/photo.png"
+          size-bytes 12345
+          content-type "image/png"
+          sha256 "abc123def456"]
+      (upsert-resource! resource-id tenant-id vault-id path object-key size-bytes content-type sha256)
+      (let [result (get-resource-by-path vault-id path)]
+        (is (map? result))
+        (is (= path (:path result)))
+        (is (= object-key (:object-key result)))
+        (is (= size-bytes (:size-bytes result)))
+        (is (= content-type (:content-type result)))
+        (is (= sha256 (:sha256 result))))))
+
+  (testing "Update existing resource"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "res-update.com" (utils/generate-uuid))
+          resource-id (utils/generate-uuid)
+          path "images/logo.svg"
+          _ (upsert-resource! resource-id tenant-id vault-id path "resources/old" 100 "image/svg+xml" "old-hash")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/new" 200 "image/svg+xml" "new-hash")
+          result (get-resource-by-path vault-id path)]
+      (is (= 200 (:size-bytes result)))
+      (is (= "new-hash" (:sha256 result))))))
+
+(deftest test-soft-delete-resource
+  (testing "Soft delete resource"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "res-delete.com" (utils/generate-uuid))
+          path "images/delete-me.png"
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/x" 100 "image/png" "hash")
+          before (get-resource-by-path vault-id path)
+          _ (soft-delete-resource! vault-id path)
+          after (get-resource-by-path vault-id path)]
+      (is (some? before))
+      (is (nil? after))))
+
+  (testing "Restore soft-deleted resource via upsert"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "res-restore.com" (utils/generate-uuid))
+          path "images/restore.png"
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/x" 100 "image/png" "hash1")
+          _ (soft-delete-resource! vault-id path)
+          deleted (get-resource-by-path vault-id path)
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/x" 150 "image/png" "hash2")
+          restored (get-resource-by-path vault-id path)]
+      (is (nil? deleted))
+      (is (some? restored))
+      (is (= 150 (:size-bytes restored))))))
+
+(deftest test-list-resources-by-vault
+  (testing "List resources by vault"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "res-list.com" (utils/generate-uuid))
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "images/a.png" "res/a" 100 "image/png" "hash-a")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "images/b.png" "res/b" 200 "image/png" "hash-b")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "docs/c.pdf" "res/c" 300 "application/pdf" "hash-c")
+          results (list-resources-by-vault vault-id)]
+      (is (= 3 (count results)))
+      (is (= ["docs/c.pdf" "images/a.png" "images/b.png"] (map :path results)))))
+
+  (testing "List excludes soft-deleted resources"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "res-list-delete.com" (utils/generate-uuid))
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "a.png" "res/a" 100 "image/png" "h1")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "b.png" "res/b" 200 "image/png" "h2")
+          _ (soft-delete-resource! vault-id "a.png")
+          results (list-resources-by-vault vault-id)]
+      (is (= 1 (count results)))
+      (is (= "b.png" (:path (first results)))))))
+
+;;; ============================================================
+;;; Vault Logo 测试
+;;; ============================================================
+
+(defn update-vault-logo! [vault-id logo-object-key]
+  (execute-one! ["UPDATE vaults SET logo_object_key = ? WHERE id = ?" logo-object-key vault-id]))
+
+(deftest test-update-vault-logo
+  (testing "Update vault logo"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "logo-test.com" (utils/generate-uuid))
+          _ (update-vault-logo! vault-id "site/logo/my-logo.png")
+          result (get-vault-by-id vault-id)]
+      (is (= "site/logo/my-logo.png" (:logo-object-key result)))))
+
+  (testing "Clear vault logo"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "logo-clear.com" (utils/generate-uuid))
+          _ (update-vault-logo! vault-id "site/logo/logo.svg")
+          _ (update-vault-logo! vault-id nil)
+          result (get-vault-by-id vault-id)]
+      (is (nil? (:logo-object-key result))))))
+
+;;; ============================================================
+;;; Vault Storage Size 测试
+;;; ============================================================
+
+(defn get-vault-storage-size [vault-id]
+  (let [result (execute-one!
+                 ["SELECT COALESCE(SUM(size_bytes), 0) as total_bytes
+                   FROM resources
+                   WHERE vault_id = ? AND deleted_at IS NULL"
+                  vault-id])]
+    (:total-bytes result)))
+
+(deftest test-get-vault-storage-size
+  (testing "Empty vault returns 0"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "storage-empty.com" (utils/generate-uuid))
+          size (get-vault-storage-size vault-id)]
+      (is (= 0 size))))
+
+  (testing "Sum of all resource sizes"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "storage-sum.com" (utils/generate-uuid))
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "a.png" "res/a" 1000 "image/png" "h1")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "b.jpg" "res/b" 2500 "image/jpeg" "h2")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "c.pdf" "res/c" 5000 "application/pdf" "h3")
+          size (get-vault-storage-size vault-id)]
+      (is (= 8500 size))))
+
+  (testing "Excludes soft-deleted resources"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "storage-deleted.com" (utils/generate-uuid))
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "a.png" "res/a" 1000 "image/png" "h1")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "b.png" "res/b" 2000 "image/png" "h2")
+          _ (soft-delete-resource! vault-id "b.png")
+          size (get-vault-storage-size vault-id)]
+      (is (= 1000 size))))
+
+  (testing "Different vaults isolated"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id-1 (utils/generate-uuid)
+          vault-id-2 (utils/generate-uuid)
+          _ (create-vault! vault-id-1 tenant-id "Blog 1" "storage-iso1.com" (utils/generate-uuid))
+          _ (create-vault! vault-id-2 tenant-id "Blog 2" "storage-iso2.com" (utils/generate-uuid))
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id-1 "a.png" "res/a" 1000 "image/png" "h1")
+          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id-2 "b.png" "res/b" 5000 "image/png" "h2")
+          size-1 (get-vault-storage-size vault-id-1)
+          size-2 (get-vault-storage-size vault-id-2)]
+      (is (= 1000 size-1))
+      (is (= 5000 size-2)))))

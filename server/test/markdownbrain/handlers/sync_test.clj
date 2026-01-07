@@ -484,3 +484,73 @@
       (is (get-in response [:body :success]))
       (is (true? (get-in response [:body :skipped])))
       (is (= "unchanged" (get-in response [:body :reason]))))))
+
+;; ============================================================
+;; Resource Sync 测试
+;; ============================================================
+
+(defn resource-sync-request
+  [sync-key & {:keys [body]}]
+  (-> (mock/request :post "/obsidian/resources/sync")
+      (assoc :headers {"authorization" (str "Bearer " sync-key)})
+      (assoc :body-params body)))
+
+(deftest test-sync-resource-delete
+  (testing "Delete resource soft-deletes from database"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "res-delete.com" sync-key)
+          _ (db/upsert-resource! (utils/generate-uuid) tenant-id vault-id "images/photo.png"
+                                 "resources/images/photo.png" 1000 "image/png" "hash123")
+          request (resource-sync-request sync-key
+                                         :body {:path "images/photo.png"
+                                                :action "delete"})
+          response (sync/sync-resource request)]
+      (is (= 200 (:status response)))
+      (is (get-in response [:body :success]))
+      (is (nil? (db/get-resource-by-path vault-id "images/photo.png"))))))
+
+(deftest test-sync-resource-validation
+  (testing "Resource sync requires valid fields"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "res-validation.com" sync-key)
+          request (resource-sync-request sync-key
+                                         :body {:path ""
+                                                :action "invalid"})
+          response (sync/sync-resource request)]
+      (is (= 400 (:status response)))
+      (is (false? (get-in response [:body :success])))))
+
+  (testing "Create/modify requires size, contentType, sha256"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Blog" "res-metadata.com" sync-key)
+          request (resource-sync-request sync-key
+                                         :body {:path "images/logo.png"
+                                                :action "create"})
+          response (sync/sync-resource request)]
+      (is (= 400 (:status response)))
+      (is (false? (get-in response [:body :success]))))))
+
+(deftest test-sync-resource-unauthorized
+  (testing "Resource sync with invalid token"
+    (let [request (resource-sync-request "invalid-token"
+                                         :body {:path "images/test.png"
+                                                :action "delete"})
+          response (sync/sync-resource request)]
+      (is (= 401 (:status response)))
+      (is (false? (get-in response [:body :success])))))
+
+  (testing "Resource sync without authorization"
+    (let [request (-> (mock/request :post "/obsidian/resources/sync")
+                      (assoc :body-params {:path "test.png" :action "delete"}))
+          response (sync/sync-resource request)]
+      (is (= 401 (:status response)))
+      (is (false? (get-in response [:body :success]))))))

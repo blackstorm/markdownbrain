@@ -32,3 +32,5 @@ server/resources/public/css/app.css
 .DS_Store
 
 ./vault/test/.obsidian/
+
+.env

@@ -52,7 +52,8 @@
     (execute! [(str "SELECT * FROM " (name table) " WHERE " (name column) " = ?" order-clause) value])))
 
 (defn init-db! []
-  (let [migrations ["migrations/001-initial-schema.sql"]]
+  (let [migrations ["migrations/001-initial-schema.sql"
+                    "migrations/002-resources.sql"]]
     (doseq [migration migrations]
       (let [schema (slurp (io/resource migration))
             statements (-> schema
@@ -279,3 +280,75 @@
         WHERE notes.vault_id = note_links.vault_id
         AND notes.client_id = note_links.target_client_id
       )" vault-id]))
+
+;; Vault Logo 操作
+(defn update-vault-logo! [vault-id logo-object-key]
+  (execute-one! ["UPDATE vaults SET logo_object_key = ? WHERE id = ?" logo-object-key vault-id]))
+
+;; Resource 操作
+(defn upsert-resource!
+  [id tenant-id vault-id path object-key size-bytes content-type sha256]
+  (execute-one!
+    ["INSERT INTO resources (id, tenant_id, vault_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
+      ON CONFLICT(vault_id, path) DO UPDATE SET
+        object_key = excluded.object_key,
+        size_bytes = excluded.size_bytes,
+        content_type = excluded.content_type,
+        sha256 = excluded.sha256,
+        deleted_at = NULL,
+        updated_at = strftime('%s', 'now')"
+     id tenant-id vault-id path object-key size-bytes content-type sha256]))
+
+(defn soft-delete-resource! [vault-id path]
+  (execute-one!
+    ["UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+      WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+     vault-id path]))
+
+(defn get-resource-by-path [vault-id path]
+  (execute-one!
+    ["SELECT * FROM resources WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+     vault-id path]))
+
+(defn list-resources-by-vault [vault-id]
+  (execute!
+    ["SELECT path, sha256, size_bytes FROM resources
+      WHERE vault_id = ? AND deleted_at IS NULL
+      ORDER BY path ASC"
+     vault-id]))
+
+(defn delete-resources-not-in-list!
+  [vault-id paths]
+  (if (empty? paths)
+    (do
+      (log/warn "Full resource sync empty list - soft deleting ALL resources in vault:" vault-id)
+      (execute-one!
+        ["UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+          WHERE vault_id = ? AND deleted_at IS NULL"
+         vault-id]))
+    (let [path-set (set paths)
+          server-resources (list-resources-by-vault vault-id)
+          server-paths (map :path server-resources)
+          orphan-paths (remove path-set server-paths)
+          batch-size 500]
+      (log/info "Soft deleting orphan resources - vault-id:" vault-id
+                "server:" (count server-paths)
+                "client:" (count paths)
+                "orphans:" (count orphan-paths))
+      (when (seq orphan-paths)
+        (doseq [batch (partition-all batch-size orphan-paths)]
+          (let [placeholders (str/join "," (repeat (count batch) "?"))
+                sql (str "UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+                          WHERE vault_id = ? AND path IN (" placeholders ") AND deleted_at IS NULL")]
+            (execute-one! (into [sql vault-id] batch)))))
+      {:update-count (count orphan-paths)})))
+
+(defn get-vault-storage-size
+  [vault-id]
+  (let [result (execute-one!
+                 ["SELECT COALESCE(SUM(size_bytes), 0) as total_bytes
+                   FROM resources
+                   WHERE vault_id = ? AND deleted_at IS NULL"
+                  vault-id])]
+    (:total-bytes result)))

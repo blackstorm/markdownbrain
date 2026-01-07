@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS vaults (
   sync_key TEXT UNIQUE NOT NULL,
   client_type TEXT NOT NULL DEFAULT 'obsidian',  -- 客户端类型: obsidian, logseq, notion 等
   root_note_id TEXT,                              -- 首页展示的根笔记 ID (notes.client_id)
+  logo_object_key TEXT,                           -- S3 logo 对象键
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );

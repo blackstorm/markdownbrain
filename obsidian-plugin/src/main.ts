@@ -76,6 +76,62 @@ interface FullSyncResponse {
     error?: string;
 }
 
+interface ResourceSyncData {
+    path: string;
+    content?: string;
+    contentType: string;
+    sha256?: string;
+    sizeBytes?: number;
+    action: 'upsert' | 'delete';
+}
+
+const RESOURCE_EXTENSIONS = new Set([
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
+    'pdf',
+    'mp3', 'ogg', 'wav',
+    'mp4', 'webm'
+]);
+
+function isResourceFile(file: TFile): boolean {
+    return RESOURCE_EXTENSIONS.has(file.extension.toLowerCase());
+}
+
+function getContentType(extension: string): string {
+    const ext = extension.toLowerCase();
+    const mimeTypes: Record<string, string> = {
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'svg': 'image/svg+xml',
+        'bmp': 'image/bmp',
+        'ico': 'image/x-icon',
+        'pdf': 'application/pdf',
+        'mp3': 'audio/mpeg',
+        'ogg': 'audio/ogg',
+        'wav': 'audio/wav',
+        'mp4': 'video/mp4',
+        'webm': 'video/webm'
+    };
+    return mimeTypes[ext] || 'application/octet-stream';
+}
+
+async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+}
+
+async function sha256Hash(buffer: ArrayBuffer): Promise<string> {
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 // 同步统计
 interface SyncStats {
     success: number;
@@ -272,6 +328,50 @@ class SyncManager {
         }
     }
 
+    async syncResource(data: ResourceSyncData): Promise<{ success: boolean; error?: string }> {
+        console.log('[MarkdownBrain] Starting resource sync:', {
+            path: data.path,
+            action: data.action,
+            contentType: data.contentType,
+            sizeBytes: data.sizeBytes
+        });
+
+        try {
+            const response = await requestUrl({
+                url: `${this.config.serverUrl}/obsidian/resources/sync`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.config.syncKey}`
+                },
+                body: JSON.stringify(data),
+                throw: false
+            });
+
+            if (response.status === 200) {
+                console.log('[MarkdownBrain] ✓ Resource sync successful:', data.path);
+                return { success: true };
+            } else {
+                const errorMsg = `HTTP ${response.status}: ${response.text || 'Resource sync failed'}`;
+                console.error('[MarkdownBrain] ✗ Resource sync failed:', {
+                    path: data.path,
+                    status: response.status,
+                    error: errorMsg
+                });
+                return { success: false, error: errorMsg };
+            }
+        } catch (error) {
+            console.error('[MarkdownBrain] ✗ Resource sync exception:', {
+                path: data.path,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            };
+        }
+    }
+
     destroy() {
         // Cleanup if needed
     }
@@ -314,8 +414,12 @@ export default class MarkdownBrainPlugin extends Plugin {
         // 监听文件创建
         this.registerEvent(
             this.app.vault.on('create', (file) => {
-                if (file instanceof TFile && file.extension === 'md') {
-                    this.handleFileChange(file, 'create');
+                if (file instanceof TFile) {
+                    if (file.extension === 'md') {
+                        this.handleFileChange(file, 'create');
+                    } else if (isResourceFile(file)) {
+                        this.handleResourceChange(file, 'upsert');
+                    }
                 }
             })
         );
@@ -324,9 +428,12 @@ export default class MarkdownBrainPlugin extends Plugin {
         // 监听文件修改
         this.registerEvent(
             this.app.vault.on('modify', (file) => {
-                if (file instanceof TFile && file.extension === 'md') {
-                    // 标记为待同步
-                    this.pendingSyncs.add(file.path);
+                if (file instanceof TFile) {
+                    if (file.extension === 'md') {
+                        this.pendingSyncs.add(file.path);
+                    } else if (isResourceFile(file)) {
+                        this.handleResourceChange(file, 'upsert');
+                    }
                 }
             })
         );
@@ -350,8 +457,12 @@ export default class MarkdownBrainPlugin extends Plugin {
         // 监听文件删除
         this.registerEvent(
             this.app.vault.on('delete', (file) => {
-                if (file instanceof TFile && file.extension === 'md') {
-                    this.handleFileDelete(file);
+                if (file instanceof TFile) {
+                    if (file.extension === 'md') {
+                        this.handleFileDelete(file);
+                    } else if (isResourceFile(file)) {
+                        this.handleResourceDelete(file);
+                    }
                 }
             })
         );
@@ -360,8 +471,12 @@ export default class MarkdownBrainPlugin extends Plugin {
         // 监听文件重命名
         this.registerEvent(
             this.app.vault.on('rename', (file, oldPath) => {
-                if (file instanceof TFile && file.extension === 'md') {
-                    this.handleFileRename(file, oldPath);
+                if (file instanceof TFile) {
+                    if (file.extension === 'md') {
+                        this.handleFileRename(file, oldPath);
+                    } else if (isResourceFile(file)) {
+                        this.handleResourceRename(file, oldPath);
+                    }
                 }
             })
         );
@@ -591,6 +706,102 @@ export default class MarkdownBrainPlugin extends Plugin {
             });
             new Notice(`重命名同步错误: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
+
+    async handleResourceChange(file: TFile, action: 'upsert') {
+        if (!this.settings.autoSync) {
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping resource:', file.path);
+            return;
+        }
+
+        const existingTimer = this.syncDebounceTimers.get(file.path);
+        if (existingTimer) {
+            clearTimeout(existingTimer);
+        }
+
+        const timer = setTimeout(async () => {
+            this.syncDebounceTimers.delete(file.path);
+            await this.performResourceSync(file, action);
+        }, 500);
+
+        this.syncDebounceTimers.set(file.path, timer);
+    }
+
+    async performResourceSync(file: TFile, action: 'upsert') {
+        console.log('[MarkdownBrain] Resource change detected:', {
+            path: file.path,
+            action: action,
+            extension: file.extension,
+            size: file.stat.size
+        });
+
+        try {
+            const buffer = await this.app.vault.readBinary(file);
+            const content = await arrayBufferToBase64(buffer);
+            const sha256 = await sha256Hash(buffer);
+
+            const syncData: ResourceSyncData = {
+                path: file.path,
+                content: content,
+                contentType: getContentType(file.extension),
+                sha256: sha256,
+                sizeBytes: buffer.byteLength,
+                action: action
+            };
+
+            const result = await this.syncManager.syncResource(syncData);
+
+            if (result.success) {
+                console.log('[MarkdownBrain] ✓ Resource synced successfully:', file.path);
+            } else {
+                console.error('[MarkdownBrain] ✗ Resource sync failed:', file.path, result.error);
+                new Notice(`资源同步失败: ${file.path}\n${result.error}`);
+            }
+        } catch (error) {
+            console.error('[MarkdownBrain] ✗ Resource sync exception:', {
+                path: file.path,
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            new Notice(`资源同步错误: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }
+
+    async handleResourceDelete(file: TFile) {
+        if (!this.settings.autoSync) {
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping resource delete:', file.path);
+            return;
+        }
+
+        console.log('[MarkdownBrain] Resource deletion detected:', file.path);
+
+        const result = await this.syncManager.syncResource({
+            path: file.path,
+            contentType: getContentType(file.extension),
+            action: 'delete'
+        });
+
+        if (result.success) {
+            console.log('[MarkdownBrain] ✓ Resource deletion synced:', file.path);
+        } else {
+            console.error('[MarkdownBrain] ✗ Resource deletion sync failed:', file.path, result.error);
+        }
+    }
+
+    async handleResourceRename(file: TFile, oldPath: string) {
+        if (!this.settings.autoSync) {
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping resource rename:', oldPath, '->', file.path);
+            return;
+        }
+
+        console.log('[MarkdownBrain] Resource rename detected:', oldPath, '->', file.path);
+
+        await this.syncManager.syncResource({
+            path: oldPath,
+            contentType: getContentType(file.extension),
+            action: 'delete'
+        });
+
+        await this.performResourceSync(file, 'upsert');
     }
 
     /**

@@ -458,6 +458,11 @@
     @apply text-[var(--text-primary)];
   }
 
+  .storage-info {
+    @apply flex items-center gap-2;
+    @apply text-[var(--text-secondary)];
+  }
+
   .warning-box {
     @apply px-3 py-3 border border-amber-400 bg-amber-50;
     @apply text-xs text-amber-800;
@@ -661,6 +666,32 @@
 
   .icon-xl {
     @apply w-6 h-6;
+  }
+
+  .logo-upload-box {
+    @apply border border-[var(--border-color)] bg-gray-50;
+  }
+
+  .logo-preview-container {
+    @apply p-3 flex items-center justify-between gap-3;
+  }
+
+  .logo-preview-img {
+    @apply w-16 h-16 object-contain;
+  }
+
+  .logo-actions {
+    @apply flex gap-1;
+  }
+
+  .logo-upload-area {
+    @apply p-6 flex flex-col items-center justify-center gap-2;
+    @apply cursor-pointer;
+    @apply transition-colors duration-150;
+  }
+
+  .logo-upload-area:hover {
+    @apply bg-gray-100;
   }
 }
 

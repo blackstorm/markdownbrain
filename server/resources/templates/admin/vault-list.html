@@ -9,47 +9,99 @@
 {% endif %}
 
 <script>
-// Toggle action menu
 function toggleActionMenu(button) {
     const menu = button.nextElementSibling;
     const isOpen = menu.classList.contains('open');
-
-    // Close all menus first
     document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
-
-    // Toggle this menu
     if (!isOpen) {
         menu.classList.add('open');
     }
 }
 
-// Close menus when clicking outside
 document.addEventListener('click', function(e) {
     if (!e.target.closest('.vault-actions')) {
         document.querySelectorAll('.action-menu.open').forEach(m => m.classList.remove('open'));
     }
 });
 
-// Toggle sync key visibility
 function toggleSyncKey(button, vaultId) {
     const keyElement = document.getElementById(`key-${vaultId}`);
     const fullKey = keyElement.dataset.key;
     const currentText = keyElement.textContent.trim();
     const isHidden = currentText.includes('*');
-
     const icon = button.querySelector('i');
 
     if (isHidden) {
         keyElement.textContent = fullKey;
         icon.setAttribute('data-lucide', 'eye-off');
-        button.title = '隐藏';
+        button.title = 'Hide';
     } else {
         const masked = fullKey.substring(0, 8) + '******' + fullKey.substring(fullKey.length - 8);
         keyElement.textContent = masked;
         icon.setAttribute('data-lucide', 'eye');
-        button.title = '显示';
+        button.title = 'Show';
+    }
+    lucide.createIcons();
+}
+
+function uploadLogo(input, vaultId) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const maxSize = 2 * 1024 * 1024;
+    if (file.size > maxSize) {
+        showNotification('File too large. Maximum size is 2MB.', 'error');
+        return;
     }
 
-    lucide.createIcons();
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+        showNotification('Invalid file type. Allowed: PNG, JPEG, GIF, WebP, SVG', 'error');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    fetch(`/admin/vaults/${vaultId}/logo`, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Logo uploaded successfully', 'success');
+            htmx.trigger('body', 'refreshList');
+        } else {
+            showNotification(data.error || 'Upload failed', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Logo upload error:', err);
+        showNotification('Upload failed', 'error');
+    });
+
+    input.value = '';
+}
+
+function deleteLogo(vaultId) {
+    if (!confirm('Are you sure you want to delete this logo?')) return;
+
+    fetch(`/admin/vaults/${vaultId}/logo`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Logo deleted', 'success');
+            htmx.trigger('body', 'refreshList');
+        } else {
+            showNotification(data.error || 'Delete failed', 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Logo delete error:', err);
+        showNotification('Delete failed', 'error');
+    });
 }
 </script>

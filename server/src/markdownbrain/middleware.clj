@@ -4,6 +4,7 @@
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]
    [ring.middleware.keyword-params :as keyword-params]
+   [ring.middleware.multipart-params :as multipart]
    [ring.middleware.params :as params]
    [ring.middleware.session :as session]
    [ring.middleware.session.cookie :as cookie]
@@ -76,6 +77,7 @@
       wrap-init-check
       wrap-session-middleware
       keyword-params/wrap-keyword-params
+      multipart/wrap-multipart-params
       params/wrap-params
       ;; 移除 json/wrap-json-body 和 json/wrap-json-response
       ;; 因为 Reitit 的 muuntaja 中间件会处理 JSON

@@ -4,8 +4,11 @@
             [markdownbrain.response :as resp]
             [markdownbrain.link-parser :as link-parser]
             [markdownbrain.validation :as validation]
+            [markdownbrain.object-store :as store]
+            [markdownbrain.config :as config]
             [clojure.data.json :as json]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log])
+  (:import [java.util Base64]))
 
 (defn validate-sync-key [sync-key]
   (db/get-vault-by-sync-key sync-key))
@@ -183,3 +186,86 @@
             (resp/bad-request (:message validation-result) (:errors validation-result)))))
       (resp/unauthorized "Invalid sync-key"))
     (resp/unauthorized "Missing authorization header")))
+
+;; ============================================================
+;; Resource Sync
+;; ============================================================
+
+(defn- decode-base64 [s]
+  (when s
+    (.decode (Base64/getDecoder) s)))
+
+(defn- handle-resource-delete [vault-id path]
+  (log/info "Soft deleting resource - Path:" path)
+  (db/soft-delete-resource! vault-id path)
+  (resp/success {:vault-id vault-id
+                 :path path
+                 :action "delete"}))
+
+(defn- handle-resource-upsert [vault tenant-id vault-id path size content-type sha256 content-base64]
+  (log/info "Processing resource upsert - Path:" path "Size:" size "Type:" content-type)
+
+  (let [existing (db/get-resource-by-path vault-id path)
+        hash-unchanged? (and existing sha256 (= sha256 (:sha256 existing)))]
+
+    (if hash-unchanged?
+      (do
+        (log/info "Resource unchanged (same hash) - Path:" path)
+        (resp/success {:vault-id vault-id
+                       :path path
+                       :action "unchanged"
+                       :skipped true}))
+      (if-not (config/s3-enabled?)
+        (do
+          (log/warn "S3 not configured, skipping resource upload")
+          (resp/error 503 "S3 storage not configured"))
+        (let [object-key (store/resource-object-key path)
+              content-bytes (decode-base64 content-base64)]
+          (if-not content-bytes
+            (resp/bad-request "Invalid or missing base64 content")
+            (do
+              (log/info "Uploading resource to S3 - Object-key:" object-key)
+              (store/put-object! vault-id object-key content-bytes content-type)
+
+              (let [resource-id (utils/generate-uuid)]
+                (db/upsert-resource! resource-id tenant-id vault-id path object-key size content-type sha256)
+                (log/info "Resource upserted successfully - Path:" path)
+
+                (resp/success {:vault-id vault-id
+                               :path path
+                               :object-key object-key
+                               :action "upserted"})))))))))
+
+(defn sync-resource [request]
+  (log/debug "========== Resource Sync Request ==========")
+  (log/debug "Headers:" (:headers request))
+  (log/debug "Body params keys:" (keys (:body-params request)))
+
+  (if-let [sync-key (parse-sync-key request)]
+    (if-let [vault (validate-sync-key sync-key)]
+      (let [validation-result (validation/validate-resource-sync-request (:body-params request))]
+        (if (:valid? validation-result)
+          (let [{:keys [path action size contentType sha256 content]} (:body-params request)
+                vault-id (:id vault)
+                tenant-id (:tenant-id vault)]
+
+            (let [metadata-validation (validation/validate-resource-metadata-required action (:body-params request))]
+              (if (:valid? metadata-validation)
+                (do
+                  (log/debug "Parsed resource params - Path:" path "Action:" action "Size:" size)
+                  (case action
+                    "delete" (handle-resource-delete vault-id path)
+                    ("create" "modify") (handle-resource-upsert vault tenant-id vault-id path size contentType sha256 content)
+                    (resp/bad-request (str "Unknown action: " action))))
+                (do
+                  (log/error "Metadata validation failed:" (:errors metadata-validation))
+                  (resp/bad-request (:message metadata-validation) (:errors metadata-validation))))))
+          (do
+            (log/error "Resource sync validation failed:" (:errors validation-result))
+            (resp/bad-request (:message validation-result) (:errors validation-result)))))
+      (do
+        (log/error "Invalid sync-key for resource sync")
+        (resp/unauthorized "Invalid sync-key")))
+    (do
+      (log/error "Missing authorization header for resource sync")
+      (resp/unauthorized "Missing authorization header"))))

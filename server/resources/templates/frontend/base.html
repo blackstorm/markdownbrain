@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}MarkdownBrain{% endblock %}</title>
-  <meta name="description" content="{{ description|default:vault.name }}">
+  {% if description %}<meta name="description" content="{{ description }}">{% endif %}
   <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico">
   <link rel="stylesheet" href="/frontend/css/frontend.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

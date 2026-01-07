@@ -71,3 +71,42 @@
         {:valid? false
          :errors errors
          :message "clientIds must be a non-empty array of non-empty strings"}))))
+
+;; ============================================================
+;; Resource Sync 请求验证
+;; ============================================================
+
+(def resource-sync-request-schema
+  [:map
+   [:path [:string {:min 1}]]
+   [:action [:enum "create" "modify" "delete"]]
+   [:size {:optional true} [:maybe :int]]
+   [:contentType {:optional true} [:maybe :string]]
+   [:sha256 {:optional true} [:maybe :string]]])
+
+(defn validate-resource-sync-request
+  [data]
+  (let [validator (m/validator resource-sync-request-schema)
+        valid? (validator data)]
+    (if valid?
+      {:valid? true
+       :data data}
+      (let [explainer (m/explainer resource-sync-request-schema)
+            explanation (explainer data)
+            errors (me/humanize explanation)]
+        (log/warn "Resource sync validation failed:" errors)
+        {:valid? false
+         :errors errors
+         :message "Invalid resource sync request"}))))
+
+(defn validate-resource-metadata-required
+  [action data]
+  (if (and (contains? #{"create" "modify"} action)
+           (or (nil? (:size data))
+               (nil? (:contentType data))
+               (nil? (:sha256 data))))
+    {:valid? false
+     :errors {:metadata ["size, contentType, and sha256 are required for create/modify actions"]}
+     :message "size, contentType, and sha256 are required for create/modify actions"}
+    {:valid? true
+     :data data}))

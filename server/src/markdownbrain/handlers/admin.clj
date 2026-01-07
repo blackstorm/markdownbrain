@@ -1,6 +1,9 @@
 (ns markdownbrain.handlers.admin
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [markdownbrain.db :as db]
+   [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
    [markdownbrain.utils :as utils]
    [selmer.parser :as selmer]))
@@ -51,6 +54,14 @@
    :session nil
    :headers {"Location" "/admin/login"}})
 
+(defn format-storage-size [bytes]
+  (cond
+    (nil? bytes) "0 B"
+    (< bytes 1024) (str bytes " B")
+    (< bytes (* 1024 1024)) (format "%.1f KB" (/ bytes 1024.0))
+    (< bytes (* 1024 1024 1024)) (format "%.1f MB" (/ bytes (* 1024.0 1024)))
+    :else (format "%.2f GB" (/ bytes (* 1024.0 1024 1024)))))
+
 (defn admin-home [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         tenant (db/get-tenant tenant-id)
@@ -58,10 +69,12 @@
         vaults-with-data (mapv (fn [vault]
                                  (let [sync-key (:sync-key vault)
                                        masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
-                                       notes (db/search-notes-by-vault (:id vault) "")]
+                                       notes (db/search-notes-by-vault (:id vault) "")
+                                       storage-bytes (db/get-vault-storage-size (:id vault))]
                                    (assoc vault
                                           :masked-key masked
-                                          :notes notes)))
+                                          :notes notes
+                                          :storage-size (format-storage-size storage-bytes))))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vaults.html"
                                     {:tenant tenant
@@ -79,10 +92,12 @@
         vaults-with-data (mapv (fn [vault]
                                  (let [sync-key (:sync-key vault)
                                        masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
-                                       notes (db/search-notes-by-vault (:id vault) "")]
+                                       notes (db/search-notes-by-vault (:id vault) "")
+                                       storage-bytes (db/get-vault-storage-size (:id vault))]
                                    (assoc vault
                                           :masked-key masked
-                                          :notes notes)))
+                                          :notes notes
+                                          :storage-size (format-storage-size storage-bytes))))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vault-list.html"
                                    {:vaults vaults-with-data}))))
@@ -128,6 +143,7 @@
 
       :else
       (do
+        (object-store/delete-vault-objects! vault-id)
         (db/delete-vault! vault-id)
         (resp/success {:message "Site deleted"})))))
 
@@ -245,3 +261,110 @@
                                     {:notes notes
                                      :vault-id vault-id
                                      :root-note-id root-note-id})}))))
+
+(def ^:private allowed-logo-types
+  #{"image/png" "image/jpeg" "image/gif" "image/webp" "image/svg+xml"})
+
+(def ^:private logo-extension-map
+  {"image/png" "png"
+   "image/jpeg" "jpg"
+   "image/gif" "gif"
+   "image/webp" "webp"
+   "image/svg+xml" "svg"})
+
+(defn upload-vault-logo
+  "Upload a logo image for a vault.
+   Expects multipart form data with 'logo' file field.
+   Validates: vault ownership, file type (png/jpg/gif/webp/svg), max size (2MB)."
+  [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)
+        ;; Multipart file is in :multipart-params or :params
+        file (or (get-in request [:multipart-params "logo"])
+                 (get-in request [:params :logo]))]
+    (cond
+      (nil? vault)
+      {:status 404
+       :body {:success false :error "Vault not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 403
+       :body {:success false :error "Permission denied"}}
+
+      (nil? file)
+      {:status 400
+       :body {:success false :error "No file uploaded"}}
+
+      (not (contains? allowed-logo-types (:content-type file)))
+      {:status 400
+       :body {:success false
+              :error (str "Invalid file type. Allowed: PNG, JPEG, GIF, WebP, SVG. Got: " (:content-type file))}}
+
+      (> (:size file) (* 2 1024 1024)) ; 2MB limit
+      {:status 400
+       :body {:success false :error "File too large. Maximum size is 2MB."}}
+
+      :else
+      (let [extension (get logo-extension-map (:content-type file) "png")
+            filename (str "logo." extension)
+            object-key (object-store/logo-object-key filename)
+            content (with-open [in (io/input-stream (:tempfile file))]
+                      (let [baos (java.io.ByteArrayOutputStream.)]
+                        (io/copy in baos)
+                        (.toByteArray baos)))]
+        ;; Upload to S3
+        (object-store/put-object! vault-id object-key content (:content-type file))
+        ;; Update DB
+        (db/update-vault-logo! vault-id object-key)
+        (resp/success {:message "Logo uploaded successfully"
+                       :logo-url (str "/admin/vaults/" vault-id "/logo")})))))
+
+(defn get-vault-logo
+  "Serve the logo for a vault.
+   Returns the logo image from S3, or 404 if not set."
+  [request]
+  (let [vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 404 :body "Vault not found"}
+
+      (str/blank? (:logo-object-key vault))
+      {:status 404 :body "No logo set"}
+
+      :else
+      (let [s3-result (object-store/get-object vault-id (:logo-object-key vault))]
+        (if s3-result
+          {:status 200
+           :headers {"Content-Type" (or (:ContentType s3-result) "image/png")
+                     "Cache-Control" "public, max-age=86400"} ; 1 day cache
+           :body (:Body s3-result)}
+          {:status 404 :body "Logo not found in storage"})))))
+
+(defn delete-vault-logo
+  "Remove the logo for a vault."
+  [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 404
+       :body {:success false :error "Vault not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 403
+       :body {:success false :error "Permission denied"}}
+
+      (str/blank? (:logo-object-key vault))
+      {:status 200
+       :body {:success true :message "No logo to delete"}}
+
+      :else
+      (do
+        ;; Delete from S3
+        (object-store/delete-object! vault-id (:logo-object-key vault))
+        ;; Clear DB reference
+        (db/update-vault-logo! vault-id nil)
+        (resp/success {:message "Logo deleted successfully"})))))

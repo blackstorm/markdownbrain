@@ -1,6 +1,6 @@
 <!-- Vault Card Component
   Parameters:
-  - vault: vault object with id, name, domain, sync-key, masked-key, root-note-id, notes
+  - vault: vault object with id, name, domain, sync-key, masked-key, root-note-id, notes, logo-object-key
 -->
 <div class="vault-card">
     <!-- Header -->
@@ -43,6 +43,45 @@
       </div>
     </div>
 
+    <!-- Site Logo Section -->
+    <div class="vault-section">
+      <span class="section-label">Site Logo</span>
+      <div class="logo-upload-box" id="logo-box-{{vault.id}}">
+        {% if vault.logo-object-key %}
+        <!-- Logo exists - show preview with delete option -->
+        <div class="logo-preview-container">
+          <img src="/admin/vaults/{{vault.id}}/logo" alt="Site logo" class="logo-preview-img" id="logo-preview-{{vault.id}}">
+          <div class="logo-actions">
+            <label class="icon-btn" title="Change logo">
+              <i data-lucide="upload" class="icon-xs"></i>
+              <input type="file"
+                     accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                     class="hidden"
+                     onchange="uploadLogo(this, '{{vault.id}}')">
+            </label>
+            <button type="button"
+                    class="icon-btn"
+                    title="Delete logo"
+                    onclick="deleteLogo('{{vault.id}}')">
+              <i data-lucide="trash-2" class="icon-xs"></i>
+            </button>
+          </div>
+        </div>
+        {% else %}
+        <!-- No logo - show upload area -->
+        <label class="logo-upload-area" id="logo-upload-area-{{vault.id}}">
+          <i data-lucide="image-plus" class="icon-lg text-[var(--text-tertiary)]"></i>
+          <span class="text-xs text-[var(--text-tertiary)]">Click to upload logo</span>
+          <span class="text-xs text-[var(--text-tertiary)]">PNG, JPEG, GIF, WebP, SVG (max 2MB)</span>
+          <input type="file"
+                 accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                 class="hidden"
+                 onchange="uploadLogo(this, '{{vault.id}}')">
+        </label>
+        {% endif %}
+      </div>
+    </div>
+
     <!-- Sync Key Section -->
     <div class="vault-section">
       <span class="section-label">Sync Key</span>
@@ -76,5 +115,14 @@
       {% with vault-id=vault.id root-note-id=vault.root-note-id notes=vault.notes %}
         {% include "templates/admin/root-note-selector.html" %}
       {% endwith %}
+    </div>
+
+    <!-- Storage Section -->
+    <div class="vault-section">
+      <span class="section-label">Storage</span>
+      <div class="storage-info">
+        <i data-lucide="hard-drive" class="icon-xs text-[var(--text-tertiary)]"></i>
+        <span class="text-sm">{{vault.storage-size}}</span>
+      </div>
     </div>
 </div>

@@ -3,6 +3,7 @@
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]
    [markdownbrain.middleware :as middleware]
+   [markdownbrain.object-store :as object-store]
    [markdownbrain.routes :as routes]
    [ring.adapter.undertow :as undertow]
    [ring.middleware.resource :as resource]
@@ -43,8 +44,20 @@
 
 (defn start-servers []
   "启动所有服务器"
+  ;; 验证必填配置
+  (try
+    (config/validate-required-config!)
+    (catch clojure.lang.ExceptionInfo e
+      (log/error "Configuration error:")
+      (doseq [err (:errors (ex-data e))]
+        (log/error "  -" err))
+      (System/exit 1)))
+  
   (log/info "Initializing database...")
   (db/init-db!)
+  
+  (log/info "Initializing S3 storage...")
+  (object-store/ensure-bucket!)
 
   (let [frontend (start-frontend-server)
         admin (start-admin-server)]

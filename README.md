@@ -48,6 +48,9 @@ make build           # 构建所有项目
 |------|------|------|
 | `INTERNAL_TOKEN` | 内部 API 认证 Token (Caddy 域名验证用) | 是 |
 | `SESSION_SECRET` | Session 加密密钥 | 否 (自动生成) |
+| `S3_BUCKET` | S3 存储桶名称 | 否 (默认 `markdownbrain`) |
+| `S3_ACCESS_KEY` | RustFS 访问密钥 | 否 (默认 `rustfsadmin`) |
+| `S3_SECRET_KEY` | RustFS 密钥 | 否 (默认 `rustfsadmin`) |
 
 ### 部署步骤
 
@@ -131,8 +134,11 @@ ssh -L 9090:localhost:9090 user@your-server
               │                         │
               └────────────┬────────────┘
                            │
-                           ▼
-                    ┌─────────────┐
-                    │   SQLite    │
-                    └─────────────┘
+              ┌────────────┴────────────┐
+              │                         │
+              ▼                         ▼
+       ┌─────────────┐         ┌─────────────┐
+       │   SQLite    │         │   RustFS    │
+       │   (数据库)   │         │  (对象存储)  │
+       └─────────────┘         └─────────────┘
 ```

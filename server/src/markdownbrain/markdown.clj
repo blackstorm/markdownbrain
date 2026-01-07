@@ -281,6 +281,65 @@
           target-client-id
           (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})))
 
+(defn- resource-embed?
+  "检查路径是否为资源文件（非 .md 文件）
+   输入: 文件路径
+   输出: true/false"
+  [path]
+  (when path
+    (let [lower-path (str/lower-case path)]
+      (and (not (str/ends-with? lower-path ".md"))
+           (or (str/ends-with? lower-path ".png")
+               (str/ends-with? lower-path ".jpg")
+               (str/ends-with? lower-path ".jpeg")
+               (str/ends-with? lower-path ".gif")
+               (str/ends-with? lower-path ".webp")
+               (str/ends-with? lower-path ".svg")
+               (str/ends-with? lower-path ".bmp")
+               (str/ends-with? lower-path ".ico")
+               (str/ends-with? lower-path ".pdf")
+               (str/ends-with? lower-path ".mp3")
+               (str/ends-with? lower-path ".mp4")
+               (str/ends-with? lower-path ".webm")
+               (str/ends-with? lower-path ".ogg")
+               (str/ends-with? lower-path ".wav"))))))
+
+(defn- render-resource-embed
+  "渲染资源嵌入为 HTML
+   输入: 资源路径、显示文本
+   输出: HTML 字符串"
+  [path display-text]
+  (let [escaped-path (-> path
+                         (str/replace #"^/+" "")  ; Remove leading slashes
+                         (java.net.URLEncoder/encode "UTF-8")
+                         (str/replace "%2F" "/"))  ; Keep path separators
+        escaped-display (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})]
+    (cond
+      ;; Image files
+      (re-matches #".*\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$" (str/lower-case path))
+      (format "<img src=\"/r/%s\" alt=\"%s\" class=\"resource-embed\">"
+              escaped-path escaped-display)
+      
+      ;; PDF files
+      (str/ends-with? (str/lower-case path) ".pdf")
+      (format "<a href=\"/r/%s\" class=\"resource-link pdf-link\">%s</a>"
+              escaped-path escaped-display)
+      
+      ;; Audio files
+      (re-matches #".*\.(mp3|ogg|wav)$" (str/lower-case path))
+      (format "<audio src=\"/r/%s\" controls class=\"resource-embed\">%s</audio>"
+              escaped-path escaped-display)
+      
+      ;; Video files
+      (re-matches #".*\.(mp4|webm)$" (str/lower-case path))
+      (format "<video src=\"/r/%s\" controls class=\"resource-embed\">%s</video>"
+              escaped-path escaped-display)
+      
+      ;; Fallback to link
+      :else
+      (format "<a href=\"/r/%s\" class=\"resource-link\">%s</a>"
+              escaped-path escaped-display))))
+
 (defn replace-obsidian-links
   "替换文本中的所有 Obsidian 链接为 HTML 链接
    输入: 内容字符串、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" :display-text \"...\" :link-type \"link\"/\"embed\"}]
@@ -290,10 +349,11 @@
    - [[链接]] -> 内部链接
    - [[链接|文本]] -> 带自定义文本的链接
    - [[链接#锚点]] -> 带锚点的链接
-   - ![[图片]] -> 图片嵌入
+   - ![[图片.png]] -> 资源嵌入 (路由到 /r/path)
+   - ![[note.md]] -> 笔记嵌入
    
     注意: links 参数来自 note_links 表，只包含已解析的有效链接
-         不在列表中的链接将显示为 broken link"
+         资源文件（图片、音视频等）不在 note_links 表中，直接渲染为资源链接"
   [content links]
   (let [link-index (build-link-index links)
         ;; 匹配 [[...]] 和 ![[...]]
@@ -301,21 +361,27 @@
     (str/replace content pattern
                  (fn [[full-match is-embed link-text]]
                    (let [original full-match
-                         link-data (find-link-by-original original link-index)
-                         parsed (parse-obsidian-link original)]
+                         parsed (parse-obsidian-link original)
+                         path (:path parsed)
+                         display (:display parsed)]
                      (cond
-                       ;; 链接存在于预存储的列表中
-                       link-data
-                       (let [target-client-id (:target-client-id link-data)
+                       ;; 1. 嵌入且是资源文件（图片、音视频等）-> 直接渲染为资源链接
+                       (and (= is-embed "!") (resource-embed? path))
+                       (render-resource-embed path display)
+                       
+                       ;; 2. 链接存在于预存储的列表中（note_links 表）
+                       (find-link-by-original original link-index)
+                       (let [link-data (get link-index original)
+                             target-client-id (:target-client-id link-data)
                              display-text (:display-text link-data)
                              link-type (:link-type link-data)]
                          (if (= link-type "embed")
                            (render-image-embed target-client-id display-text)
                            (render-internal-link target-client-id display-text (:anchor parsed))))
 
-                       ;; 链接不存在（broken link）
+                       ;; 3. 链接不存在（broken link）
                        :else
-                       (render-broken-link (:path parsed) (:display parsed))))))))
+                       (render-broken-link path display)))))))
 
 ;;; ============================================================
 ;;; 6. 完整渲染流程

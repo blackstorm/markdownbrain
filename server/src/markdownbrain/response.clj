@@ -59,3 +59,9 @@
   {:status 200
    :headers {"Content-Type" "text/html"}
    :body body})
+
+(defn error
+  [status error-msg]
+  {:status status
+   :body {:success false
+          :error error-msg}})
