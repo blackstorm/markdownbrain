@@ -212,12 +212,23 @@
       (when h1-node
         (get-heading-text h1-node)))))
 
+(defn- image-line?
+  "检查一行是否是图片行
+   支持:
+   - 标准 Markdown: ![alt](url) 或 ![alt][ref]
+   - Obsidian 嵌入: ![[image.png]]"
+  [line]
+  (let [trimmed (str/trim line)]
+    (or (re-matches #"!\[.*\]\(.*\)" trimmed)      ; ![alt](url)
+        (re-matches #"!\[.*\]\[.*\]" trimmed)      ; ![alt][ref]
+        (re-matches #"!\[\[.*\]\]" trimmed))))     ; ![[image]]
+
 (defn extract-description
-  "从 Markdown 内容中提取描述（第一段非标题文本）
+  "从 Markdown 内容中提取描述（第一段非标题、非图片文本）
    输入: Markdown 字符串, 可选的最大长度（默认 100）
    输出: 描述字符串或 nil
    
-   注意: 会跳过 YAML front matter 和标题行"
+   注意: 会跳过 YAML front matter、标题行和图片行"
   ([content] (extract-description content 100))
   ([content max-length]
    (when content
@@ -226,7 +237,8 @@
            first-para (->> lines
                            (drop-while #(or (str/starts-with? % "#")
                                             (str/blank? %)))
-                           (filter #(not (str/blank? %)))
+                           (filter #(and (not (str/blank? %))
+                                         (not (image-line? %))))
                            first)]
        (when first-para
          (subs first-para 0 (min max-length (count first-para))))))))

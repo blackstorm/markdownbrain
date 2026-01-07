@@ -7,10 +7,7 @@
   {% if description %}<meta name="description" content="{{ description }}">{% endif %}
   <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico">
   <link rel="stylesheet" href="/frontend/css/frontend.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"></script>
+  <link rel="stylesheet" href="/frontend/common/katex.min.css">
 </head>
 <body>
   <div id="app">
@@ -26,6 +23,9 @@
     </header>
     {% block content %}{% endblock %}
   </div>
+  <script src="/frontend/common/highlight.min.js"></script>
+  <script src="/frontend/common/katex.min.js"></script>
+  <script src="/frontend/common/htmx.min.js"></script>
   <script src="/frontend/js/frontend.js"></script>
 </body>
 </html>

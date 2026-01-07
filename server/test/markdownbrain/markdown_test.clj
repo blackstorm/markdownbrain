@@ -197,7 +197,26 @@
     (is (nil? (md/extract-description "# Title Only"))))
 
   (testing "只有 YAML front matter 返回 nil"
-    (is (nil? (md/extract-description "---\ntitle: Test\n---")))))
+    (is (nil? (md/extract-description "---\ntitle: Test\n---"))))
+
+  (testing "跳过 Obsidian 图片嵌入"
+    (is (= "This is the actual description."
+           (md/extract-description "# Title\n\n![[image.png]]\n\nThis is the actual description."))))
+
+  (testing "跳过标准 Markdown 图片"
+    (is (= "This is the description."
+           (md/extract-description "# Title\n\n![alt text](https://example.com/img.png)\n\nThis is the description."))))
+
+  (testing "跳过多个连续图片"
+    (is (= "Finally some text."
+           (md/extract-description "# Title\n\n![[img1.png]]\n![alt](url.jpg)\n![[img2.gif]]\n\nFinally some text."))))
+
+  (testing "只有图片没有文本返回 nil"
+    (is (nil? (md/extract-description "# Title\n\n![[only-image.png]]"))))
+
+  (testing "跳过图片引用格式"
+    (is (= "Description here."
+           (md/extract-description "# Title\n\n![alt][ref]\n\nDescription here.\n\n[ref]: http://example.com/img.png")))))
 
 ;;; 测试 6: 替换 Obsidian 链接（使用预存储的 links）
 (deftest test-replace-obsidian-links

@@ -3,7 +3,7 @@
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]))
 
-(defn valid-internal-token? [req]
+(defn- valid-internal-token? [req]
   (let [token (config/internal-token)
         req-token (or (get-in req [:headers "authorization"])
                       (get-in req [:query-params "token"]))]
