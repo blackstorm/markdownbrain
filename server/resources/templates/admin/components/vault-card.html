@@ -47,10 +47,10 @@
     <div class="vault-section">
       <span class="section-label">Site Logo</span>
       <div class="logo-upload-box" id="logo-box-{{vault.id}}">
-        {% if vault.logo-object-key %}
+        {% if vault.logo-url %}
         <!-- Logo exists - show preview with delete option -->
         <div class="logo-preview-container">
-          <img src="/admin/vaults/{{vault.id}}/logo" alt="Site logo" class="logo-preview-img" id="logo-preview-{{vault.id}}">
+          <img src="{{vault.logo-url}}" alt="Site logo" class="logo-preview-img" id="logo-preview-{{vault.id}}">
           <div class="logo-actions">
             <label class="icon-btn" title="Change logo">
               <i data-lucide="upload" class="icon-xs"></i>

@@ -93,11 +93,14 @@
                                  (let [sync-key (:sync-key vault)
                                        masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
                                        notes (db/search-notes-by-vault (:id vault) "")
-                                       storage-bytes (db/get-vault-storage-size (:id vault))]
+                                       storage-bytes (db/get-vault-storage-size (:id vault))
+                                       logo-url (when-let [key (:logo-object-key vault)]
+                                                  (object-store/public-asset-url (:id vault) key))]
                                    (assoc vault
                                           :masked-key masked
                                           :notes notes
-                                          :storage-size (format-storage-size storage-bytes))))
+                                          :storage-size (format-storage-size storage-bytes)
+                                          :logo-url logo-url)))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vault-list.html"
                                    {:vaults vaults-with-data}))))
@@ -318,29 +321,7 @@
         ;; Update DB
         (db/update-vault-logo! vault-id object-key)
         (resp/success {:message "Logo uploaded successfully"
-                       :logo-url (str "/admin/vaults/" vault-id "/logo")})))))
-
-(defn get-vault-logo
-  "Serve the logo for a vault.
-   Returns the logo image from S3, or 404 if not set."
-  [request]
-  (let [vault-id (get-in request [:path-params :id])
-        vault (db/get-vault-by-id vault-id)]
-    (cond
-      (nil? vault)
-      {:status 404 :body "Vault not found"}
-
-      (str/blank? (:logo-object-key vault))
-      {:status 404 :body "No logo set"}
-
-      :else
-      (let [s3-result (object-store/get-object vault-id (:logo-object-key vault))]
-        (if s3-result
-          {:status 200
-           :headers {"Content-Type" (or (:ContentType s3-result) "image/png")
-                     "Cache-Control" "public, max-age=86400"} ; 1 day cache
-           :body (:Body s3-result)}
-          {:status 404 :body "Logo not found in storage"})))))
+                       :logo-url (object-store/public-asset-url vault-id object-key)})))))
 
 (defn delete-vault-logo
   "Remove the logo for a vault."

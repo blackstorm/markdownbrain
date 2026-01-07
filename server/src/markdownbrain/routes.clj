@@ -1,16 +1,14 @@
 (ns markdownbrain.routes
-  (:require [reitit.ring :as ring]
-            [reitit.ring.middleware.parameters :as parameters]
-            [reitit.ring.coercion :as coercion]
-            [reitit.coercion.spec]
-            [muuntaja.core :as m]
-            [reitit.ring.middleware.muuntaja :as muuntaja]
-            [markdownbrain.handlers.admin :as admin]
-            [markdownbrain.handlers.sync :as sync]
-            [markdownbrain.handlers.frontend :as frontend]
-            [markdownbrain.middleware :as middleware]
-            [markdownbrain.db :as db]
-            [markdownbrain.config :as config]))
+  (:require
+   [markdownbrain.handlers.admin :as admin]
+   [markdownbrain.handlers.frontend :as frontend]
+   [markdownbrain.handlers.internal :as internal]
+   [markdownbrain.handlers.sync :as sync]
+   [markdownbrain.middleware :as middleware]
+   [muuntaja.core :as m]
+   [reitit.ring :as ring]
+   [reitit.ring.middleware.muuntaja :as muuntaja]
+   [reitit.ring.middleware.parameters :as parameters]))
 
 (def muuntaja-instance
   (m/create
@@ -19,23 +17,9 @@
     [:formats "application/json" :decoder-opts]
     {:decode-key-fn true})))
 
-(defn frontend-dispatch
-  "Dispatch requests based on path prefix.
-   All paths are handled as notes (resources are served directly from S3)."
-  [request]
-  (frontend/get-note request))
-
 (def frontend-routes
   [["/" {:get frontend/get-note}]
-   ["/{*path}" {:get frontend-dispatch}]])
-
-(defn valid-internal-token? [req]
-  (let [token (config/internal-token)
-        req-token (or (get-in req [:headers "authorization"])
-                      (get-in req [:query-params "token"]))]
-    (and token
-         (or (= req-token token)
-             (= req-token (str "Bearer " token))))))
+   ["/{*path}" {:get frontend/get-note}]])
 
 (def admin-routes
   [["/obsidian"
@@ -44,20 +28,10 @@
     ["/sync/full" {:post sync/sync-full}]
     ["/assets/sync" {:post sync/sync-asset}]]
 
-   ["/admin"
-    ["/health" {:get (fn [req]
-                       (if (valid-internal-token? req)
-                         {:status 200 :body "ok"}
-                         {:status 401 :body "unauthorized"}))}]
-    ["/domain-check" {:get (fn [req]
-                             (if-not (valid-internal-token? req)
-                               {:status 401 :body "unauthorized"}
-                               (let [domain (get-in req [:query-params "domain"])]
-                                 (if (and domain (db/get-vault-by-domain domain))
-                                   {:status 200 :body "ok"}
-                                   {:status 404 :body "not found"}))))}]
-    ["" {:middleware [middleware/wrap-auth]
-         :get admin/admin-home}]
+   ["/admin" 
+    ["" {:middleware [middleware/wrap-auth] :get admin/admin-home}]
+    ["/health" {:get internal/health}]
+    ["/domain-check" {:get internal/domain-check}]
     ["/login" {:get admin/login-page
                :post admin/login}]
     ["/logout" {:post {:middleware [middleware/wrap-auth]
@@ -76,11 +50,10 @@
                               :put admin/update-vault-root-note}]
     ["/vaults/:id/root-note-selector" {:middleware [middleware/wrap-auth]
                                         :get admin/get-root-note-selector}]
-    ["/vaults/:id/logo" {:get admin/get-vault-logo
-                         :post {:middleware [middleware/wrap-auth]
-                                :handler admin/upload-vault-logo}
-                         :delete {:middleware [middleware/wrap-auth]
-                                  :handler admin/delete-vault-logo}}]]])
+    ["/vaults/:id/logo" {:post {:middleware [middleware/wrap-auth]
+                                 :handler admin/upload-vault-logo}
+                          :delete {:middleware [middleware/wrap-auth]
+                                   :handler admin/delete-vault-logo}}]]])
 
 (def frontend-app
   (ring/ring-handler
