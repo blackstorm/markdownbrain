@@ -78,25 +78,45 @@
   (jdbc/execute! conn
                  ["CREATE INDEX idx_links_target ON note_links(vault_id, target_client_id)"])
   (jdbc/execute! conn
-                 ["CREATE TABLE resources (
+                 ["CREATE TABLE assets (
                      id TEXT PRIMARY KEY,
                      tenant_id TEXT NOT NULL,
                      vault_id TEXT NOT NULL,
+                     client_id TEXT,
                      path TEXT NOT NULL,
                      object_key TEXT NOT NULL,
                      size_bytes INTEGER NOT NULL,
                      content_type TEXT NOT NULL,
                      sha256 TEXT NOT NULL,
+                     original_name TEXT,
                      deleted_at INTEGER,
                      created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
                      updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
                      UNIQUE(vault_id, path),
+                     UNIQUE(vault_id, client_id),
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
                      FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_resources_vault ON resources(vault_id)"])
+                 ["CREATE INDEX idx_assets_vault ON assets(vault_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_resources_path ON resources(vault_id, path)"]))
+                 ["CREATE INDEX idx_assets_path ON assets(vault_id, path)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_assets_client_id ON assets(vault_id, client_id)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_assets_hash ON assets(vault_id, sha256)"])
+  (jdbc/execute! conn
+                 ["CREATE TABLE note_asset_refs (
+                     id TEXT PRIMARY KEY,
+                     vault_id TEXT NOT NULL,
+                     note_client_id TEXT NOT NULL,
+                     asset_client_id TEXT NOT NULL,
+                     created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+                     UNIQUE(vault_id, note_client_id, asset_client_id),
+                     FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_asset_refs_note ON note_asset_refs(vault_id, note_client_id)"])
+  (jdbc/execute! conn
+                 ["CREATE INDEX idx_asset_refs_asset ON note_asset_refs(vault_id, asset_client_id)"]))
 
 (defn setup-test-db [f]
   (let [db (jdbc/get-datasource {:dbtype "sqlite" :dbname ":memory:"})
@@ -714,129 +734,184 @@
       (is (= #{"v2-c"} (set (map :client-id results-2)))))))
 
 ;;; ============================================================
-;;; Resource 测试
+;;; Asset 测试
 ;;; ============================================================
 
-(defn upsert-resource! [id tenant-id vault-id path object-key size-bytes content-type sha256]
+(defn upsert-asset! [id tenant-id vault-id client-id path object-key size-bytes content-type sha256]
   (execute-one!
-    ["INSERT INTO resources (id, tenant_id, vault_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
-      ON CONFLICT(vault_id, path) DO UPDATE SET
+    ["INSERT INTO assets (id, tenant_id, vault_id, client_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+      ON CONFLICT(vault_id, client_id) DO UPDATE SET
+        path = excluded.path,
         object_key = excluded.object_key,
         size_bytes = excluded.size_bytes,
         content_type = excluded.content_type,
         sha256 = excluded.sha256,
         deleted_at = NULL,
         updated_at = strftime('%s', 'now')"
-     id tenant-id vault-id path object-key size-bytes content-type sha256]))
+     id tenant-id vault-id client-id path object-key size-bytes content-type sha256]))
 
-(defn soft-delete-resource! [vault-id path]
+(defn soft-delete-asset! [vault-id client-id]
   (execute-one!
-    ["UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-      WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+    ["UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+      WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
+     vault-id client-id]))
+
+(defn get-asset-by-client-id [vault-id client-id]
+  (execute-one!
+    ["SELECT * FROM assets WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
+     vault-id client-id]))
+
+(defn get-asset-by-path [vault-id path]
+  (execute-one!
+    ["SELECT * FROM assets WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
      vault-id path]))
 
-(defn get-resource-by-path [vault-id path]
+(defn get-asset-by-filename [vault-id filename]
   (execute-one!
-    ["SELECT * FROM resources WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
-     vault-id path]))
+    ["SELECT * FROM assets WHERE vault_id = ? AND path LIKE ? AND deleted_at IS NULL LIMIT 1"
+     vault-id (str "%" filename)]))
 
-(defn list-resources-by-vault [vault-id]
+(defn find-asset [vault-id path]
+  (or (get-asset-by-path vault-id path)
+      (get-asset-by-filename vault-id (str "/" path))))
+
+(defn list-assets-by-vault [vault-id]
   (let [results (jdbc/execute! *conn*
-                               ["SELECT path, sha256, size_bytes FROM resources
+                               ["SELECT client_id, path, sha256, size_bytes FROM assets
                                  WHERE vault_id = ? AND deleted_at IS NULL
                                  ORDER BY path ASC"
                                 vault-id]
                                {:builder-fn rs/as-unqualified-lower-maps})]
     (map db-keys->clojure results)))
 
-(deftest test-upsert-resource
-  (testing "Insert new resource"
+(deftest test-upsert-asset
+  (testing "Insert new asset with client_id"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "res-insert.com" (utils/generate-uuid))
-          resource-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "asset-insert.com" (utils/generate-uuid))
+          asset-id (utils/generate-uuid)
+          client-id (utils/generate-uuid)
           path "images/photo.png"
-          object-key "resources/images/photo.png"
+          object-key "assets/images/photo.png"
           size-bytes 12345
           content-type "image/png"
           sha256 "abc123def456"]
-      (upsert-resource! resource-id tenant-id vault-id path object-key size-bytes content-type sha256)
-      (let [result (get-resource-by-path vault-id path)]
+      (upsert-asset! asset-id tenant-id vault-id client-id path object-key size-bytes content-type sha256)
+      (let [result (get-asset-by-client-id vault-id client-id)]
         (is (map? result))
+        (is (= client-id (:client-id result)))
         (is (= path (:path result)))
         (is (= object-key (:object-key result)))
         (is (= size-bytes (:size-bytes result)))
         (is (= content-type (:content-type result)))
         (is (= sha256 (:sha256 result))))))
 
-  (testing "Update existing resource"
+  (testing "Update existing asset by client_id"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "res-update.com" (utils/generate-uuid))
-          resource-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "asset-update.com" (utils/generate-uuid))
+          asset-id (utils/generate-uuid)
+          client-id (utils/generate-uuid)
           path "images/logo.svg"
-          _ (upsert-resource! resource-id tenant-id vault-id path "resources/old" 100 "image/svg+xml" "old-hash")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/new" 200 "image/svg+xml" "new-hash")
-          result (get-resource-by-path vault-id path)]
+          _ (upsert-asset! asset-id tenant-id vault-id client-id path "assets/old" 100 "image/svg+xml" "old-hash")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id "images/logo-renamed.svg" "assets/new" 200 "image/svg+xml" "new-hash")
+          result (get-asset-by-client-id vault-id client-id)]
       (is (= 200 (:size-bytes result)))
-      (is (= "new-hash" (:sha256 result))))))
+      (is (= "new-hash" (:sha256 result)))
+      (is (= "images/logo-renamed.svg" (:path result))))))
 
-(deftest test-soft-delete-resource
-  (testing "Soft delete resource"
+(deftest test-soft-delete-asset
+  (testing "Soft delete asset by client_id"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "res-delete.com" (utils/generate-uuid))
+          _ (create-vault! vault-id tenant-id "Blog" "asset-delete.com" (utils/generate-uuid))
+          client-id (utils/generate-uuid)
           path "images/delete-me.png"
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/x" 100 "image/png" "hash")
-          before (get-resource-by-path vault-id path)
-          _ (soft-delete-resource! vault-id path)
-          after (get-resource-by-path vault-id path)]
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id path "assets/x" 100 "image/png" "hash")
+          before (get-asset-by-client-id vault-id client-id)
+          _ (soft-delete-asset! vault-id client-id)
+          after (get-asset-by-client-id vault-id client-id)]
       (is (some? before))
       (is (nil? after))))
 
-  (testing "Restore soft-deleted resource via upsert"
+  (testing "Restore soft-deleted asset via upsert"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "res-restore.com" (utils/generate-uuid))
+          _ (create-vault! vault-id tenant-id "Blog" "asset-restore.com" (utils/generate-uuid))
+          client-id (utils/generate-uuid)
           path "images/restore.png"
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/x" 100 "image/png" "hash1")
-          _ (soft-delete-resource! vault-id path)
-          deleted (get-resource-by-path vault-id path)
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id path "resources/x" 150 "image/png" "hash2")
-          restored (get-resource-by-path vault-id path)]
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id path "assets/x" 100 "image/png" "hash1")
+          _ (soft-delete-asset! vault-id client-id)
+          deleted (get-asset-by-client-id vault-id client-id)
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id path "assets/x" 150 "image/png" "hash2")
+          restored (get-asset-by-client-id vault-id client-id)]
       (is (nil? deleted))
       (is (some? restored))
       (is (= 150 (:size-bytes restored))))))
 
-(deftest test-list-resources-by-vault
-  (testing "List resources by vault"
+(deftest test-list-assets-by-vault
+  (testing "List assets by vault"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "res-list.com" (utils/generate-uuid))
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "images/a.png" "res/a" 100 "image/png" "hash-a")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "images/b.png" "res/b" 200 "image/png" "hash-b")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "docs/c.pdf" "res/c" 300 "application/pdf" "hash-c")
-          results (list-resources-by-vault vault-id)]
+          _ (create-vault! vault-id tenant-id "Blog" "asset-list.com" (utils/generate-uuid))
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "images/a.png" "res/a" 100 "image/png" "hash-a")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "images/b.png" "res/b" 200 "image/png" "hash-b")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "docs/c.pdf" "res/c" 300 "application/pdf" "hash-c")
+          results (list-assets-by-vault vault-id)]
       (is (= 3 (count results)))
       (is (= ["docs/c.pdf" "images/a.png" "images/b.png"] (map :path results)))))
 
-  (testing "List excludes soft-deleted resources"
+  (testing "List excludes soft-deleted assets"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
-          _ (create-vault! vault-id tenant-id "Blog" "res-list-delete.com" (utils/generate-uuid))
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "a.png" "res/a" 100 "image/png" "h1")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "b.png" "res/b" 200 "image/png" "h2")
-          _ (soft-delete-resource! vault-id "a.png")
-          results (list-resources-by-vault vault-id)]
+          _ (create-vault! vault-id tenant-id "Blog" "asset-list-delete.com" (utils/generate-uuid))
+          client-id-a (utils/generate-uuid)
+          client-id-b (utils/generate-uuid)
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id-a "a.png" "res/a" 100 "image/png" "h1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id-b "b.png" "res/b" 200 "image/png" "h2")
+          _ (soft-delete-asset! vault-id client-id-a)
+          results (list-assets-by-vault vault-id)]
       (is (= 1 (count results)))
       (is (= "b.png" (:path (first results)))))))
+
+(deftest test-find-asset
+  (testing "Find by exact path"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "find-exact.com" (utils/generate-uuid))
+          client-id (utils/generate-uuid)
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id "images/photo.png" "assets/images/photo.png" 100 "image/png" "hash1")
+          result (find-asset vault-id "images/photo.png")]
+      (is (some? result))
+      (is (= "images/photo.png" (:path result)))))
+
+  (testing "Find by filename when exact path not found"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "find-filename.com" (utils/generate-uuid))
+          client-id (utils/generate-uuid)
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id "images/mdb.png" "assets/images/mdb.png" 100 "image/png" "hash1")
+          result (find-asset vault-id "mdb.png")]
+      (is (some? result))
+      (is (= "images/mdb.png" (:path result)))
+      (is (= "assets/images/mdb.png" (:object-key result)))))
+
+  (testing "Returns nil when asset not found"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "find-nil.com" (utils/generate-uuid))
+          result (find-asset vault-id "nonexistent.png")]
+      (is (nil? result)))))
 
 ;;; ============================================================
 ;;; Vault Logo 测试
@@ -872,7 +947,7 @@
 (defn get-vault-storage-size [vault-id]
   (let [result (execute-one!
                  ["SELECT COALESCE(SUM(size_bytes), 0) as total_bytes
-                   FROM resources
+                   FROM assets
                    WHERE vault_id = ? AND deleted_at IS NULL"
                   vault-id])]
     (:total-bytes result)))
@@ -886,25 +961,27 @@
           size (get-vault-storage-size vault-id)]
       (is (= 0 size))))
 
-  (testing "Sum of all resource sizes"
+  (testing "Sum of all asset sizes"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "storage-sum.com" (utils/generate-uuid))
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "a.png" "res/a" 1000 "image/png" "h1")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "b.jpg" "res/b" 2500 "image/jpeg" "h2")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "c.pdf" "res/c" 5000 "application/pdf" "h3")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "a.png" "res/a" 1000 "image/png" "h1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "b.jpg" "res/b" 2500 "image/jpeg" "h2")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "c.pdf" "res/c" 5000 "application/pdf" "h3")
           size (get-vault-storage-size vault-id)]
       (is (= 8500 size))))
 
-  (testing "Excludes soft-deleted resources"
+  (testing "Excludes soft-deleted assets"
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           _ (create-vault! vault-id tenant-id "Blog" "storage-deleted.com" (utils/generate-uuid))
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "a.png" "res/a" 1000 "image/png" "h1")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id "b.png" "res/b" 2000 "image/png" "h2")
-          _ (soft-delete-resource! vault-id "b.png")
+          client-id-a (utils/generate-uuid)
+          client-id-b (utils/generate-uuid)
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id-a "a.png" "res/a" 1000 "image/png" "h1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id-b "b.png" "res/b" 2000 "image/png" "h2")
+          _ (soft-delete-asset! vault-id client-id-b)
           size (get-vault-storage-size vault-id)]
       (is (= 1000 size))))
 
@@ -915,9 +992,158 @@
           vault-id-2 (utils/generate-uuid)
           _ (create-vault! vault-id-1 tenant-id "Blog 1" "storage-iso1.com" (utils/generate-uuid))
           _ (create-vault! vault-id-2 tenant-id "Blog 2" "storage-iso2.com" (utils/generate-uuid))
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id-1 "a.png" "res/a" 1000 "image/png" "h1")
-          _ (upsert-resource! (utils/generate-uuid) tenant-id vault-id-2 "b.png" "res/b" 5000 "image/png" "h2")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id-1 (utils/generate-uuid) "a.png" "res/a" 1000 "image/png" "h1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id-2 (utils/generate-uuid) "b.png" "res/b" 5000 "image/png" "h2")
           size-1 (get-vault-storage-size vault-id-1)
           size-2 (get-vault-storage-size vault-id-2)]
       (is (= 1000 size-1))
       (is (= 5000 size-2)))))
+
+;;; ============================================================
+;;; Note Asset Refs 测试 (引用追踪)
+;;; ============================================================
+
+(defn upsert-note-asset-ref! [vault-id note-client-id asset-client-id]
+  (let [id (utils/generate-uuid)]
+    (execute-one!
+      ["INSERT INTO note_asset_refs (id, vault_id, note_client_id, asset_client_id)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(vault_id, note_client_id, asset_client_id) DO NOTHING"
+       id vault-id note-client-id asset-client-id])))
+
+(defn delete-note-asset-refs-by-note! [vault-id note-client-id]
+  (execute-one!
+    ["DELETE FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ?"
+     vault-id note-client-id]))
+
+(defn get-asset-refs-by-note [vault-id note-client-id]
+  (let [results (jdbc/execute! *conn*
+                               ["SELECT * FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ?"
+                                vault-id note-client-id]
+                               {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
+(defn get-asset-refs-by-asset [vault-id asset-client-id]
+  (let [results (jdbc/execute! *conn*
+                               ["SELECT * FROM note_asset_refs WHERE vault_id = ? AND asset_client_id = ?"
+                                vault-id asset-client-id]
+                               {:builder-fn rs/as-unqualified-lower-maps})]
+    (map db-keys->clojure results)))
+
+(defn count-asset-refs [vault-id asset-client-id]
+  (let [result (execute-one!
+                 ["SELECT COUNT(*) as count FROM note_asset_refs 
+                   WHERE vault_id = ? AND asset_client_id = ?"
+                  vault-id asset-client-id])]
+    (:count result)))
+
+(defn update-note-asset-refs!
+  [vault-id note-client-id new-asset-client-ids]
+  (delete-note-asset-refs-by-note! vault-id note-client-id)
+  (doseq [asset-client-id new-asset-client-ids]
+    (upsert-note-asset-ref! vault-id note-client-id asset-client-id)))
+
+(deftest test-upsert-note-asset-ref
+  (testing "Insert new reference"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "ref-insert.com" (utils/generate-uuid))
+          note-client-id (utils/generate-uuid)
+          asset-client-id (utils/generate-uuid)]
+      (upsert-note-asset-ref! vault-id note-client-id asset-client-id)
+      (let [refs (get-asset-refs-by-note vault-id note-client-id)]
+        (is (= 1 (count refs)))
+        (is (= asset-client-id (:asset-client-id (first refs)))))))
+
+  (testing "Duplicate reference is ignored"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "ref-dup.com" (utils/generate-uuid))
+          note-client-id (utils/generate-uuid)
+          asset-client-id (utils/generate-uuid)]
+      (upsert-note-asset-ref! vault-id note-client-id asset-client-id)
+      (upsert-note-asset-ref! vault-id note-client-id asset-client-id)
+      (let [refs (get-asset-refs-by-note vault-id note-client-id)]
+        (is (= 1 (count refs)))))))
+
+(deftest test-delete-note-asset-refs
+  (testing "Delete all refs for a note"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "ref-delete.com" (utils/generate-uuid))
+          note-client-id (utils/generate-uuid)
+          asset-1 (utils/generate-uuid)
+          asset-2 (utils/generate-uuid)]
+      (upsert-note-asset-ref! vault-id note-client-id asset-1)
+      (upsert-note-asset-ref! vault-id note-client-id asset-2)
+      (is (= 2 (count (get-asset-refs-by-note vault-id note-client-id))))
+      (delete-note-asset-refs-by-note! vault-id note-client-id)
+      (is (= 0 (count (get-asset-refs-by-note vault-id note-client-id)))))))
+
+(deftest test-count-asset-refs
+  (testing "Count refs for an asset"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "ref-count.com" (utils/generate-uuid))
+          note-1 (utils/generate-uuid)
+          note-2 (utils/generate-uuid)
+          note-3 (utils/generate-uuid)
+          shared-asset (utils/generate-uuid)]
+      (upsert-note-asset-ref! vault-id note-1 shared-asset)
+      (upsert-note-asset-ref! vault-id note-2 shared-asset)
+      (upsert-note-asset-ref! vault-id note-3 shared-asset)
+      (is (= 3 (count-asset-refs vault-id shared-asset)))))
+
+  (testing "Zero refs for orphan asset"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "ref-orphan.com" (utils/generate-uuid))
+          orphan-asset (utils/generate-uuid)]
+      (is (= 0 (count-asset-refs vault-id orphan-asset))))))
+
+(deftest test-update-note-asset-refs
+  (testing "Replace all refs for a note"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "ref-update.com" (utils/generate-uuid))
+          note-client-id (utils/generate-uuid)
+          old-asset-1 (utils/generate-uuid)
+          old-asset-2 (utils/generate-uuid)
+          new-asset-1 (utils/generate-uuid)
+          new-asset-3 (utils/generate-uuid)]
+      (upsert-note-asset-ref! vault-id note-client-id old-asset-1)
+      (upsert-note-asset-ref! vault-id note-client-id old-asset-2)
+      (is (= 2 (count (get-asset-refs-by-note vault-id note-client-id))))
+      (update-note-asset-refs! vault-id note-client-id [new-asset-1 new-asset-3])
+      (let [refs (get-asset-refs-by-note vault-id note-client-id)
+            asset-ids (set (map :asset-client-id refs))]
+        (is (= 2 (count refs)))
+        (is (contains? asset-ids new-asset-1))
+        (is (contains? asset-ids new-asset-3))
+        (is (not (contains? asset-ids old-asset-1)))
+        (is (not (contains? asset-ids old-asset-2)))))))
+
+(deftest test-asset-orphan-detection
+  (testing "Asset becomes orphan when last note reference is removed"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "orphan-detect.com" (utils/generate-uuid))
+          note-1 (utils/generate-uuid)
+          note-2 (utils/generate-uuid)
+          shared-asset (utils/generate-uuid)
+          unique-asset (utils/generate-uuid)]
+      (upsert-note-asset-ref! vault-id note-1 shared-asset)
+      (upsert-note-asset-ref! vault-id note-2 shared-asset)
+      (upsert-note-asset-ref! vault-id note-1 unique-asset)
+      (is (= 2 (count-asset-refs vault-id shared-asset)))
+      (is (= 1 (count-asset-refs vault-id unique-asset)))
+      (delete-note-asset-refs-by-note! vault-id note-1)
+      (is (= 1 (count-asset-refs vault-id shared-asset)))
+      (is (= 0 (count-asset-refs vault-id unique-asset))))))

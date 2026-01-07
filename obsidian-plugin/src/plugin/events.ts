@@ -1,21 +1,25 @@
 import { TFile, App } from 'obsidian';
-import { isResourceFile } from '../utils';
+import { isAssetFile } from '../utils';
 
 export type FileEventCallback = (file: TFile, action: 'create' | 'modify') => void;
 export type FileDeleteCallback = (file: TFile) => void;
 export type FileRenameCallback = (file: TFile, oldPath: string) => void;
-export type ResourceEventCallback = (file: TFile, action: 'upsert') => void;
-export type ResourceDeleteCallback = (file: TFile) => void;
-export type ResourceRenameCallback = (file: TFile, oldPath: string) => void;
+export type AssetEventCallback = (file: TFile, action: 'create' | 'modify') => void;
+export type AssetDeleteCallback = (file: TFile) => void;
+export type AssetRenameCallback = (file: TFile, oldPath: string) => void;
 export type MetadataResolvedCallback = () => void;
+
+export type ResourceEventCallback = AssetEventCallback;
+export type ResourceDeleteCallback = AssetDeleteCallback;
+export type ResourceRenameCallback = AssetRenameCallback;
 
 export interface EventHandlers {
     onFileChange: FileEventCallback;
     onFileDelete: FileDeleteCallback;
     onFileRename: FileRenameCallback;
-    onResourceChange: ResourceEventCallback;
-    onResourceDelete: ResourceDeleteCallback;
-    onResourceRename: ResourceRenameCallback;
+    onAssetChange: AssetEventCallback;
+    onAssetDelete: AssetDeleteCallback;
+    onAssetRename: AssetRenameCallback;
     onMetadataResolved: MetadataResolvedCallback;
 }
 
@@ -36,8 +40,8 @@ export function registerFileEvents(
             if (file instanceof TFile) {
                 if (file.extension === 'md') {
                     handlers.onFileChange(file, 'create');
-                } else if (isResourceFile(file)) {
-                    handlers.onResourceChange(file, 'upsert');
+                } else if (isAssetFile(file)) {
+                    handlers.onAssetChange(file, 'create');
                 }
             }
         })
@@ -48,8 +52,8 @@ export function registerFileEvents(
             if (file instanceof TFile) {
                 if (file.extension === 'md') {
                     pendingSyncs.add(file.path);
-                } else if (isResourceFile(file)) {
-                    handlers.onResourceChange(file, 'upsert');
+                } else if (isAssetFile(file)) {
+                    handlers.onAssetChange(file, 'modify');
                 }
             }
         })
@@ -73,8 +77,8 @@ export function registerFileEvents(
             if (file instanceof TFile) {
                 if (file.extension === 'md') {
                     handlers.onFileDelete(file);
-                } else if (isResourceFile(file)) {
-                    handlers.onResourceDelete(file);
+                } else if (isAssetFile(file)) {
+                    handlers.onAssetDelete(file);
                 }
             }
         })
@@ -85,8 +89,8 @@ export function registerFileEvents(
             if (file instanceof TFile) {
                 if (file.extension === 'md') {
                     handlers.onFileRename(file, oldPath);
-                } else if (isResourceFile(file)) {
-                    handlers.onResourceRename(file, oldPath);
+                } else if (isAssetFile(file)) {
+                    handlers.onAssetRename(file, oldPath);
                 }
             }
         })

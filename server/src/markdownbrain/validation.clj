@@ -73,33 +73,35 @@
          :message "clientIds must be a non-empty array of non-empty strings"}))))
 
 ;; ============================================================
-;; Resource Sync 请求验证
+;; Asset Sync 请求验证
 ;; ============================================================
 
-(def resource-sync-request-schema
+(def asset-sync-request-schema
   [:map
    [:path [:string {:min 1}]]
+   [:clientId [:string {:min 1}]]
    [:action [:enum "create" "modify" "delete"]]
    [:size {:optional true} [:maybe :int]]
    [:contentType {:optional true} [:maybe :string]]
-   [:sha256 {:optional true} [:maybe :string]]])
+   [:sha256 {:optional true} [:maybe :string]]
+   [:content {:optional true} [:maybe :string]]])
 
-(defn validate-resource-sync-request
+(defn validate-asset-sync-request
   [data]
-  (let [validator (m/validator resource-sync-request-schema)
+  (let [validator (m/validator asset-sync-request-schema)
         valid? (validator data)]
     (if valid?
       {:valid? true
        :data data}
-      (let [explainer (m/explainer resource-sync-request-schema)
+      (let [explainer (m/explainer asset-sync-request-schema)
             explanation (explainer data)
             errors (me/humanize explanation)]
-        (log/warn "Resource sync validation failed:" errors)
+        (log/warn "Asset sync validation failed:" errors)
         {:valid? false
          :errors errors
-         :message "Invalid resource sync request"}))))
+         :message "Invalid asset sync request"}))))
 
-(defn validate-resource-metadata-required
+(defn validate-asset-metadata-required
   [action data]
   (if (and (contains? #{"create" "modify"} action)
            (or (nil? (:size data))

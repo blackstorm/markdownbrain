@@ -203,6 +203,7 @@
 (deftest test-replace-obsidian-links
   (let [;; 模拟从 document_links 表查询的链接数据
         ;; 格式: {:original "[[...]]" :target-client-id "..." :display-text "..."}
+        vault-id "test-vault-id"
         links [{:original "[[Note A]]"
                 :target-client-id "client-1"
                 :target-path "Note A"
@@ -222,52 +223,53 @@
 
     (testing "替换简单链接 - 使用 link 数据"
       (is (str/includes?
-           (md/replace-obsidian-links "Check [[Note A]]" links)
+           (md/replace-obsidian-links "Check [[Note A]]" vault-id links)
            "href=\"/client-1\"")))
 
     (testing "替换带显示文本的链接"
-      (let [result (md/replace-obsidian-links "See [[Note B|my note]]" links)]
+      (let [result (md/replace-obsidian-links "See [[Note B|my note]]" vault-id links)]
         (is (str/includes? result "href=\"/client-2\""))
         (is (str/includes? result ">my note</a>"))))
 
     (testing "链接不存在（不在 links 列表中）时显示为 broken"
-      (let [result (md/replace-obsidian-links "[[Non Existent]]" links)]
+      (let [result (md/replace-obsidian-links "[[Non Existent]]" vault-id links)]
         (is (str/includes? result "broken"))
         (is (str/includes? result "Non Existent"))))
 
     (testing "图片嵌入 - 资源文件直接使用 /r/ 路径"
-      (let [result (md/replace-obsidian-links "![[image.png]]" [])]
+      (let [result (md/replace-obsidian-links "![[image.png]]" vault-id [])]
         (is (str/includes? result "<img"))
         (is (str/includes? result "/r/image.png"))
         (is (str/includes? result "resource-embed"))))
     
     (testing "嵌入 .md 文件 - 使用 client-id"
-      (let [result (md/replace-obsidian-links "![[embedded-note.md]]" links)]
+      (let [result (md/replace-obsidian-links "![[embedded-note.md]]" vault-id links)]
         (is (str/includes? result "<img"))
         (is (str/includes? result "/client-3"))))
     
     (testing "资源嵌入 - 各种格式"
       ;; PNG
-      (let [result (md/replace-obsidian-links "![[assets/photo.png]]" [])]
+      (let [result (md/replace-obsidian-links "![[assets/photo.png]]" vault-id [])]
         (is (str/includes? result "<img"))
         (is (str/includes? result "/r/assets/photo.png")))
       ;; PDF
-      (let [result (md/replace-obsidian-links "![[docs/report.pdf]]" [])]
+      (let [result (md/replace-obsidian-links "![[docs/report.pdf]]" vault-id [])]
         (is (str/includes? result "<a"))
         (is (str/includes? result "/r/docs/report.pdf"))
         (is (str/includes? result "pdf-link")))
       ;; MP4
-      (let [result (md/replace-obsidian-links "![[video.mp4]]" [])]
+      (let [result (md/replace-obsidian-links "![[video.mp4]]" vault-id [])]
         (is (str/includes? result "<video"))
         (is (str/includes? result "/r/video.mp4")))
       ;; MP3
-      (let [result (md/replace-obsidian-links "![[audio.mp3]]" [])]
+      (let [result (md/replace-obsidian-links "![[audio.mp3]]" vault-id [])]
         (is (str/includes? result "<audio"))
         (is (str/includes? result "/r/audio.mp3"))))))
 
 ;;; 测试 7: 完整渲染流程
 (deftest test-render-markdown
   (let [;; 模拟预存储的链接数据
+        vault-id "test-vault-id"
         links [{:original "[[Other Note]]"
                 :target-client-id "client-1"
                 :target-path "Other Note"
@@ -276,7 +278,7 @@
         content "# Test Note\n\nThis is a [[Other Note]] with $x^2$ formula.\n\n$$E = mc^2$$"]
 
     (testing "完整渲染包含所有功能"
-      (let [result (md/render-markdown content links)]
+      (let [result (md/render-markdown content vault-id links)]
         ;; 检查 HTML 标题
         (is (str/includes? result "<h1"))
         (is (str/includes? result "Test Note"))

@@ -486,43 +486,47 @@
       (is (= "unchanged" (get-in response [:body :reason]))))))
 
 ;; ============================================================
-;; Resource Sync 测试
+;; Asset Sync 测试
 ;; ============================================================
 
-(defn resource-sync-request
+(defn asset-sync-request
   [sync-key & {:keys [body]}]
-  (-> (mock/request :post "/obsidian/resources/sync")
+  (-> (mock/request :post "/obsidian/assets/sync")
       (assoc :headers {"authorization" (str "Bearer " sync-key)})
       (assoc :body-params body)))
 
-(deftest test-sync-resource-delete
-  (testing "Delete resource soft-deletes from database"
+(deftest test-sync-asset-delete
+  (testing "Delete asset soft-deletes from database"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "res-delete.com" sync-key)
-          _ (db/upsert-resource! (utils/generate-uuid) tenant-id vault-id "images/photo.png"
-                                 "resources/images/photo.png" 1000 "image/png" "hash123")
-          request (resource-sync-request sync-key
-                                         :body {:path "images/photo.png"
-                                                :action "delete"})
-          response (sync/sync-resource request)]
+          _ (db/create-vault! vault-id tenant-id "Blog" "asset-delete.com" sync-key)
+          asset-client-id "asset-client-123"
+          _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-client-id "images/photo.png"
+                              "assets/images/photo.png" 1000 "image/png" "hash123")
+          request (asset-sync-request sync-key
+                                      :body {:path "images/photo.png"
+                                             :clientId asset-client-id
+                                             :action "delete"})
+          response (sync/sync-asset request)]
       (is (= 200 (:status response)))
       (is (get-in response [:body :success]))
-      (is (nil? (db/get-resource-by-path vault-id "images/photo.png"))))))
+      (is (= asset-client-id (get-in response [:body :client-id])))
+      (is (nil? (db/get-asset-by-client-id vault-id asset-client-id))))))
 
-(deftest test-sync-resource-validation
-  (testing "Resource sync requires valid fields"
+(deftest test-sync-asset-validation
+  (testing "Asset sync requires valid fields"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "res-validation.com" sync-key)
-          request (resource-sync-request sync-key
-                                         :body {:path ""
-                                                :action "invalid"})
-          response (sync/sync-resource request)]
+          _ (db/create-vault! vault-id tenant-id "Blog" "asset-validation.com" sync-key)
+          request (asset-sync-request sync-key
+                                      :body {:path ""
+                                             :clientId ""
+                                             :action "invalid"})
+          response (sync/sync-asset request)]
       (is (= 400 (:status response)))
       (is (false? (get-in response [:body :success])))))
 
@@ -531,26 +535,28 @@
           _ (db/create-tenant! tenant-id "Test Org")
           vault-id (utils/generate-uuid)
           sync-key (utils/generate-uuid)
-          _ (db/create-vault! vault-id tenant-id "Blog" "res-metadata.com" sync-key)
-          request (resource-sync-request sync-key
-                                         :body {:path "images/logo.png"
-                                                :action "create"})
-          response (sync/sync-resource request)]
+          _ (db/create-vault! vault-id tenant-id "Blog" "asset-metadata.com" sync-key)
+          request (asset-sync-request sync-key
+                                      :body {:path "images/logo.png"
+                                             :clientId "logo-client-id"
+                                             :action "create"})
+          response (sync/sync-asset request)]
       (is (= 400 (:status response)))
       (is (false? (get-in response [:body :success]))))))
 
-(deftest test-sync-resource-unauthorized
-  (testing "Resource sync with invalid token"
-    (let [request (resource-sync-request "invalid-token"
-                                         :body {:path "images/test.png"
-                                                :action "delete"})
-          response (sync/sync-resource request)]
+(deftest test-sync-asset-unauthorized
+  (testing "Asset sync with invalid token"
+    (let [request (asset-sync-request "invalid-token"
+                                      :body {:path "images/test.png"
+                                             :clientId "test-asset-client"
+                                             :action "delete"})
+          response (sync/sync-asset request)]
       (is (= 401 (:status response)))
       (is (false? (get-in response [:body :success])))))
 
-  (testing "Resource sync without authorization"
-    (let [request (-> (mock/request :post "/obsidian/resources/sync")
-                      (assoc :body-params {:path "test.png" :action "delete"}))
-          response (sync/sync-resource request)]
+  (testing "Asset sync without authorization"
+    (let [request (-> (mock/request :post "/obsidian/assets/sync")
+                      (assoc :body-params {:path "test.png" :clientId "test-client" :action "delete"}))
+          response (sync/sync-asset request)]
       (is (= 401 (:status response)))
       (is (false? (get-in response [:body :success]))))))

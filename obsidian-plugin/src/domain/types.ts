@@ -73,16 +73,20 @@ export interface SyncData {
   action: SyncAction;
 }
 
-export type ResourceAction = 'upsert' | 'delete';
+export type AssetAction = 'create' | 'modify' | 'delete';
 
-export interface ResourceSyncData {
+export interface AssetSyncData {
   path: string;
-  content?: string;        // base64 encoded
+  clientId: string;
+  content?: string;
   contentType: string;
   sha256?: string;
-  sizeBytes?: number;
-  action: ResourceAction;
+  size?: number;
+  action: AssetAction;
 }
+
+export type ResourceSyncData = AssetSyncData;
+export type ResourceAction = AssetAction;
 
 // =============================================================================
 // API Responses
@@ -184,5 +188,5 @@ export interface SyncApi {
   testConnection(timeout?: number): Promise<TestConnectionResult>;
   syncNote(data: SyncData): Promise<SyncResult>;
   fullSync(clientIds: string[]): Promise<FullSyncResponse>;
-  syncResource(data: ResourceSyncData): Promise<SyncResult>;
+  syncAsset(data: AssetSyncData): Promise<SyncResult>;
 }

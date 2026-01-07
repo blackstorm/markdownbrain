@@ -42,7 +42,7 @@
     ["/vault/info" {:get sync/vault-info}]
     ["/sync" {:post sync/sync-file}]
     ["/sync/full" {:post sync/sync-full}]
-    ["/resources/sync" {:post sync/sync-resource}]]
+    ["/assets/sync" {:post sync/sync-asset}]]
 
    ["/admin"
     ["/health" {:get (fn [req]

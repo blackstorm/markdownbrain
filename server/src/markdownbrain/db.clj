@@ -53,7 +53,8 @@
 
 (defn init-db! []
   (let [migrations ["migrations/001-initial-schema.sql"
-                    "migrations/002-resources.sql"]]
+                    "migrations/002-resources.sql"
+                    "migrations/003-rename-resources-to-assets.sql"]]
     (doseq [migration migrations]
       (let [schema (slurp (io/resource migration))
             statements (-> schema
@@ -285,70 +286,135 @@
 (defn update-vault-logo! [vault-id logo-object-key]
   (execute-one! ["UPDATE vaults SET logo_object_key = ? WHERE id = ?" logo-object-key vault-id]))
 
-;; Resource 操作
-(defn upsert-resource!
-  [id tenant-id vault-id path object-key size-bytes content-type sha256]
+;; Asset 操作
+(defn upsert-asset!
+  [id tenant-id vault-id client-id path object-key size-bytes content-type sha256]
   (execute-one!
-    ["INSERT INTO resources (id, tenant_id, vault_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
-      ON CONFLICT(vault_id, path) DO UPDATE SET
+    ["INSERT INTO assets (id, tenant_id, vault_id, client_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+      ON CONFLICT(vault_id, client_id) DO UPDATE SET
+        path = excluded.path,
         object_key = excluded.object_key,
         size_bytes = excluded.size_bytes,
         content_type = excluded.content_type,
         sha256 = excluded.sha256,
         deleted_at = NULL,
         updated_at = strftime('%s', 'now')"
-     id tenant-id vault-id path object-key size-bytes content-type sha256]))
+     id tenant-id vault-id client-id path object-key size-bytes content-type sha256]))
 
-(defn soft-delete-resource! [vault-id path]
+(defn soft-delete-asset! [vault-id client-id]
   (execute-one!
-    ["UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-      WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+    ["UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+      WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
+     vault-id client-id]))
+
+(defn get-asset-by-client-id [vault-id client-id]
+  (execute-one!
+    ["SELECT * FROM assets WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
+     vault-id client-id]))
+
+(defn get-asset-by-path [vault-id path]
+  (execute-one!
+    ["SELECT * FROM assets WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
      vault-id path]))
 
-(defn get-resource-by-path [vault-id path]
+(defn get-asset-by-filename [vault-id filename]
   (execute-one!
-    ["SELECT * FROM resources WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
-     vault-id path]))
+    ["SELECT * FROM assets WHERE vault_id = ? AND path LIKE ? AND deleted_at IS NULL LIMIT 1"
+     vault-id (str "%" filename)]))
 
-(defn list-resources-by-vault [vault-id]
+(defn find-asset
+  [vault-id path]
+  (or (get-asset-by-path vault-id path)
+      (get-asset-by-filename vault-id (str "/" path))))
+
+(defn list-assets-by-vault [vault-id]
   (execute!
-    ["SELECT path, sha256, size_bytes FROM resources
+    ["SELECT client_id, path, sha256, size_bytes FROM assets
       WHERE vault_id = ? AND deleted_at IS NULL
       ORDER BY path ASC"
      vault-id]))
 
-(defn delete-resources-not-in-list!
-  [vault-id paths]
-  (if (empty? paths)
+(defn delete-assets-not-in-list!
+  [vault-id client-ids]
+  (if (empty? client-ids)
     (do
-      (log/warn "Full resource sync empty list - soft deleting ALL resources in vault:" vault-id)
+      (log/warn "Full asset sync empty list - soft deleting ALL assets in vault:" vault-id)
       (execute-one!
-        ["UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+        ["UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
           WHERE vault_id = ? AND deleted_at IS NULL"
          vault-id]))
-    (let [path-set (set paths)
-          server-resources (list-resources-by-vault vault-id)
-          server-paths (map :path server-resources)
-          orphan-paths (remove path-set server-paths)
+    (let [client-id-set (set client-ids)
+          server-assets (list-assets-by-vault vault-id)
+          server-client-ids (map :client-id server-assets)
+          orphan-client-ids (remove client-id-set server-client-ids)
           batch-size 500]
-      (log/info "Soft deleting orphan resources - vault-id:" vault-id
-                "server:" (count server-paths)
-                "client:" (count paths)
-                "orphans:" (count orphan-paths))
-      (when (seq orphan-paths)
-        (doseq [batch (partition-all batch-size orphan-paths)]
+      (log/info "Soft deleting orphan assets - vault-id:" vault-id
+                "server:" (count server-client-ids)
+                "client:" (count client-ids)
+                "orphans:" (count orphan-client-ids))
+      (when (seq orphan-client-ids)
+        (doseq [batch (partition-all batch-size orphan-client-ids)]
           (let [placeholders (str/join "," (repeat (count batch) "?"))
-                sql (str "UPDATE resources SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-                          WHERE vault_id = ? AND path IN (" placeholders ") AND deleted_at IS NULL")]
+                sql (str "UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+                          WHERE vault_id = ? AND client_id IN (" placeholders ") AND deleted_at IS NULL")]
             (execute-one! (into [sql vault-id] batch)))))
-      {:update-count (count orphan-paths)})))
+      {:update-count (count orphan-client-ids)})))
 
 (defn get-vault-storage-size
   [vault-id]
   (let [result (execute-one!
                  ["SELECT COALESCE(SUM(size_bytes), 0) as total_bytes
-                   FROM resources
+                   FROM assets
                    WHERE vault_id = ? AND deleted_at IS NULL"
                   vault-id])]
     (:total-bytes result)))
+
+;; Note Asset Refs 操作
+(defn upsert-note-asset-ref! [vault-id note-client-id asset-client-id]
+  (let [id (utils/generate-uuid)]
+    (execute-one!
+      ["INSERT INTO note_asset_refs (id, vault_id, note_client_id, asset_client_id)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(vault_id, note_client_id, asset_client_id) DO NOTHING"
+       id vault-id note-client-id asset-client-id])))
+
+(defn delete-note-asset-refs-by-note! [vault-id note-client-id]
+  (execute-one!
+    ["DELETE FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ?"
+     vault-id note-client-id]))
+
+(defn get-asset-refs-by-note [vault-id note-client-id]
+  (execute!
+    ["SELECT * FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ?"
+     vault-id note-client-id]))
+
+(defn get-asset-refs-by-asset [vault-id asset-client-id]
+  (execute!
+    ["SELECT * FROM note_asset_refs WHERE vault_id = ? AND asset_client_id = ?"
+     vault-id asset-client-id]))
+
+(defn count-asset-refs [vault-id asset-client-id]
+  (let [result (execute-one!
+                 ["SELECT COUNT(*) as count FROM note_asset_refs 
+                   WHERE vault_id = ? AND asset_client_id = ?"
+                  vault-id asset-client-id])]
+    (:count result)))
+
+(defn update-note-asset-refs!
+  [vault-id note-client-id new-asset-client-ids]
+  (delete-note-asset-refs-by-note! vault-id note-client-id)
+  (doseq [asset-client-id new-asset-client-ids]
+    (upsert-note-asset-ref! vault-id note-client-id asset-client-id)))
+
+(defn mark-orphan-assets!
+  [vault-id]
+  (execute-one!
+    ["UPDATE assets 
+      SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
+      WHERE vault_id = ? 
+        AND deleted_at IS NULL
+        AND client_id NOT IN (
+          SELECT DISTINCT asset_client_id FROM note_asset_refs WHERE vault_id = ?
+        )"
+     vault-id vault-id]))

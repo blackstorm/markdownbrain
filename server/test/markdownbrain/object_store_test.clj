@@ -63,20 +63,20 @@
     (is (= "mb-vault-550e8400e29b41d4a716446655440000"
            (store/bucket-name "550e8400-e29b-41d4-a716-446655440000")))))
 
-(deftest test-resource-object-key
-  (testing "prefixes with resources/"
-    (is (= "resources/images/photo.png"
-           (store/resource-object-key "images/photo.png"))))
+(deftest test-asset-object-key
+  (testing "prefixes with assets/"
+    (is (= "assets/images/photo.png"
+           (store/asset-object-key "images/photo.png"))))
   
   (testing "normalizes path before prefixing"
-    (is (= "resources/images/photo.png"
-           (store/resource-object-key "/images/photo.png")))
-    (is (= "resources/images/photo.png"
-           (store/resource-object-key "../images/photo.png"))))
+    (is (= "assets/images/photo.png"
+           (store/asset-object-key "/images/photo.png")))
+    (is (= "assets/images/photo.png"
+           (store/asset-object-key "../images/photo.png"))))
   
   (testing "handles backslashes"
-    (is (= "resources/images/subfolder/photo.png"
-           (store/resource-object-key "images\\subfolder\\photo.png")))))
+    (is (= "assets/images/subfolder/photo.png"
+           (store/asset-object-key "images\\subfolder\\photo.png")))))
 
 (deftest test-logo-object-key
   (testing "prefixes with site/logo/"

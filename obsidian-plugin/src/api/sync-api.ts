@@ -8,7 +8,7 @@
 import type {
   SyncConfig,
   SyncData,
-  ResourceSyncData,
+  AssetSyncData,
   TestConnectionResult,
   SyncResult,
   FullSyncResponse,
@@ -214,17 +214,18 @@ export class SyncApiClient implements SyncApi {
     }
   }
 
-  async syncResource(data: ResourceSyncData): Promise<SyncResult> {
-    console.log('[MarkdownBrain] Starting resource sync:', {
+  async syncAsset(data: AssetSyncData): Promise<SyncResult> {
+    console.log('[MarkdownBrain] Starting asset sync:', {
       path: data.path,
+      clientId: data.clientId,
       action: data.action,
       contentType: data.contentType,
-      sizeBytes: data.sizeBytes
+      size: data.size
     });
 
     try {
       const response = await this.http.request({
-        url: `${this.config.serverUrl}/obsidian/resources/sync`,
+        url: `${this.config.serverUrl}/obsidian/assets/sync`,
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -234,11 +235,11 @@ export class SyncApiClient implements SyncApi {
       });
 
       if (response.status === 200) {
-        console.log('[MarkdownBrain] ✓ Resource sync successful:', data.path);
+        console.log('[MarkdownBrain] ✓ Asset sync successful:', data.path);
         return { success: true };
       } else {
-        const errorMsg = `HTTP ${response.status}: ${response.text || 'Resource sync failed'}`;
-        console.error('[MarkdownBrain] ✗ Resource sync failed:', {
+        const errorMsg = `HTTP ${response.status}: ${response.text || 'Asset sync failed'}`;
+        console.error('[MarkdownBrain] ✗ Asset sync failed:', {
           path: data.path,
           status: response.status,
           error: errorMsg
@@ -246,7 +247,7 @@ export class SyncApiClient implements SyncApi {
         return { success: false, error: errorMsg };
       }
     } catch (error) {
-      console.error('[MarkdownBrain] ✗ Resource sync exception:', {
+      console.error('[MarkdownBrain] ✗ Asset sync exception:', {
         path: data.path,
         error: error instanceof Error ? error.message : 'Unknown error'
       });

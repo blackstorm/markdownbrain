@@ -163,16 +163,16 @@
                    [])
            (str/join "/")))))
 
-(defn resource-object-key [path]
-  (str "resources/" (normalize-path path)))
+(defn asset-object-key [path]
+  (str "assets/" (normalize-path path)))
 
 (defn logo-object-key [filename]
   (str "site/logo/" filename))
 
-(defn public-resource-url
-  "Generate the public URL for a resource.
+(defn public-asset-url
+  "Generate the public URL for an asset.
    Format: {S3_PUBLIC_URL}/{bucket}/{vault-prefix}{object-key}
-   Example: https://s3.example.com/markdownbrain/abc123/resources/image.png"
+   Example: https://s3.example.com/markdownbrain/abc123/assets/image.png"
   [vault-id object-key]
   (when-let [public-url (:public-url (config/s3-config))]
     (let [bucket (bucket-name)

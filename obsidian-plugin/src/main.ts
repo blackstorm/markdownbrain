@@ -4,9 +4,9 @@ import {
     MarkdownBrainSettings,
     DEFAULT_SETTINGS,
     SyncStats,
-    ResourceSyncData,
+    AssetSyncData,
 } from './domain/types';
-import { isResourceFile, getContentType, arrayBufferToBase64, sha256Hash, hashString } from './utils';
+import { isAssetFile, getContentType, arrayBufferToBase64, sha256Hash, hashString } from './utils';
 import { SyncApiClient, ObsidianHttpClient } from './api';
 import { DebounceService, ClientIdCache, extractNoteMetadata } from './services';
 import { MarkdownBrainSettingTab, registerFileEvents } from './plugin';
@@ -17,12 +17,14 @@ export default class MarkdownBrainPlugin extends Plugin {
     private debounceService: DebounceService;
     private pendingSyncs: Set<string>;
     private clientIdCache: ClientIdCache;
+    private assetClientIdCache: ClientIdCache;
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.debounceService = new DebounceService();
         this.pendingSyncs = new Set();
         this.clientIdCache = new ClientIdCache();
+        this.assetClientIdCache = new ClientIdCache();
     }
 
     async onload() {
@@ -52,9 +54,9 @@ export default class MarkdownBrainPlugin extends Plugin {
                 onFileChange: (file, action) => this.handleFileChange(file, action),
                 onFileDelete: (file) => this.handleFileDelete(file),
                 onFileRename: (file, oldPath) => this.handleFileRename(file, oldPath),
-                onResourceChange: (file, action) => this.handleResourceChange(file, action),
-                onResourceDelete: (file) => this.handleResourceDelete(file),
-                onResourceRename: (file, oldPath) => this.handleResourceRename(file, oldPath),
+                onAssetChange: (file, action) => this.handleAssetChange(file, action),
+                onAssetDelete: (file) => this.handleAssetDelete(file),
+                onAssetRename: (file, oldPath) => this.handleAssetRename(file, oldPath),
                 onMetadataResolved: () => {},
             },
             {
@@ -258,19 +260,19 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
     }
 
-    async handleResourceChange(file: TFile, action: 'upsert') {
+    async handleAssetChange(file: TFile, action: 'create' | 'modify') {
         if (!this.settings.autoSync) {
-            console.log('[MarkdownBrain] Auto-sync disabled, skipping resource:', file.path);
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping asset:', file.path);
             return;
         }
 
         this.debounceService.debounce(file.path, async () => {
-            await this.performResourceSync(file, action);
+            await this.performAssetSync(file, action);
         }, 500);
     }
 
-    async performResourceSync(file: TFile, action: 'upsert') {
-        console.log('[MarkdownBrain] Resource change detected:', {
+    async performAssetSync(file: TFile, action: 'create' | 'modify') {
+        console.log('[MarkdownBrain] Asset change detected:', {
             path: file.path,
             action: action,
             extension: file.extension,
@@ -282,25 +284,29 @@ export default class MarkdownBrainPlugin extends Plugin {
             const content = await arrayBufferToBase64(buffer);
             const sha256 = await sha256Hash(buffer);
 
-            const syncData: ResourceSyncData = {
+            const clientId = this.assetClientIdCache.get(file.path) ?? crypto.randomUUID();
+
+            const syncData: AssetSyncData = {
                 path: file.path,
+                clientId: clientId,
                 content: content,
                 contentType: getContentType(file.extension),
                 sha256: sha256,
-                sizeBytes: buffer.byteLength,
+                size: buffer.byteLength,
                 action: action
             };
 
-            const result = await this.syncManager.syncResource(syncData);
+            const result = await this.syncManager.syncAsset(syncData);
 
             if (result.success) {
-                console.log('[MarkdownBrain] ✓ Resource synced successfully:', file.path);
+                this.assetClientIdCache.set(file.path, clientId);
+                console.log('[MarkdownBrain] ✓ Asset synced successfully:', file.path);
             } else {
-                console.error('[MarkdownBrain] ✗ Resource sync failed:', file.path, result.error);
+                console.error('[MarkdownBrain] ✗ Asset sync failed:', file.path, result.error);
                 new Notice(`资源同步失败: ${file.path}\n${result.error}`);
             }
         } catch (error) {
-            console.error('[MarkdownBrain] ✗ Resource sync exception:', {
+            console.error('[MarkdownBrain] ✗ Asset sync exception:', {
                 path: file.path,
                 error: error instanceof Error ? error.message : 'Unknown error'
             });
@@ -308,63 +314,73 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
     }
 
-    async handleResourceDelete(file: TFile) {
+    async handleAssetDelete(file: TFile) {
         if (!this.settings.autoSync) {
-            console.log('[MarkdownBrain] Auto-sync disabled, skipping resource delete:', file.path);
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping asset delete:', file.path);
             return;
         }
 
-        console.log('[MarkdownBrain] Resource deletion detected:', file.path);
+        console.log('[MarkdownBrain] Asset deletion detected:', file.path);
 
-        const result = await this.syncManager.syncResource({
+        const clientId = this.assetClientIdCache.get(file.path);
+        if (!clientId) {
+            console.warn('[MarkdownBrain] Cannot sync asset deletion - clientId not in cache:', file.path);
+            return;
+        }
+
+        const result = await this.syncManager.syncAsset({
             path: file.path,
+            clientId: clientId,
             contentType: getContentType(file.extension),
             action: 'delete'
         });
 
         if (result.success) {
-            console.log('[MarkdownBrain] ✓ Resource deletion synced:', file.path);
+            this.assetClientIdCache.delete(file.path);
+            console.log('[MarkdownBrain] ✓ Asset deletion synced:', file.path);
         } else {
-            console.error('[MarkdownBrain] ✗ Resource deletion sync failed:', file.path, result.error);
+            console.error('[MarkdownBrain] ✗ Asset deletion sync failed:', file.path, result.error);
         }
     }
 
-    async handleResourceRename(file: TFile, oldPath: string) {
+    async handleAssetRename(file: TFile, oldPath: string) {
         if (!this.settings.autoSync) {
-            console.log('[MarkdownBrain] Auto-sync disabled, skipping resource rename:', oldPath, '->', file.path);
+            console.log('[MarkdownBrain] Auto-sync disabled, skipping asset rename:', oldPath, '->', file.path);
             return;
         }
 
-        console.log('[MarkdownBrain] Resource rename detected:', oldPath, '->', file.path);
+        console.log('[MarkdownBrain] Asset rename detected:', oldPath, '->', file.path);
 
-        await this.syncManager.syncResource({
-            path: oldPath,
-            contentType: getContentType(file.extension),
-            action: 'delete'
-        });
-
-        await this.performResourceSync(file, 'upsert');
+        this.assetClientIdCache.rename(oldPath, file.path);
+        
+        await this.performAssetSync(file, 'modify');
     }
 
     /**
      * 全量同步所有文件
-     * @flow 收集 IDs → 清理孤儿 → 增量同步
+     * @flow 收集 IDs → 清理孤儿 → 增量同步 Markdown → 同步资源
      * @complexity O(n) where n = 文件数量
      */
     async syncAllFiles() {
-        const files = this.app.vault.getMarkdownFiles();
-        console.log(`[MarkdownBrain] Starting full sync for ${files.length} files`);
-        new Notice(`开始全量同步 ${files.length} 个文件...`);
+        const markdownFiles = this.app.vault.getMarkdownFiles();
+        const assetFiles = this.app.vault.getFiles().filter(f => isAssetFile(f));
+        const totalFiles = markdownFiles.length + assetFiles.length;
+        
+        console.log(`[MarkdownBrain] Starting full sync for ${markdownFiles.length} markdown + ${assetFiles.length} assets = ${totalFiles} files`);
+        new Notice(`开始全量同步 ${totalFiles} 个文件 (${markdownFiles.length} 笔记, ${assetFiles.length} 资源)...`);
 
         // 步骤 1: 收集 client_ids
-        const clientIds = await this.collectClientIds(files);
+        const clientIds = await this.collectClientIds(markdownFiles);
         console.log(`[MarkdownBrain] Collected ${clientIds.length} client IDs`);
 
         // 步骤 2: 清理孤儿文档 (O(1) 单次请求)
         await this.cleanupOrphans(clientIds);
 
-        // 步骤 3: 增量同步
-        await this.incrementalSyncBatch(files);
+        // 步骤 3: 增量同步 Markdown
+        await this.incrementalSyncBatch(markdownFiles);
+
+        // 步骤 4: 同步资源文件
+        await this.syncAssetBatch(assetFiles);
     }
 
     /**
@@ -424,9 +440,41 @@ export default class MarkdownBrainPlugin extends Plugin {
             new Notice(`同步进度: ${progress}/${files.length} (成功: ${stats.success}, 失败: ${stats.failed}, 跳过: ${stats.skipped})`);
         }
 
-        const finalMsg = `同步完成! 总计: ${files.length}, 成功: ${stats.success}, 失败: ${stats.failed}, 跳过: ${stats.skipped}`;
+        const finalMsg = `笔记同步完成! 总计: ${files.length}, 成功: ${stats.success}, 失败: ${stats.failed}, 跳过: ${stats.skipped}`;
         console.log(`[MarkdownBrain] ${finalMsg}`);
-        new Notice(finalMsg, 8000);
+        new Notice(finalMsg, 5000);
+    }
+
+    private async syncAssetBatch(files: TFile[]): Promise<void> {
+        if (files.length === 0) {
+            console.log('[MarkdownBrain] No asset files to sync');
+            return;
+        }
+
+        const stats: SyncStats = { success: 0, failed: 0, skipped: 0 };
+        const batchSize = 5;
+
+        for (let i = 0; i < files.length; i += batchSize) {
+            const batch = files.slice(i, i + batchSize);
+            await Promise.all(batch.map(file => this.syncOneAsset(file, stats)));
+
+            const progress = Math.min(i + batchSize, files.length);
+            new Notice(`资源同步进度: ${progress}/${files.length} (成功: ${stats.success}, 失败: ${stats.failed})`);
+        }
+
+        const finalMsg = `资源同步完成! 总计: ${files.length}, 成功: ${stats.success}, 失败: ${stats.failed}`;
+        console.log(`[MarkdownBrain] ${finalMsg}`);
+        new Notice(finalMsg, 5000);
+    }
+
+    private async syncOneAsset(file: TFile, stats: SyncStats): Promise<void> {
+        try {
+            await this.performAssetSync(file, 'create');
+            stats.success++;
+        } catch (error) {
+            stats.failed++;
+            console.error(`[MarkdownBrain] ✗ Failed to sync asset ${file.path}:`, error);
+        }
     }
 
     /**

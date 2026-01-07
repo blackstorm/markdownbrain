@@ -3,7 +3,8 @@
    使用 commonmark-java 实现，支持 YAML front matter 自动忽略
    采用第一性原理：每个函数只做一件事，可独立测试"
   (:require [clojure.string :as str]
-            [markdownbrain.object-store :as object-store])
+            [markdownbrain.object-store :as object-store]
+            [markdownbrain.db :as db])
   (:import [org.commonmark.parser Parser]
            [org.commonmark.renderer.html HtmlRenderer]
            [org.commonmark.renderer.text TextContentRenderer]
@@ -282,7 +283,7 @@
           target-client-id
           (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})))
 
-(defn- resource-embed?
+(defn- asset-embed?
   "检查路径是否为资源文件（非 .md 文件）
    输入: 文件路径
    输出: true/false"
@@ -305,48 +306,54 @@
                (str/ends-with? lower-path ".ogg")
                (str/ends-with? lower-path ".wav"))))))
 
-(defn- render-resource-embed
+(defn- render-asset-embed
   "渲染资源嵌入为 HTML
    输入: vault-id、资源路径、显示文本
    输出: HTML 字符串
    
-   如果配置了 S3_PUBLIC_URL，使用 S3 直接访问
-   否则使用相对路径 /r/..."
+   资源查找策略 (Obsidian 风格):
+   1. 先精确匹配 path
+   2. 找不到则按文件名匹配 (支持短链接如 ![[image.png]])
+   
+   URL 生成:
+   - 如果配置了 S3_PUBLIC_URL，使用 S3 直接访问
+   - 否则使用相对路径 /a/..."
   [vault-id path display-text]
   (let [escaped-path (-> path
-                         (str/replace #"^/+" "")  ; Remove leading slashes
+                         (str/replace #"^/+" "")
                          (java.net.URLEncoder/encode "UTF-8")
-                         (str/replace "%2F" "/"))  ; Keep path separators
+                         (str/replace "%2F" "/"))
         escaped-display (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})
-        ;; 使用 S3 public URL 或 fallback 到相对路径
-        object-key (object-store/resource-object-key path)
-        resource-url (or (object-store/public-resource-url vault-id object-key)
-                         (str "/r/" escaped-path))]
+        asset (db/find-asset vault-id path)
+        asset-url (if asset
+                    (or (object-store/public-asset-url vault-id (:object-key asset))
+                        (str "/a/" escaped-path))
+                    (str "/a/" escaped-path))]
     (cond
       ;; Image files
       (re-matches #".*\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$" (str/lower-case path))
-      (format "<img src=\"%s\" alt=\"%s\" class=\"resource-embed\">"
-              resource-url escaped-display)
+      (format "<img src=\"%s\" alt=\"%s\" class=\"asset-embed\">"
+              asset-url escaped-display)
       
       ;; PDF files
       (str/ends-with? (str/lower-case path) ".pdf")
-      (format "<a href=\"%s\" class=\"resource-link pdf-link\">%s</a>"
-              resource-url escaped-display)
+      (format "<a href=\"%s\" class=\"asset-link pdf-link\">%s</a>"
+              asset-url escaped-display)
       
       ;; Audio files
       (re-matches #".*\.(mp3|ogg|wav)$" (str/lower-case path))
-      (format "<audio src=\"%s\" controls class=\"resource-embed\">%s</audio>"
-              resource-url escaped-display)
+      (format "<audio src=\"%s\" controls class=\"asset-embed\">%s</audio>"
+              asset-url escaped-display)
       
       ;; Video files
       (re-matches #".*\.(mp4|webm)$" (str/lower-case path))
-      (format "<video src=\"%s\" controls class=\"resource-embed\">%s</video>"
-              resource-url escaped-display)
+      (format "<video src=\"%s\" controls class=\"asset-embed\">%s</video>"
+              asset-url escaped-display)
       
       ;; Fallback to link
       :else
-      (format "<a href=\"%s\" class=\"resource-link\">%s</a>"
-              resource-url escaped-display))))
+      (format "<a href=\"%s\" class=\"asset-link\">%s</a>"
+              asset-url escaped-display))))
 
 (defn replace-obsidian-links
   "替换文本中的所有 Obsidian 链接为 HTML 链接
@@ -374,8 +381,8 @@
                          display (:display parsed)]
                      (cond
                        ;; 1. 嵌入且是资源文件（图片、音视频等）-> 直接渲染为资源链接
-                       (and (= is-embed "!") (resource-embed? path))
-                       (render-resource-embed vault-id path display)
+                       (and (= is-embed "!") (asset-embed? path))
+                       (render-asset-embed vault-id path display)
                        
                        ;; 2. 链接存在于预存储的列表中（note_links 表）
                        (find-link-by-original original link-index)

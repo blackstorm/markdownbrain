@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test';
 import { SyncApiClient, type HttpClient, type HttpResponse } from '../api/sync-api';
-import type { SyncData, ResourceSyncData } from '../domain/types';
+import type { SyncData, AssetSyncData } from '../domain/types';
 
 describe('SyncApiClient', () => {
   let mockHttpClient: HttpClient;
@@ -164,14 +164,15 @@ describe('SyncApiClient', () => {
     });
   });
 
-  describe('syncResource', () => {
-    const resourceData: ResourceSyncData = {
+  describe('syncAsset', () => {
+    const assetData: AssetSyncData = {
       path: 'images/test.png',
+      clientId: 'asset-client-id-123',
       content: 'base64encodedcontent',
       contentType: 'image/png',
       sha256: 'abc123',
-      sizeBytes: 1024,
-      action: 'upsert'
+      size: 1024,
+      action: 'create'
     };
 
     test('should return success on 200', async () => {
@@ -181,17 +182,17 @@ describe('SyncApiClient', () => {
         text: ''
       });
 
-      const result = await api.syncResource(resourceData);
+      const result = await api.syncAsset(assetData);
 
       expect(result.success).toBe(true);
       expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: 'https://api.example.com/obsidian/resources/sync',
+        url: 'https://api.example.com/obsidian/assets/sync',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer test-sync-key-123'
         },
-        body: JSON.stringify(resourceData)
+        body: JSON.stringify(assetData)
       });
     });
 
@@ -202,7 +203,7 @@ describe('SyncApiClient', () => {
         text: 'Payload Too Large'
       });
 
-      const result = await api.syncResource(resourceData);
+      const result = await api.syncAsset(assetData);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('413');
