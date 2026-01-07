@@ -1,394 +1,28 @@
-import { App, Notice, Plugin, PluginManifest, PluginSettingTab, requestUrl, Setting, TFile } from 'obsidian';
+import { App, Notice, Plugin, PluginManifest, TFile } from 'obsidian';
 import { CLIENT_ID_KEY, getOrCreateClientId } from './core/client-id';
-
-interface MarkdownBrainSettings {
-    serverUrl: string;
-    syncKey: string;
-    autoSync: boolean;
-}
-
-const DEFAULT_SETTINGS: MarkdownBrainSettings = {
-    serverUrl: 'https://api.markdownbrain.com',
-    syncKey: '',
-    autoSync: true
-};
-
-// 同步配置
-interface SyncConfig {
-    serverUrl: string;
-    syncKey: string;
-}
-
-interface NoteMetadata {
-    tags?: Array<{
-        tag: string;
-        position: {
-            start: { line: number; col: number; offset: number };
-            end: { line: number; col: number; offset: number };
-        };
-    }>;
-    headings?: Array<{
-        heading: string;
-        level: number;
-        position: {
-            start: { line: number; col: number; offset: number };
-            end: { line: number; col: number; offset: number };
-        };
-    }>;
-    frontmatter?: Record<string, any>;
-}
-
-// 同步数据
-interface SyncData {
-    path: string;
-    clientId: string;           // 客户端生成的唯一 ID
-    clientType: string;         // 客户端类型：'obsidian'
-    content?: string;
-    hash?: string;
-    mtime?: string;
-    metadata?: NoteMetadata;
-    action: 'create' | 'modify' | 'delete';
-}
-
-// Vault 信息
-interface VaultInfo {
-    id: string;
-    name: string;
-    domain: string;
-    'created-at': string;
-}
-
-// Full Sync 请求
-interface FullSyncRequest {
-    clientIds: string[];
-}
-
-// Full Sync 响应
-interface FullSyncResponse {
-    success: boolean;
-    data?: {
-        'vault-id': string;
-        action: string;
-        'client-notes': number;
-        'deleted-count': number;
-        'remaining-notes': number;
-    };
-    error?: string;
-}
-
-interface ResourceSyncData {
-    path: string;
-    content?: string;
-    contentType: string;
-    sha256?: string;
-    sizeBytes?: number;
-    action: 'upsert' | 'delete';
-}
-
-const RESOURCE_EXTENSIONS = new Set([
-    'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
-    'pdf',
-    'mp3', 'ogg', 'wav',
-    'mp4', 'webm'
-]);
-
-function isResourceFile(file: TFile): boolean {
-    return RESOURCE_EXTENSIONS.has(file.extension.toLowerCase());
-}
-
-function getContentType(extension: string): string {
-    const ext = extension.toLowerCase();
-    const mimeTypes: Record<string, string> = {
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-        'svg': 'image/svg+xml',
-        'bmp': 'image/bmp',
-        'ico': 'image/x-icon',
-        'pdf': 'application/pdf',
-        'mp3': 'audio/mpeg',
-        'ogg': 'audio/ogg',
-        'wav': 'audio/wav',
-        'mp4': 'video/mp4',
-        'webm': 'video/webm'
-    };
-    return mimeTypes[ext] || 'application/octet-stream';
-}
-
-async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
-    const bytes = new Uint8Array(buffer);
-    let binary = '';
-    for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-}
-
-async function sha256Hash(buffer: ArrayBuffer): Promise<string> {
-    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-// 同步统计
-interface SyncStats {
-    success: number;
-    failed: number;
-    skipped: number;
-}
-
-// 同步管理器
-class SyncManager {
-    private config: SyncConfig;
-
-    constructor(config: SyncConfig) {
-        this.config = config;
-    }
-
-    updateConfig(config: SyncConfig) {
-        this.config = config;
-    }
-
-    async testConnection(timeout: number = 30000): Promise<{ success: boolean; vaultInfo?: VaultInfo; error?: string }> {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-            const response = await requestUrl({
-                url: `${this.config.serverUrl}/obsidian/vault/info`,
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${this.config.syncKey}`
-                },
-                throw: false
-            });
-
-            clearTimeout(timeoutId);
-
-            if (response.status === 200) {
-                const data = response.json;
-                return {
-                    success: true,
-                    vaultInfo: data.vault
-                };
-            } else {
-                return {
-                    success: false,
-                    error: `HTTP ${response.status}: ${response.text || 'Unknown error'}`
-                };
-            }
-        } catch (error: any) {
-            if (error?.name === 'AbortError') {
-                return {
-                    success: false,
-                    error: '连接超时（30秒）'
-                };
-            }
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            };
-        }
-    }
-
-    async sync(data: SyncData): Promise<{ success: boolean; error?: string }> {
-        console.log('[MarkdownBrain] Starting sync:', {
-            path: data.path,
-            action: data.action,
-            hasContent: !!data.content,
-            contentLength: data.content?.length,
-            serverUrl: this.config.serverUrl,
-            hasSyncKey: !!this.config.syncKey
-        });
-
-        try {
-            const requestBody = JSON.stringify(data);
-            console.log('[MarkdownBrain] Request body size:', requestBody.length, 'bytes');
-
-            const response = await requestUrl({
-                url: `${this.config.serverUrl}/obsidian/sync`,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.config.syncKey}`
-                },
-                body: requestBody,
-                throw: false
-            });
-
-            console.log('[MarkdownBrain] Response:', {
-                status: response.status,
-                statusText: response.status,
-                headers: response.headers,
-                bodyPreview: response.text?.substring(0, 200)
-            });
-
-            if (response.status === 200) {
-                console.log('[MarkdownBrain] ✓ Sync successful:', data.path);
-                return { success: true };
-            } else {
-                const errorMsg = `HTTP ${response.status}: ${response.text || 'Sync failed'}`;
-                console.error('[MarkdownBrain] ✗ Sync failed:', {
-                    path: data.path,
-                    status: response.status,
-                    error: errorMsg,
-                    responseBody: response.text
-                });
-                return {
-                    success: false,
-                    error: errorMsg
-                };
-            }
-        } catch (error) {
-            console.error('[MarkdownBrain] ✗ Sync exception:', {
-                path: data.path,
-                error: error,
-                errorMessage: error instanceof Error ? error.message : 'Unknown error',
-                errorStack: error instanceof Error ? error.stack : undefined
-            });
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            };
-        }
-    }
-
-    /**
-     * 全量同步 - 清理孤儿笔记
-     * @param clientIds 客户端所有笔记的 client_ids 列表
-     * @returns 包含删除数量的响应
-     * @complexity O(1) - 单次网络请求
-     * @compatibility 降级处理 - 如果服务器返回 404，视为成功（旧服务器）
-     */
-    async fullSync(clientIds: string[]): Promise<FullSyncResponse> {
-        console.log('[MarkdownBrain] Starting full sync...', {
-            clientNoteCount: clientIds.length
-        });
-
-        try {
-            const requestBody: FullSyncRequest = { clientIds };
-            const response = await requestUrl({
-                url: `${this.config.serverUrl}/obsidian/sync/full`,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.config.syncKey}`
-                },
-                body: JSON.stringify(requestBody),
-                throw: false
-            });
-
-            // 向后兼容：旧服务器不支持 full-sync (404)
-            if (response.status === 404) {
-                console.warn('[MarkdownBrain] Full sync not supported by server (404), skipping orphan cleanup');
-                return {
-                    success: true,
-                    data: {
-                        'vault-id': '',
-                        action: 'full-sync',
-                        'client-notes': clientIds.length,
-                        'deleted-count': 0,
-                        'remaining-notes': clientIds.length
-                    }
-                };
-            }
-
-            if (response.status === 200) {
-                const data = response.json;
-                console.log('[MarkdownBrain] ✓ Full sync successful:', {
-                    deletedCount: data['deleted-count'],
-                    remainingNotes: data['remaining-notes']
-                });
-                return {
-                    success: true,
-                    data: data
-                };
-            } else {
-                const errorMsg = `HTTP ${response.status}: ${response.text || 'Full sync failed'}`;
-                console.error('[MarkdownBrain] ✗ Full sync failed:', {
-                    status: response.status,
-                    error: errorMsg
-                });
-                return {
-                    success: false,
-                    error: errorMsg
-                };
-            }
-        } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-            console.error('[MarkdownBrain] ✗ Full sync exception:', {
-                error: errorMsg
-            });
-            return {
-                success: false,
-                error: errorMsg
-            };
-        }
-    }
-
-    async syncResource(data: ResourceSyncData): Promise<{ success: boolean; error?: string }> {
-        console.log('[MarkdownBrain] Starting resource sync:', {
-            path: data.path,
-            action: data.action,
-            contentType: data.contentType,
-            sizeBytes: data.sizeBytes
-        });
-
-        try {
-            const response = await requestUrl({
-                url: `${this.config.serverUrl}/obsidian/resources/sync`,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.config.syncKey}`
-                },
-                body: JSON.stringify(data),
-                throw: false
-            });
-
-            if (response.status === 200) {
-                console.log('[MarkdownBrain] ✓ Resource sync successful:', data.path);
-                return { success: true };
-            } else {
-                const errorMsg = `HTTP ${response.status}: ${response.text || 'Resource sync failed'}`;
-                console.error('[MarkdownBrain] ✗ Resource sync failed:', {
-                    path: data.path,
-                    status: response.status,
-                    error: errorMsg
-                });
-                return { success: false, error: errorMsg };
-            }
-        } catch (error) {
-            console.error('[MarkdownBrain] ✗ Resource sync exception:', {
-                path: data.path,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : 'Unknown error'
-            };
-        }
-    }
-
-    destroy() {
-        // Cleanup if needed
-    }
-}
+import {
+    MarkdownBrainSettings,
+    DEFAULT_SETTINGS,
+    SyncStats,
+    ResourceSyncData,
+} from './domain/types';
+import { isResourceFile, getContentType, arrayBufferToBase64, sha256Hash, hashString } from './utils';
+import { SyncApiClient, ObsidianHttpClient } from './api';
+import { DebounceService, ClientIdCache, extractNoteMetadata } from './services';
+import { MarkdownBrainSettingTab, registerFileEvents } from './plugin';
 
 export default class MarkdownBrainPlugin extends Plugin {
     settings!: MarkdownBrainSettings;
-    syncManager!: SyncManager;
-    private syncDebounceTimers: Map<string, NodeJS.Timeout>;
+    syncManager!: SyncApiClient;
+    private debounceService: DebounceService;
     private pendingSyncs: Set<string>;
-    private clientIdCache: Map<string, string>;
+    private clientIdCache: ClientIdCache;
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
-        this.syncDebounceTimers = new Map();
+        this.debounceService = new DebounceService();
         this.pendingSyncs = new Set();
-        this.clientIdCache = new Map();
+        this.clientIdCache = new ClientIdCache();
     }
 
     async onload() {
@@ -405,82 +39,32 @@ export default class MarkdownBrainPlugin extends Plugin {
         });
 
         // 初始化同步管理器
-        this.syncManager = new SyncManager({
+        const httpClient = new ObsidianHttpClient();
+        this.syncManager = new SyncApiClient({
             serverUrl: this.settings.serverUrl,
             syncKey: this.settings.syncKey
-        });
+        }, httpClient);
         console.log('[MarkdownBrain] SyncManager initialized');
 
-        // 监听文件创建
-        this.registerEvent(
-            this.app.vault.on('create', (file) => {
-                if (file instanceof TFile) {
-                    if (file.extension === 'md') {
-                        this.handleFileChange(file, 'create');
-                    } else if (isResourceFile(file)) {
-                        this.handleResourceChange(file, 'upsert');
-                    }
-                }
-            })
+        registerFileEvents(
+            this.app,
+            {
+                onFileChange: (file, action) => this.handleFileChange(file, action),
+                onFileDelete: (file) => this.handleFileDelete(file),
+                onFileRename: (file, oldPath) => this.handleFileRename(file, oldPath),
+                onResourceChange: (file, action) => this.handleResourceChange(file, action),
+                onResourceDelete: (file) => this.handleResourceDelete(file),
+                onResourceRename: (file, oldPath) => this.handleResourceRename(file, oldPath),
+                onMetadataResolved: () => {},
+            },
+            {
+                add: (path) => this.pendingSyncs.add(path),
+                clear: () => this.pendingSyncs.clear(),
+                forEach: (cb) => this.pendingSyncs.forEach(cb),
+            },
+            (event) => this.registerEvent(event)
         );
-        console.log('[MarkdownBrain] Registered event: file create');
-
-        // 监听文件修改
-        this.registerEvent(
-            this.app.vault.on('modify', (file) => {
-                if (file instanceof TFile) {
-                    if (file.extension === 'md') {
-                        this.pendingSyncs.add(file.path);
-                    } else if (isResourceFile(file)) {
-                        this.handleResourceChange(file, 'upsert');
-                    }
-                }
-            })
-        );
-        console.log('[MarkdownBrain] Registered event: file modify');
-
-        // 监听元数据缓存更新完成
-        this.registerEvent(
-            this.app.metadataCache.on('resolved', () => {
-                // metadataCache 已解析完成，处理所有待同步的文件
-                for (const filePath of this.pendingSyncs) {
-                    const file = this.app.vault.getAbstractFileByPath(filePath);
-                    if (file instanceof TFile) {
-                        this.handleFileChange(file, 'modify');
-                    }
-                }
-                this.pendingSyncs.clear();
-            })
-        );
-        console.log('[MarkdownBrain] Registered event: metadata resolved');
-
-        // 监听文件删除
-        this.registerEvent(
-            this.app.vault.on('delete', (file) => {
-                if (file instanceof TFile) {
-                    if (file.extension === 'md') {
-                        this.handleFileDelete(file);
-                    } else if (isResourceFile(file)) {
-                        this.handleResourceDelete(file);
-                    }
-                }
-            })
-        );
-        console.log('[MarkdownBrain] Registered event: file delete');
-
-        // 监听文件重命名
-        this.registerEvent(
-            this.app.vault.on('rename', (file, oldPath) => {
-                if (file instanceof TFile) {
-                    if (file.extension === 'md') {
-                        this.handleFileRename(file, oldPath);
-                    } else if (isResourceFile(file)) {
-                        this.handleResourceRename(file, oldPath);
-                    }
-                }
-            })
-        );
-        console.log('[MarkdownBrain] Registered event: file rename');
+        console.log('[MarkdownBrain] File events registered');
 
         // 添加设置面板
         this.addSettingTab(new MarkdownBrainSettingTab(this.app, this));
@@ -536,19 +120,10 @@ export default class MarkdownBrainPlugin extends Plugin {
             return;
         }
 
-        // 清除之前的防抖定时器
-        const existingTimer = this.syncDebounceTimers.get(file.path);
-        if (existingTimer) {
-            clearTimeout(existingTimer);
-        }
-
         // 使用防抖避免快速连续的同步
-        const timer = setTimeout(async () => {
-            this.syncDebounceTimers.delete(file.path);
+        this.debounceService.debounce(file.path, async () => {
             await this.performSync(file, action);
-        }, 300); // 300ms 防抖
-
-        this.syncDebounceTimers.set(file.path, timer);
+        }, 300);
     }
 
     async performSync(file: TFile, action: 'create' | 'modify') {
@@ -568,38 +143,17 @@ export default class MarkdownBrainPlugin extends Plugin {
             });
 
             const cachedMetadata = this.app.metadataCache.getFileCache(file);
-            const metadata: NoteMetadata = {};
+            const metadata = extractNoteMetadata(cachedMetadata);
 
-            if (cachedMetadata) {
-                if (cachedMetadata.tags) {
-                    metadata.tags = cachedMetadata.tags.map(tag => ({
-                        tag: tag.tag,
-                        position: tag.position
-                    }));
-                }
-
-                if (cachedMetadata.headings) {
-                    metadata.headings = cachedMetadata.headings.map(heading => ({
-                        heading: heading.heading,
-                        level: heading.level,
-                        position: heading.position
-                    }));
-                }
-
-                if (cachedMetadata.frontmatter) {
-                    metadata.frontmatter = cachedMetadata.frontmatter;
-                }
-
-                console.log('[MarkdownBrain] Metadata extracted:', {
-                    path: file.path,
-                    tagsCount: metadata.tags?.length || 0,
-                    headingsCount: metadata.headings?.length || 0,
-                    hasFrontmatter: !!metadata.frontmatter
-                });
-            }
+            console.log('[MarkdownBrain] Metadata extracted:', {
+                path: file.path,
+                tagsCount: metadata.tags?.length || 0,
+                headingsCount: metadata.headings?.length || 0,
+                hasFrontmatter: !!metadata.frontmatter
+            });
 
             const stat = file.stat;
-            const hash = await this.hashString(content);
+            const hash = await hashString(content);
             const mtime = new Date(stat.mtime).toISOString();
             const clientId = await getOrCreateClientId(file, content, this.app);
 
@@ -621,7 +175,7 @@ export default class MarkdownBrainPlugin extends Plugin {
                 action: action
             };
 
-            const result = await this.syncManager.sync(syncData);
+            const result = await this.syncManager.syncNote(syncData);
 
             if (result.success) {
                 this.clientIdCache.set(file.path, clientId);
@@ -659,7 +213,7 @@ export default class MarkdownBrainPlugin extends Plugin {
             return;
         }
 
-        const result = await this.syncManager.sync({
+        const result = await this.syncManager.syncNote({
             path: file.path,
             clientId: clientId,
             clientType: 'obsidian',
@@ -686,11 +240,7 @@ export default class MarkdownBrainPlugin extends Plugin {
             extension: file.extension
         });
 
-        const cachedClientId = this.clientIdCache.get(oldPath);
-        if (cachedClientId) {
-            this.clientIdCache.delete(oldPath);
-            this.clientIdCache.set(file.path, cachedClientId);
-        }
+        this.clientIdCache.rename(oldPath, file.path);
 
         try {
             console.log('[MarkdownBrain] Syncing rename with frontmatter UUID');
@@ -714,17 +264,9 @@ export default class MarkdownBrainPlugin extends Plugin {
             return;
         }
 
-        const existingTimer = this.syncDebounceTimers.get(file.path);
-        if (existingTimer) {
-            clearTimeout(existingTimer);
-        }
-
-        const timer = setTimeout(async () => {
-            this.syncDebounceTimers.delete(file.path);
+        this.debounceService.debounce(file.path, async () => {
             await this.performResourceSync(file, action);
         }, 500);
-
-        this.syncDebounceTimers.set(file.path, timer);
     }
 
     async performResourceSync(file: TFile, action: 'upsert') {
@@ -902,25 +444,10 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
     }
 
-    // MD5 哈希函数（用于检测文件内容变化）
-    async hashString(str: string): Promise<string> {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(str);
-        const hashBuffer = await crypto.subtle.digest('MD5', data).catch(() => {
-            // 如果 MD5 不可用，降级使用 SHA-256
-            return crypto.subtle.digest('SHA-256', data);
-        });
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }
-
     onunload() {
         console.log('Unloading MarkdownBrain plugin');
         // 清理所有防抖定时器
-        for (const timer of this.syncDebounceTimers.values()) {
-            clearTimeout(timer);
-        }
-        this.syncDebounceTimers.clear();
+        this.debounceService.clearAll();
         this.syncManager.destroy();
     }
 
@@ -930,104 +457,9 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-        // 更新同步管理器配置
         this.syncManager.updateConfig({
             serverUrl: this.settings.serverUrl,
             syncKey: this.settings.syncKey
         });
-    }
-}
-
-// 设置面板
-class MarkdownBrainSettingTab extends PluginSettingTab {
-    plugin: MarkdownBrainPlugin;
-
-    constructor(app: App, plugin: MarkdownBrainPlugin) {
-        super(app, plugin);
-        this.plugin = plugin;
-    }
-
-    display(): void {
-        const { containerEl } = this;
-
-        containerEl.empty();
-        containerEl.createEl('h2', { text: 'MarkdownBrain 同步设置' });
-
-        new Setting(containerEl)
-            .setName('服务器地址')
-            .setDesc('MarkdownBrain 服务器 API 地址')
-            .addText(text => text
-                .setPlaceholder('https://api.markdownbrain.com')
-                .setValue(this.plugin.settings.serverUrl)
-                .onChange(async (value) => {
-                    this.plugin.settings.serverUrl = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName('Sync Key')
-            .setDesc('从管理后台获取的同步密钥')
-            .addText(text => text
-                .setPlaceholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-                .setValue(this.plugin.settings.syncKey)
-                .onChange(async (value) => {
-                    this.plugin.settings.syncKey = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        // 测试连接按钮
-        new Setting(containerEl)
-            .setName('测试连接')
-            .setDesc('测试与服务器的连接（30秒超时）')
-            .addButton(button => button
-                .setButtonText('测试')
-                .onClick(async () => {
-                    button.setDisabled(true);
-                    button.setButtonText('测试中...');
-
-                    new Notice('正在测试连接...');
-
-                    const result = await this.plugin.syncManager.testConnection(30000);
-
-                    button.setDisabled(false);
-                    button.setButtonText('测试');
-
-                    if (result.success && result.vaultInfo) {
-                        new Notice(
-                            `✅ 连接成功！\n` +
-                            `Vault: ${result.vaultInfo.name}\n` +
-                            `Domain: ${result.vaultInfo.domain}`,
-                            5000
-                        );
-                    } else {
-                        new Notice(`❌ 连接失败: ${result.error || 'Unknown error'}`, 5000);
-                    }
-                }));
-
-        // 批量同步按钮
-        new Setting(containerEl)
-            .setName('批量同步')
-            .setDesc('手动同步所有 Markdown 文件到服务器')
-            .addButton(button => button
-                .setButtonText('开始同步')
-                .onClick(async () => {
-                    button.setDisabled(true);
-                    button.setButtonText('同步中...');
-
-                    await this.plugin.syncAllFiles();
-
-                    button.setDisabled(false);
-                    button.setButtonText('开始同步');
-                }));
-
-        new Setting(containerEl)
-            .setName('自动同步')
-            .setDesc('文件修改时自动同步到服务器')
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.autoSync)
-                .onChange(async (value) => {
-                    this.plugin.settings.autoSync = value;
-                    await this.plugin.saveSettings();
-                }));
     }
 }

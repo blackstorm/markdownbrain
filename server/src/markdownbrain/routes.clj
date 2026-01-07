@@ -21,16 +21,9 @@
 
 (defn frontend-dispatch
   "Dispatch requests based on path prefix.
-   /r/* -> get-resource
-   /* -> get-note"
+   All paths are handled as notes (resources are served directly from S3)."
   [request]
-  (let [path (get-in request [:path-params :path] "")]
-    (if (clojure.string/starts-with? path "r/")
-      ;; Resource path: strip 'r/' prefix and call get-resource
-      (let [resource-path (subs path 2)]
-        (frontend/get-resource (assoc-in request [:path-params :path] resource-path)))
-      ;; Note path: call get-note as-is
-      (frontend/get-note request))))
+  (frontend/get-note request))
 
 (def frontend-routes
   [["/" {:get frontend/get-note}]

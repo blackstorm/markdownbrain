@@ -168,3 +168,13 @@
 
 (defn logo-object-key [filename]
   (str "site/logo/" filename))
+
+(defn public-resource-url
+  "Generate the public URL for a resource.
+   Format: {S3_PUBLIC_URL}/{bucket}/{vault-prefix}{object-key}
+   Example: https://s3.example.com/markdownbrain/abc123/resources/image.png"
+  [vault-id object-key]
+  (when-let [public-url (:public-url (config/s3-config))]
+    (let [bucket (bucket-name)
+          full-key (str (vault-prefix vault-id) object-key)]
+      (str (str/replace public-url #"/$" "") "/" bucket "/" full-key))))

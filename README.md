@@ -47,10 +47,13 @@ make build           # 构建所有项目
 | 变量 | 说明 | 必填 |
 |------|------|------|
 | `INTERNAL_TOKEN` | 内部 API 认证 Token (Caddy 域名验证用) | 是 |
+| `S3_PUBLIC_URL` | S3 存储公开访问地址 (用于直接访问图片等资源) | 是 |
 | `SESSION_SECRET` | Session 加密密钥 | 否 (自动生成) |
 | `S3_BUCKET` | S3 存储桶名称 | 否 (默认 `markdownbrain`) |
 | `S3_ACCESS_KEY` | RustFS 访问密钥 | 否 (默认 `rustfsadmin`) |
 | `S3_SECRET_KEY` | RustFS 密钥 | 否 (默认 `rustfsadmin`) |
+
+> **注意**: `S3_PUBLIC_URL` 是浏览器可直接访问的 S3 地址。图片、PDF 等资源会直接从此 URL 加载，不经过应用服务器。
 
 ### 部署步骤
 
@@ -61,10 +64,11 @@ git clone https://github.com/example/markdownbrain.git
 cd markdownbrain
 ```
 
-2. 生成 Token
+2. 生成 Token 并设置 S3 公开地址
 
 ```bash
 export INTERNAL_TOKEN=$(openssl rand -hex 32)
+export S3_PUBLIC_URL=https://s3.your-domain.com  # 替换为你的 S3 公开访问地址
 ```
 
 3. 启动服务
@@ -138,7 +142,12 @@ ssh -L 9090:localhost:9090 user@your-server
               │                         │
               ▼                         ▼
        ┌─────────────┐         ┌─────────────┐
-       │   SQLite    │         │   RustFS    │
-       │   (数据库)   │         │  (对象存储)  │
+       │   SQLite    │         │   RustFS    │◄──── 浏览器直接访问
+       │   (数据库)   │         │  (对象存储)  │      (S3_PUBLIC_URL)
        └─────────────┘         └─────────────┘
+
+资源访问流程:
+- 图片/PDF/音视频等资源直接从 S3 存储加载
+- 浏览器通过 S3_PUBLIC_URL 直接请求，不经过应用服务器
+- 减少服务器带宽消耗，提高加载速度
 ```

@@ -14,6 +14,7 @@ services:
       - S3_SECRET_KEY=${S3_SECRET_KEY:-rustfsadmin}
       - S3_REGION=us-east-1
       - S3_BUCKET=${S3_BUCKET:-markdownbrain}
+      - S3_PUBLIC_URL=${S3_PUBLIC_URL}
     depends_on:
       rustfs:
         condition: service_healthy
@@ -28,6 +29,8 @@ services:
   rustfs:
     image: rustfs/rustfs:latest
     command: server /data
+    ports:
+      - "${S3_PUBLIC_PORT:-9000}:9000"
     volumes:
       - rustfs:/data
     environment:

@@ -111,7 +111,8 @@
     :access-key (getenv "S3_ACCESS_KEY")
     :secret-key (getenv "S3_SECRET_KEY")
     :region (or (getenv "S3_REGION") "us-east-1")
-    :bucket (or (getenv "S3_BUCKET") "markdownbrain")}
+    :bucket (or (getenv "S3_BUCKET") "markdownbrain")
+    :public-url (getenv "S3_PUBLIC_URL")}
 
    :environment
    (keyword (or (getenv "ENVIRONMENT") "development"))})

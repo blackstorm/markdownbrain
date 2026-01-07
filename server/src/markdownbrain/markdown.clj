@@ -2,7 +2,8 @@
   "Markdown rendering with Obsidian syntax support
    使用 commonmark-java 实现，支持 YAML front matter 自动忽略
    采用第一性原理：每个函数只做一件事，可独立测试"
-  (:require [clojure.string :as str])
+  (:require [clojure.string :as str]
+            [markdownbrain.object-store :as object-store])
   (:import [org.commonmark.parser Parser]
            [org.commonmark.renderer.html HtmlRenderer]
            [org.commonmark.renderer.text TextContentRenderer]
@@ -306,55 +307,62 @@
 
 (defn- render-resource-embed
   "渲染资源嵌入为 HTML
-   输入: 资源路径、显示文本
-   输出: HTML 字符串"
-  [path display-text]
+   输入: vault-id、资源路径、显示文本
+   输出: HTML 字符串
+   
+   如果配置了 S3_PUBLIC_URL，使用 S3 直接访问
+   否则使用相对路径 /r/..."
+  [vault-id path display-text]
   (let [escaped-path (-> path
                          (str/replace #"^/+" "")  ; Remove leading slashes
                          (java.net.URLEncoder/encode "UTF-8")
                          (str/replace "%2F" "/"))  ; Keep path separators
-        escaped-display (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})]
+        escaped-display (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})
+        ;; 使用 S3 public URL 或 fallback 到相对路径
+        object-key (object-store/resource-object-key path)
+        resource-url (or (object-store/public-resource-url vault-id object-key)
+                         (str "/r/" escaped-path))]
     (cond
       ;; Image files
       (re-matches #".*\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$" (str/lower-case path))
-      (format "<img src=\"/r/%s\" alt=\"%s\" class=\"resource-embed\">"
-              escaped-path escaped-display)
+      (format "<img src=\"%s\" alt=\"%s\" class=\"resource-embed\">"
+              resource-url escaped-display)
       
       ;; PDF files
       (str/ends-with? (str/lower-case path) ".pdf")
-      (format "<a href=\"/r/%s\" class=\"resource-link pdf-link\">%s</a>"
-              escaped-path escaped-display)
+      (format "<a href=\"%s\" class=\"resource-link pdf-link\">%s</a>"
+              resource-url escaped-display)
       
       ;; Audio files
       (re-matches #".*\.(mp3|ogg|wav)$" (str/lower-case path))
-      (format "<audio src=\"/r/%s\" controls class=\"resource-embed\">%s</audio>"
-              escaped-path escaped-display)
+      (format "<audio src=\"%s\" controls class=\"resource-embed\">%s</audio>"
+              resource-url escaped-display)
       
       ;; Video files
       (re-matches #".*\.(mp4|webm)$" (str/lower-case path))
-      (format "<video src=\"/r/%s\" controls class=\"resource-embed\">%s</video>"
-              escaped-path escaped-display)
+      (format "<video src=\"%s\" controls class=\"resource-embed\">%s</video>"
+              resource-url escaped-display)
       
       ;; Fallback to link
       :else
-      (format "<a href=\"/r/%s\" class=\"resource-link\">%s</a>"
-              escaped-path escaped-display))))
+      (format "<a href=\"%s\" class=\"resource-link\">%s</a>"
+              resource-url escaped-display))))
 
 (defn replace-obsidian-links
   "替换文本中的所有 Obsidian 链接为 HTML 链接
-   输入: 内容字符串、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" :display-text \"...\" :link-type \"link\"/\"embed\"}]
+   输入: 内容字符串、vault-id、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" :display-text \"...\" :link-type \"link\"/\"embed\"}]
    输出: 替换后的字符串
 
    处理:
    - [[链接]] -> 内部链接
    - [[链接|文本]] -> 带自定义文本的链接
    - [[链接#锚点]] -> 带锚点的链接
-   - ![[图片.png]] -> 资源嵌入 (路由到 /r/path)
+   - ![[图片.png]] -> 资源嵌入 (使用 S3 public URL)
    - ![[note.md]] -> 笔记嵌入
    
     注意: links 参数来自 note_links 表，只包含已解析的有效链接
          资源文件（图片、音视频等）不在 note_links 表中，直接渲染为资源链接"
-  [content links]
+  [content vault-id links]
   (let [link-index (build-link-index links)
         ;; 匹配 [[...]] 和 ![[...]]
         pattern #"(!?)\[\[([^\]]+)\]\]"]
@@ -367,7 +375,7 @@
                      (cond
                        ;; 1. 嵌入且是资源文件（图片、音视频等）-> 直接渲染为资源链接
                        (and (= is-embed "!") (resource-embed? path))
-                       (render-resource-embed path display)
+                       (render-resource-embed vault-id path display)
                        
                        ;; 2. 链接存在于预存储的列表中（note_links 表）
                        (find-link-by-original original link-index)
@@ -389,7 +397,7 @@
 
 (defn render-markdown
   "完整的 Markdown 渲染流程
-   输入: Markdown 内容、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" ...}]
+   输入: Markdown 内容、vault-id、链接列表 [{:original \"[[...]]\" :target-client-id \"...\" ...}]
    输出: HTML 字符串
 
    处理流程:
@@ -397,12 +405,12 @@
    2. 替换 Obsidian 链接为 HTML 链接
    3. Markdown -> HTML 转换
    4. 还原数学公式为 KaTeX 标记"
-  [content links]
+  [content vault-id links]
   (when content
     (let [;; 1. 提取数学公式
           {:keys [content formulas]} (extract-math content)
           ;; 2. 替换 Obsidian 链接
-          content-with-links (replace-obsidian-links content links)
+          content-with-links (replace-obsidian-links content vault-id links)
           ;; 3. Markdown -> HTML
           html (md->html content-with-links)
           ;; 4. 还原数学公式

@@ -4,7 +4,6 @@
    [clojure.tools.logging :as log]
    [markdownbrain.db :as db]
    [markdownbrain.markdown :as md]
-   [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
    [selmer.parser :as selmer]))
 
@@ -51,7 +50,7 @@
 (defn- prepare-note-data
   [note vault-id]
   (let [links (db/get-note-links vault-id (:client-id note))
-        html-content (md/render-markdown (:content note) links)
+        html-content (md/render-markdown (:content note) vault-id links)
         title (or (md/extract-title (:content note))
                   (-> (:path note)
                       (str/replace #"\.md$" "")
@@ -95,31 +94,6 @@
                        "HX-Push-Url" push-url}
              :body html-body})
           {:status 404 :body "Note not found"})))))
-
-(defn get-resource
-  "Serve a resource file (image, pdf, etc.) from S3 by path.
-   Route: GET /r/{*path}"
-  [request]
-  (let [path (get-in request [:path-params :path])
-        vault (get-current-vault request)]
-    (if-not vault
-      {:status 404 :body "Site not found"}
-      (let [vault-id (:id vault)
-            normalized-path (object-store/normalize-path path)]
-        (if (str/blank? normalized-path)
-          {:status 400 :body "Invalid path"}
-          (if-let [resource (db/get-resource-by-path vault-id normalized-path)]
-            (let [object-key (:object-key resource)
-                  s3-result (object-store/get-object vault-id object-key)]
-              (if s3-result
-                {:status 200
-                 :headers {"Content-Type" (or (:content-type resource) "application/octet-stream")
-                           "Cache-Control" "public, max-age=31536000, immutable"}
-                 :body (:Body s3-result)}
-                (do
-                  (log/warn "Resource exists in DB but not in S3 - vault:" vault-id "path:" normalized-path)
-                  {:status 404 :body "Resource not found"})))
-            {:status 404 :body "Resource not found"}))))))
 
 (defn get-note
   [request]
