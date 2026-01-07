@@ -84,9 +84,14 @@
 (defn get-user-by-id [id]
   (find-by :users :id id))
 
+(def ^:private has-user-cache (atom nil))
+
 (defn has-any-user? []
-  (let [result (execute-one! ["SELECT COUNT(*) as count FROM users"])]
-    (> (:count result) 0)))
+  (if-let [cached @has-user-cache]
+    cached
+    (let [result (> (:count (execute-one! ["SELECT COUNT(*) as count FROM users"])) 0)]
+      (when result (reset! has-user-cache true))
+      result)))
 
 ;; Vault 操作
 (defn create-vault! [id tenant-id name domain sync-key]

@@ -6,27 +6,31 @@
    [selmer.parser :as selmer]))
 
 (defn init-admin [request]
-  (let [params (or (:body-params request) (:params request))
-        {:keys [username password tenant-name]} params]
-    (cond
-      (or (nil? username) (nil? password) (nil? tenant-name))
-      {:status 200
-       :body {:success false
-              :error "Missing required fields"}}
+  (if (db/has-any-user?)
+    {:status 403
+     :body {:success false
+            :error "System already initialized"}}
+    (let [params (or (:body-params request) (:params request))
+          {:keys [username password tenant-name]} params]
+      (cond
+        (or (nil? username) (nil? password) (nil? tenant-name))
+        {:status 200
+         :body {:success false
+                :error "Missing required fields"}}
 
-      (db/get-user-by-username username)
-      {:status 200
-       :body {:success false
-              :error "Username already exists"}}
+        (db/get-user-by-username username)
+        {:status 200
+         :body {:success false
+                :error "Username already exists"}}
 
-      :else
-      (let [tenant-id (utils/generate-uuid)
-            user-id (utils/generate-uuid)
-            password-hash (utils/hash-password password)]
-        (db/create-tenant! tenant-id tenant-name)
-        (db/create-user! user-id tenant-id username password-hash)
-        (resp/success {:tenant-id tenant-id
-                       :user-id user-id})))))
+        :else
+        (let [tenant-id (utils/generate-uuid)
+              user-id (utils/generate-uuid)
+              password-hash (utils/hash-password password)]
+          (db/create-tenant! tenant-id tenant-name)
+          (db/create-user! user-id tenant-id username password-hash)
+          (resp/success {:tenant-id tenant-id
+                         :user-id user-id}))))))
 
 (defn login [request]
   (let [params (or (:body-params request) (:params request))
