@@ -60,7 +60,6 @@
     --leading-snug: 1.375;
     --leading-normal: 1.5;
     --radius-lg: 0.5rem;
-    --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
@@ -499,6 +498,10 @@
     transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
+  .ease-out {
+    --tw-ease: var(--ease-out);
+    transition-timing-function: var(--ease-out);
   }
   .hover\:border-gray-300 {
     &:hover {
@@ -1237,6 +1240,126 @@
     outline-offset: calc(1px * -1);
     outline-color: var(--accent);
   }
+  .note-selector {
+    position: relative;
+  }
+  .note-selector-trigger {
+    width: 100%;
+    cursor: pointer;
+    padding-inline: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 2.5);
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+    border-color: var(--border-color);
+    background-color: var(--color-white);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 2);
+  }
+  .note-selector-trigger:hover {
+    border-color: var(--border-hover);
+  }
+  .note-selector.open .note-selector-trigger {
+    border-color: var(--accent);
+  }
+  .note-selector-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
+  .note-selector-arrow {
+    transition-property: transform, translate, scale, rotate;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+    --tw-duration: 150ms;
+    transition-duration: 150ms;
+    color: var(--text-tertiary);
+  }
+  .note-selector.open .note-selector-arrow {
+    rotate: 180deg;
+  }
+  .note-selector-dropdown {
+    position: absolute;
+    top: 100%;
+    right: calc(var(--spacing) * 0);
+    left: calc(var(--spacing) * 0);
+    z-index: 10;
+    margin-top: calc(var(--spacing) * 1);
+    display: none;
+    border-style: var(--tw-border-style);
+    border-width: 1px;
+    border-color: var(--border-color);
+    background-color: var(--color-white);
+    --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 2px 4px -2px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
+    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .note-selector.open .note-selector-dropdown {
+    display: block;
+  }
+  .note-search-input {
+    width: 100%;
+    padding-inline: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 2.5);
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+    border-style: var(--tw-border-style);
+    border-width: 0px;
+    border-bottom-style: var(--tw-border-style);
+    border-bottom-width: 1px;
+    border-color: var(--border-color);
+    background-color: var(--color-white);
+    color: var(--text-primary);
+  }
+  .note-search-input:focus {
+    --tw-outline-style: none;
+    outline-style: none;
+  }
+  .note-search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+  .note-list {
+    max-height: calc(var(--spacing) * 48);
+    overflow-y: auto;
+  }
+  .note-item {
+    cursor: pointer;
+    padding-inline: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 2);
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: calc(var(--spacing) * 2);
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+    --tw-duration: 100ms;
+    transition-duration: 100ms;
+  }
+  .note-item:hover {
+    background-color: var(--color-gray-50);
+  }
+  .note-item.selected {
+    background-color: var(--color-blue-50);
+    color: var(--accent);
+  }
+  .note-path {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: var(--tw-leading, var(--text-xs--line-height));
+  }
   body.auth-page {
     min-height: 100vh;
     background-color: var(--color-gray-50);
@@ -1392,6 +1515,10 @@ body {
   syntax: "*";
   inherits: false;
 }
+@property --tw-ease {
+  syntax: "*";
+  inherits: false;
+}
 @property --tw-tracking {
   syntax: "*";
   inherits: false;
@@ -1489,6 +1616,7 @@ body {
       --tw-skew-y: initial;
       --tw-border-style: solid;
       --tw-font-weight: initial;
+      --tw-ease: initial;
       --tw-tracking: initial;
       --tw-leading: initial;
       --tw-outline-style: solid;

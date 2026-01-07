@@ -183,3 +183,77 @@ window.openCreateModal = openCreateModal;
 window.closeCreateModal = closeCreateModal;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
+
+function filterNotes(vaultId, query) {
+  const container = document.getElementById(`note-selector-${vaultId}`);
+  if (!container) return;
+  
+  const items = container.querySelectorAll('.note-item');
+  const q = query.toLowerCase().trim();
+  
+  items.forEach(item => {
+    const path = item.dataset.path;
+    item.style.display = (!q || path.includes(q)) ? '' : 'none';
+  });
+}
+
+function toggleNoteSelector(vaultId) {
+  const container = document.getElementById(`note-selector-${vaultId}`);
+  if (!container) return;
+  
+  const wasOpen = container.classList.contains('open');
+  
+  document.querySelectorAll('.note-selector.open').forEach(el => el.classList.remove('open'));
+  
+  if (!wasOpen) {
+    container.classList.add('open');
+    const input = container.querySelector('.note-search-input');
+    if (input) {
+      input.value = '';
+      filterNotes(vaultId, '');
+      setTimeout(() => input.focus(), 10);
+    }
+  }
+}
+
+function handleNoteSelect(vaultId, element, event) {
+  const container = document.getElementById(`note-selector-${vaultId}`);
+  if (!container) return;
+
+  if (event.detail.successful) {
+    container.querySelectorAll('.note-item').forEach(item => {
+      item.classList.remove('selected');
+      const icon = item.querySelector('.note-check');
+      if (icon) icon.remove();
+    });
+    
+    element.classList.add('selected');
+    if (!element.querySelector('.note-check')) {
+      const icon = document.createElement('i');
+      icon.setAttribute('data-lucide', 'check');
+      icon.className = 'icon-xs note-check';
+      element.appendChild(icon);
+      lucide.createIcons();
+    }
+    
+    const trigger = container.querySelector('.note-selector-value');
+    if (trigger) {
+      trigger.textContent = element.dataset.display;
+    }
+    
+    container.classList.remove('open');
+    showNotification('Homepage updated', 'success');
+  } else {
+    showNotification('Update failed', 'error');
+  }
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.note-selector')) {
+    document.querySelectorAll('.note-selector.open').forEach(el => el.classList.remove('open'));
+  }
+});
+
+window.filterNotes = filterNotes;
+window.toggleNoteSelector = toggleNoteSelector;
+window.handleNoteSelect = handleNoteSelect;

@@ -474,6 +474,88 @@
     @apply outline-2 outline-[var(--accent)] -outline-offset-1 border-transparent;
   }
 
+  .note-selector {
+    @apply relative;
+  }
+
+  .note-selector-trigger {
+    @apply w-full px-3 py-2.5 text-sm cursor-pointer;
+    @apply border border-[var(--border-color)] bg-white;
+    @apply text-[var(--text-primary)];
+    @apply flex items-center justify-between gap-2;
+  }
+
+  .note-selector-trigger:hover {
+    @apply border-[var(--border-hover)];
+  }
+
+  .note-selector.open .note-selector-trigger {
+    @apply border-[var(--accent)];
+  }
+
+  .note-selector-value {
+    @apply truncate;
+    font-family: var(--font-mono);
+    @apply text-xs;
+  }
+
+  .note-selector-arrow {
+    @apply transition-transform duration-150;
+    @apply text-[var(--text-tertiary)];
+  }
+
+  .note-selector.open .note-selector-arrow {
+    @apply rotate-180;
+  }
+
+  .note-selector-dropdown {
+    @apply hidden absolute top-full left-0 right-0 mt-1 z-10;
+    @apply border border-[var(--border-color)] bg-white shadow-md;
+  }
+
+  .note-selector.open .note-selector-dropdown {
+    @apply block;
+  }
+
+  .note-search-input {
+    @apply w-full px-3 py-2.5 text-sm;
+    @apply border-0 border-b border-[var(--border-color)] bg-white;
+    @apply text-[var(--text-primary)];
+  }
+
+  .note-search-input:focus {
+    @apply outline-none;
+  }
+
+  .note-search-input::placeholder {
+    @apply text-[var(--text-tertiary)];
+  }
+
+  .note-list {
+    @apply max-h-48 overflow-y-auto;
+  }
+
+  .note-item {
+    @apply px-3 py-2 text-sm cursor-pointer;
+    @apply text-[var(--text-primary)];
+    @apply flex items-center justify-between gap-2;
+    @apply transition-colors duration-100;
+  }
+
+  .note-item:hover {
+    @apply bg-gray-50;
+  }
+
+  .note-item.selected {
+    @apply bg-blue-50 text-[var(--accent)];
+  }
+
+  .note-path {
+    @apply truncate;
+    font-family: var(--font-mono);
+    @apply text-xs;
+  }
+
   body.auth-page {
     @apply bg-gray-50 min-h-screen;
     @apply flex items-center justify-center p-4;
