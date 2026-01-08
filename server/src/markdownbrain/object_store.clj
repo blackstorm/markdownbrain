@@ -1,154 +1,67 @@
 (ns markdownbrain.object-store
+  "Object store abstraction layer supporting multiple backends (S3, local filesystem).
+   
+   Configuration:
+   - STORAGE_TYPE: 's3' or 'local' (default: 'local')
+   - LOCAL_STORAGE_PATH: path for local storage (default: './data/storage')
+   - S3_* env vars for S3 backend
+   
+   Usage:
+   1. Call (init-storage!) at application startup
+   2. Use put-object!, get-object, delete-object!, etc. for operations"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [markdownbrain.config :as config]
-            [cognitect.aws.client.api :as aws]
-            [cognitect.aws.credentials :as creds]))
+            [markdownbrain.config :as config]))
 
-(defonce ^:private s3-client (atom nil))
+;; ============================================================
+;; Protocol Definition
+;; ============================================================
 
-(defn parse-endpoint
-  "Parse endpoint URL into hostname and port components.
-   e.g., 'http://localhost:9000' -> {:hostname 'localhost' :port 9000}"
-  [endpoint]
-  (let [without-proto (str/replace endpoint #"^https?://" "")
-        parts (str/split without-proto #":")
-        hostname (first parts)
-        port-str (when (> (count parts) 1)
-                   (str/replace (second parts) #"/.*" ""))
-        port (if (str/blank? port-str) 9000 (Integer/parseInt port-str))]
-    {:hostname hostname :port port}))
+(defprotocol ObjectStore
+  "Protocol for object storage operations."
+  (put-object!* [this vault-id object-key content content-type]
+    "Store an object. Content can be bytes or string.")
+  (get-object* [this vault-id object-key]
+    "Retrieve an object. Returns map with :Body (InputStream) and metadata, or nil.")
+  (delete-object!* [this vault-id object-key]
+    "Delete an object.")
+  (head-object* [this vault-id object-key]
+    "Get object metadata without body. Returns map or nil.")
+  (delete-vault-objects!* [this vault-id]
+    "Delete all objects for a vault.")
+  (public-url* [this vault-id object-key]
+    "Get public URL for an object, or nil if not supported."))
 
-(defn- get-client []
-  (when-not @s3-client
-    (let [{:keys [endpoint access-key secret-key region]} (config/s3-config)]
-      (when (and endpoint access-key secret-key)
-        (let [{:keys [hostname port]} (parse-endpoint endpoint)]
-          (reset! s3-client
-                  (aws/client {:api :s3
-                               :region region
-                               :endpoint-override {:protocol :http
-                                                   :hostname hostname
-                                                   :port port}
-                               :credentials-provider (creds/basic-credentials-provider
-                                                       {:access-key-id access-key
-                                                        :secret-access-key secret-key})}))))))
-  @s3-client)
+;; ============================================================
+;; Singleton Store Instance
+;; ============================================================
 
-(defn bucket-name
-  "Returns the single S3 bucket name for all vaults."
+(defonce ^:private store* (atom nil))
+
+(defn get-store
+  "Get the current storage instance. Throws if not initialized."
   []
-  (:bucket (config/s3-config)))
+  (or @store*
+      (throw (ex-info "Storage not initialized. Call init-storage! first."
+                      {:type :storage-not-initialized}))))
 
-(defn- bucket-exists? []
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          result (aws/invoke client {:op :HeadBucket
-                                     :request {:Bucket bucket}})]
-      (if (= :cognitect.anomalies/unavailable (:cognitect.anomalies/category result))
-        (throw (ex-info "S3 connection failed" {:endpoint (:endpoint (config/s3-config))
-                                                 :error (:cognitect.anomalies/message result)}))
-        (not (:cognitect.anomalies/category result))))))
+(defn set-store!
+  "Set the storage instance. Called by init-storage!."
+  [store]
+  (reset! store* store))
 
-(defn- create-bucket! []
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          result (aws/invoke client {:op :CreateBucket
-                                     :request {:Bucket bucket}})]
-      (cond
-        (= :cognitect.anomalies/unavailable (:cognitect.anomalies/category result))
-        (throw (ex-info "S3 connection failed" {:endpoint (:endpoint (config/s3-config))
-                                                 :error (:cognitect.anomalies/message result)}))
-        
-        (:cognitect.anomalies/category result)
-        (log/error "Failed to create bucket:" bucket result)
-        
-        :else
-        (log/info "Created S3 bucket:" bucket)))))
-
-(defn ensure-bucket!
-  "Ensure the S3 bucket exists. Called once at application startup."
-  []
-  (when (get-client)
-    (if (bucket-exists?)
-      (log/info "S3 bucket exists:" (bucket-name))
-      (create-bucket!))))
+;; ============================================================
+;; Helper Functions (shared across implementations)
+;; ============================================================
 
 (defn vault-prefix
   "Returns the object key prefix for a vault: {vault-id}/"
   [vault-id]
   (str (str/replace vault-id "-" "") "/"))
 
-(defn put-object!
-  [vault-id object-key content content-type]
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          full-key (str (vault-prefix vault-id) object-key)
-          body (if (bytes? content) content (.getBytes content "UTF-8"))]
-      (let [result (aws/invoke client {:op :PutObject
-                                       :request {:Bucket bucket
-                                                 :Key full-key
-                                                 :Body body
-                                                 :ContentType content-type}})]
-        (if (:cognitect.anomalies/category result)
-          (do (log/error "Failed to put object:" result) nil)
-          (do (log/debug "Put object:" bucket full-key) result))))))
-
-(defn get-object [vault-id object-key]
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          full-key (str (vault-prefix vault-id) object-key)
-          result (aws/invoke client {:op :GetObject
-                                     :request {:Bucket bucket
-                                               :Key full-key}})]
-      (if (:cognitect.anomalies/category result)
-        (do (log/debug "Object not found:" bucket full-key) nil)
-        result))))
-
-(defn delete-object! [vault-id object-key]
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          full-key (str (vault-prefix vault-id) object-key)
-          result (aws/invoke client {:op :DeleteObject
-                                     :request {:Bucket bucket
-                                               :Key full-key}})]
-      (if (:cognitect.anomalies/category result)
-        (do (log/error "Failed to delete object:" result) nil)
-        (do (log/debug "Deleted object:" bucket full-key) result)))))
-
-(defn head-object [vault-id object-key]
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          full-key (str (vault-prefix vault-id) object-key)
-          result (aws/invoke client {:op :HeadObject
-                                     :request {:Bucket bucket
-                                               :Key full-key}})]
-      (if (:cognitect.anomalies/category result)
-        nil
-        result))))
-
-(defn object-exists? [vault-id object-key]
-  (some? (head-object vault-id object-key)))
-
-(defn delete-vault-objects!
-  "Delete all objects for a vault by listing and deleting objects with vault prefix."
-  [vault-id]
-  (when-let [client (get-client)]
-    (let [bucket (bucket-name)
-          prefix (vault-prefix vault-id)]
-      (loop []
-        (let [result (aws/invoke client {:op :ListObjectsV2
-                                         :request {:Bucket bucket
-                                                   :Prefix prefix}})]
-          (when-let [objects (:Contents result)]
-            (doseq [obj objects]
-              (aws/invoke client {:op :DeleteObject
-                                  :request {:Bucket bucket
-                                            :Key (:Key obj)}}))
-            (when (:IsTruncated result)
-              (recur))))))))
-
-(defn normalize-path [path]
+(defn normalize-path
+  "Normalize a file path, resolving . and .. components."
+  [path]
   (when path
     (let [segments (-> path
                        (str/replace #"\\" "/")  ; Windows backslashes to forward
@@ -163,18 +76,88 @@
                    [])
            (str/join "/")))))
 
-(defn asset-object-key [path]
+(defn asset-object-key
+  "Generate object key for an asset."
+  [path]
   (str "assets/" (normalize-path path)))
 
-(defn logo-object-key [filename]
+(defn logo-object-key
+  "Generate object key for a site logo."
+  [filename]
   (str "site/logo/" filename))
 
-(defn public-asset-url
-  "Generate the public URL for an asset.
-   Format: {S3_PUBLIC_URL}/{bucket}/{vault-prefix}{object-key}
-   Example: https://s3.example.com/markdownbrain/abc123/assets/image.png"
+;; ============================================================
+;; Public API (backward compatible, delegates to store instance)
+;; ============================================================
+
+(defn put-object!
+  "Store an object. Content can be bytes or string."
+  [vault-id object-key content content-type]
+  (put-object!* (get-store) vault-id object-key content content-type))
+
+(defn get-object
+  "Retrieve an object. Returns map with :Body and metadata, or nil."
   [vault-id object-key]
-  (when-let [public-url (:public-url (config/s3-config))]
-    (let [bucket (bucket-name)
-          full-key (str (vault-prefix vault-id) object-key)]
-      (str (str/replace public-url #"/$" "") "/" bucket "/" full-key))))
+  (get-object* (get-store) vault-id object-key))
+
+(defn delete-object!
+  "Delete an object."
+  [vault-id object-key]
+  (delete-object!* (get-store) vault-id object-key))
+
+(defn head-object
+  "Get object metadata without body. Returns map or nil."
+  [vault-id object-key]
+  (head-object* (get-store) vault-id object-key))
+
+(defn object-exists?
+  "Check if an object exists."
+  [vault-id object-key]
+  (some? (head-object vault-id object-key)))
+
+(defn delete-vault-objects!
+  "Delete all objects for a vault."
+  [vault-id]
+  (delete-vault-objects!* (get-store) vault-id))
+
+(defn public-asset-url
+  "Get public URL for an asset, or nil if not supported by the storage backend."
+  [vault-id object-key]
+  (public-url* (get-store) vault-id object-key))
+
+;; ============================================================
+;; Initialization
+;; ============================================================
+
+(defn init-storage!
+  "Initialize storage backend based on configuration.
+   Must be called at application startup."
+  []
+  (let [storage-type (config/storage-type)]
+    (log/info "Initializing storage backend:" (name storage-type))
+    (case storage-type
+      :s3 (do
+            (require 'markdownbrain.object-store.s3)
+            (let [create-fn (resolve 'markdownbrain.object-store.s3/create-s3-store)]
+              (set-store! (create-fn))
+              (log/info "S3 storage initialized successfully")))
+      :local (do
+               (require 'markdownbrain.object-store.local)
+               (let [create-fn (resolve 'markdownbrain.object-store.local/create-local-store)]
+                 (set-store! (create-fn))
+                 (log/info "Local storage initialized successfully")))
+      (throw (ex-info (str "Unknown storage type: " storage-type)
+                      {:storage-type storage-type})))))
+
+;; ============================================================
+;; Legacy compatibility - ensure-bucket! (now no-op for local)
+;; ============================================================
+
+(defn ensure-bucket!
+  "Ensure storage is ready. For S3, creates bucket if needed.
+   For local, creates directory if needed.
+   DEPRECATED: Use init-storage! instead."
+  []
+  (log/warn "ensure-bucket! is deprecated. Use init-storage! instead.")
+  (when-not @store*
+    (init-storage!)))

@@ -18,7 +18,8 @@
     {:decode-key-fn true})))
 
 (def frontend-routes
-  [["/" {:get frontend/get-note}]
+  [["/storage/{*path}" {:get frontend/serve-asset}]
+   ["/" {:get frontend/get-note}]
    ["/{*path}" {:get frontend/get-note}]])
 
 (def admin-routes

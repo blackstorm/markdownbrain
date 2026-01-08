@@ -1,8 +1,8 @@
 ---
 markdownbrain-id: 568o15E
 ---
-![[images/mdb.png]]
 MarkdownBrain 是一款开源的数字花园发布系统，由 Haoya 开发，旨在将你的数字花园公布在互联网上。
+![[mdb.png]]
 
 MarkdownBrain 的同步策略默认是实时的，你也可以进行手动同步。
 ## FAQ

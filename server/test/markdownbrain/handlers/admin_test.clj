@@ -179,4 +179,78 @@
       (is (= 400 (:status response)))
       (is (false? (get-in response [:body :success]))))))
 
+;; Delete Vault 测试 (with CASCADE and object store cleanup)
+(deftest test-delete-vault
+  (testing "Delete vault successfully with cascade"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "admin" "hash")
+          vault-id (utils/generate-uuid)
+          sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "My Blog" "delete-test.com" sync-key)
+          
+          ;; Create some notes in the vault
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "note1.md" "c1" "# Note 1" "{}" "h1" "2024-01-01T00:00:00Z")
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "note2.md" "c2" "# Note 2" "{}" "h2" "2024-01-01T00:00:00Z")
+          
+          ;; Verify notes exist before delete
+          notes-before (db/list-notes-by-vault vault-id)
+          _ (is (= 2 (count notes-before)))
+          
+          ;; Delete the vault
+          request (authenticated-request :delete (str "/api/admin/vaults/" vault-id)
+                                        tenant-id user-id)
+          response (admin/delete-vault request)]
+      
+      ;; Verify deletion succeeded
+      (is (= 200 (:status response)))
+      (is (get-in response [:body :success]))
+      
+      ;; Verify vault is gone
+      (is (nil? (db/get-vault-by-id vault-id)))
+      
+      ;; Verify notes are deleted via CASCADE
+      (let [notes-after (db/list-notes-by-vault vault-id)]
+        (is (= 0 (count notes-after))))))
+
+  (testing "Delete vault with wrong tenant returns error"
+    (let [tenant-id-1 (utils/generate-uuid)
+          tenant-id-2 (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id-1 "Org 1")
+          _ (db/create-tenant! tenant-id-2 "Org 2")
+          user-id-1 (utils/generate-uuid)
+          user-id-2 (utils/generate-uuid)
+          _ (db/create-user! user-id-1 tenant-id-1 "admin1" "hash")
+          _ (db/create-user! user-id-2 tenant-id-2 "admin2" "hash")
+          vault-id (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id-1 "Blog" "tenant-test.com" (utils/generate-uuid))
+          
+          ;; Try to delete vault from different tenant
+          request (authenticated-request :delete (str "/api/admin/vaults/" vault-id)
+                                        tenant-id-2 user-id-2)
+          response (admin/delete-vault request)]
+      
+      ;; Should fail with permission denied
+      (is (= 200 (:status response)))  ;; Handler returns 200 with error in body
+      (is (false? (get-in response [:body :success])))
+      (is (= "Permission denied" (get-in response [:body :error])))
+      
+      ;; Vault should still exist
+      (is (some? (db/get-vault-by-id vault-id)))))
+
+  (testing "Delete non-existent vault returns error"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "admin" "hash")
+          
+          request (authenticated-request :delete "/api/admin/vaults/non-existent-id"
+                                        tenant-id user-id)
+          response (admin/delete-vault request)]
+      
+      (is (= 200 (:status response)))
+      (is (false? (get-in response [:body :success])))
+      (is (= "Site not found" (get-in response [:body :error]))))))
+
 )

@@ -1,6 +1,7 @@
 (ns markdownbrain.object-store-test
   (:require [clojure.test :refer [deftest is testing]]
-            [markdownbrain.object-store :as store]))
+            [markdownbrain.object-store :as store]
+            [markdownbrain.object-store.s3 :as s3]))
 
 ;; =============================================================================
 ;; Pure Function Tests (no mocking needed)
@@ -9,19 +10,19 @@
 (deftest test-parse-endpoint
   (testing "parses http URL with port"
     (is (= {:hostname "localhost" :port 9000}
-           (store/parse-endpoint "http://localhost:9000"))))
+           (s3/parse-endpoint "http://localhost:9000"))))
   
   (testing "parses https URL with port"
     (is (= {:hostname "minio.example.com" :port 443}
-           (store/parse-endpoint "https://minio.example.com:443"))))
+           (s3/parse-endpoint "https://minio.example.com:443"))))
   
   (testing "defaults to port 9000 when no port specified"
     (is (= {:hostname "localhost" :port 9000}
-           (store/parse-endpoint "http://localhost"))))
+           (s3/parse-endpoint "http://localhost"))))
   
   (testing "handles URL with trailing path"
     (is (= {:hostname "storage.local" :port 9000}
-           (store/parse-endpoint "http://storage.local:9000/path/ignored")))))
+           (s3/parse-endpoint "http://storage.local:9000/path/ignored")))))
 
 (deftest test-normalize-path
   (testing "nil input returns nil"
@@ -50,18 +51,18 @@
     (is (= "assets/images/logo.svg" 
            (store/normalize-path "../assets\\images/./logo.svg")))))
 
-(deftest test-bucket-name
-  (testing "generates bucket name without dashes"
-    (is (= "mb-vault-abc123def456" 
-           (store/bucket-name "abc-123-def-456"))))
+(deftest test-vault-prefix
+  (testing "generates vault prefix without dashes"
+    (is (= "abc123def456/" 
+           (store/vault-prefix "abc-123-def-456"))))
   
   (testing "handles vault-id without dashes"
-    (is (= "mb-vault-abc123" 
-           (store/bucket-name "abc123"))))
+    (is (= "abc123/" 
+           (store/vault-prefix "abc123"))))
   
   (testing "handles UUID format"
-    (is (= "mb-vault-550e8400e29b41d4a716446655440000"
-           (store/bucket-name "550e8400-e29b-41d4-a716-446655440000")))))
+    (is (= "550e8400e29b41d4a716446655440000/"
+           (store/vault-prefix "550e8400-e29b-41d4-a716-446655440000")))))
 
 (deftest test-asset-object-key
   (testing "prefixes with assets/"

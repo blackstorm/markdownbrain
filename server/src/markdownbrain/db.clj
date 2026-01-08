@@ -52,6 +52,12 @@
     (execute! [(str "SELECT * FROM " (name table) " WHERE " (name column) " = ?" order-clause) value])))
 
 (defn init-db! []
+  ;; Enable foreign keys FIRST - SQLite requires this per-connection for CASCADE to work
+  ;; Since we use a single datasource throughout the app lifecycle, this is sufficient.
+  ;; Note: This must be done before any table operations.
+  (jdbc/execute! @datasource ["PRAGMA foreign_keys = ON"])
+  (log/info "SQLite foreign keys enabled")
+  
   (let [migrations ["migrations/001-initial-schema.sql"
                     "migrations/002-resources.sql"
                     "migrations/003-rename-resources-to-assets.sql"]]

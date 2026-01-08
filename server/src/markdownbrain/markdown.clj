@@ -328,8 +328,8 @@
    2. 找不到则按文件名匹配 (支持短链接如 ![[image.png]])
    
    URL 生成:
-   - 如果配置了 S3_PUBLIC_URL，使用 S3 直接访问
-   - 否则使用相对路径 /a/..."
+   - 如果配置了 S3，使用 S3 直接访问 (public URL)
+   - 否则使用相对路径 /storage/..."
   [vault-id path display-text]
   (let [escaped-path (-> path
                          (str/replace #"^/+" "")
@@ -339,8 +339,8 @@
         asset (db/find-asset vault-id path)
         asset-url (if asset
                     (or (object-store/public-asset-url vault-id (:object-key asset))
-                        (str "/a/" escaped-path))
-                    (str "/a/" escaped-path))]
+                        (str "/storage/" escaped-path))
+                    (str "/storage/" escaped-path))]
     (cond
       ;; Image files
       (re-matches #".*\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$" (str/lower-case path))

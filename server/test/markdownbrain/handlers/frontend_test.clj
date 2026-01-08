@@ -1,7 +1,11 @@
 (ns markdownbrain.handlers.frontend-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.string :as str]
+            [clojure.java.io :as io]
             [markdownbrain.db :as db]
+            [markdownbrain.config :as config]
+            [markdownbrain.object-store :as object-store]
+            [markdownbrain.object-store.local :as local-store]
             [markdownbrain.utils :as utils]
             [markdownbrain.handlers.frontend :as frontend]
             [markdownbrain.handlers.admin :as admin]
@@ -266,6 +270,172 @@
       ;; 验证数据中包含两个 client-id
       (is (str/includes? (:body response) client-id-1))
       (is (str/includes? (:body response) client-id-2)))))
+
+;; ============================================================
+;; Asset Serving Tests
+;; ============================================================
+
+(defn- create-temp-storage []
+  "Create a temporary storage directory for testing."
+  (let [temp-dir (java.io.File/createTempFile "storage-test" "")]
+    (.delete temp-dir)
+    (.mkdirs temp-dir)
+    (.deleteOnExit temp-dir)
+    (.getPath temp-dir)))
+
+(deftest test-serve-asset
+  (testing "Serve asset from local storage successfully"
+    (let [;; Setup temp storage
+          temp-storage (create-temp-storage)
+          ;; Create test data
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          domain "asset-test.com"
+          _ (db/create-vault! vault-id tenant-id "Asset Test" domain (utils/generate-uuid))
+          
+          ;; Create and store asset
+          asset-content "test image content"
+          object-key "assets/images/photo.png"]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        ;; Initialize storage
+        (object-store/set-store! (local-store/create-local-store))
+        
+        ;; Store the asset
+        (object-store/put-object! vault-id object-key asset-content "image/png")
+        
+        ;; Request the asset
+        (let [request (-> (mock/request :get "/storage/images/photo.png")
+                          (assoc :headers {"host" domain})
+                          (assoc :path-params {:path "images/photo.png"}))
+              response (frontend/serve-asset request)]
+          
+          ;; Verify response
+          (is (= 200 (:status response)))
+          (is (= "image/png" (get-in response [:headers "Content-Type"])))
+          (is (bytes? (:body response)))
+          (is (= asset-content (String. (:body response) "UTF-8")))))))
+  
+  (testing "Return 404 for non-existent asset"
+    (let [temp-storage (create-temp-storage)
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 2")
+          vault-id (utils/generate-uuid)
+          domain "asset-404-test.com"
+          _ (db/create-vault! vault-id tenant-id "Asset 404 Test" domain (utils/generate-uuid))]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        
+        (let [request (-> (mock/request :get "/storage/nonexistent.png")
+                          (assoc :headers {"host" domain})
+                          (assoc :path-params {:path "nonexistent.png"}))
+              response (frontend/serve-asset request)]
+          
+          (is (= 404 (:status response)))))))
+  
+  (testing "Return 404 for unknown domain (vault isolation)"
+    (let [temp-storage (create-temp-storage)]
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        
+        (let [request (-> (mock/request :get "/storage/images/photo.png")
+                          (assoc :headers {"host" "unknown-domain.com"})
+                          (assoc :path-params {:path "images/photo.png"}))
+              response (frontend/serve-asset request)]
+          
+          (is (= 404 (:status response)))))))
+  
+  (testing "Vault isolation - cannot access other vault's assets"
+    (let [temp-storage (create-temp-storage)
+          ;; Create two vaults
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 3")
+          
+          vault-id-1 (utils/generate-uuid)
+          domain-1 "vault1.com"
+          _ (db/create-vault! vault-id-1 tenant-id "Vault 1" domain-1 (utils/generate-uuid))
+          
+          vault-id-2 (utils/generate-uuid)
+          domain-2 "vault2.com"
+          _ (db/create-vault! vault-id-2 tenant-id "Vault 2" domain-2 (utils/generate-uuid))]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        
+        ;; Store asset in vault-1 only
+        (object-store/put-object! vault-id-1 "assets/secret.png" "vault1 secret" "image/png")
+        
+        ;; Access from vault-1 - should succeed
+        (let [request-1 (-> (mock/request :get "/storage/secret.png")
+                            (assoc :headers {"host" domain-1})
+                            (assoc :path-params {:path "secret.png"}))
+              response-1 (frontend/serve-asset request-1)]
+          (is (= 200 (:status response-1)))
+          (is (= "vault1 secret" (String. (:body response-1) "UTF-8"))))
+        
+        ;; Access from vault-2 - should fail (404, not 403 to avoid enumeration)
+        (let [request-2 (-> (mock/request :get "/storage/secret.png")
+                            (assoc :headers {"host" domain-2})
+                            (assoc :path-params {:path "secret.png"}))
+              response-2 (frontend/serve-asset request-2)]
+          (is (= 404 (:status response-2)))))))
+  
+  (testing "Return 404 when using S3 storage"
+    (with-redefs [config/storage-type (constantly :s3)]
+      (let [request (-> (mock/request :get "/storage/images/photo.png")
+                        (assoc :headers {"host" "any-domain.com"})
+                        (assoc :path-params {:path "images/photo.png"}))
+            response (frontend/serve-asset request)]
+        
+        (is (= 404 (:status response))))))
+  
+  (testing "Return 400 for missing path"
+    (let [temp-storage (create-temp-storage)
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 4")
+          vault-id (utils/generate-uuid)
+          domain "missing-path-test.com"
+          _ (db/create-vault! vault-id tenant-id "Missing Path Test" domain (utils/generate-uuid))]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        
+        (let [request (-> (mock/request :get "/storage/")
+                          (assoc :headers {"host" domain})
+                          (assoc :path-params {:path ""}))
+              response (frontend/serve-asset request)]
+          
+          (is (= 400 (:status response)))))))
+  
+  (testing "Cache headers are set correctly"
+    (let [temp-storage (create-temp-storage)
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org 5")
+          vault-id (utils/generate-uuid)
+          domain "cache-test.com"
+          _ (db/create-vault! vault-id tenant-id "Cache Test" domain (utils/generate-uuid))]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        
+        (object-store/put-object! vault-id "assets/cached.png" "cached content" "image/png")
+        
+        (let [request (-> (mock/request :get "/storage/cached.png")
+                          (assoc :headers {"host" domain})
+                          (assoc :path-params {:path "cached.png"}))
+              response (frontend/serve-asset request)]
+          
+          (is (= 200 (:status response)))
+          (is (str/includes? (get-in response [:headers "Cache-Control"]) "max-age"))
+          (is (str/includes? (get-in response [:headers "Cache-Control"]) "immutable")))))))
 
 
 

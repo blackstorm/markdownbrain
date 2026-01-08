@@ -9,6 +9,8 @@
         metosin/muuntaja {:mvn/version "0.6.10"}
         ring/ring-core {:mvn/version "1.15.3"}
         luminus/ring-undertow-adapter {:mvn/version "1.4.4"}
+        io.undertow/undertow-core {:mvn/version "2.3.20.Final"}
+        org.jboss.threads/jboss-threads {:mvn/version "3.9.2"}
         ring/ring-json {:mvn/version "0.5.1"}
         metosin/malli {:mvn/version "0.20.0"}
 
@@ -17,8 +19,8 @@
         org.xerial/sqlite-jdbc {:mvn/version "3.51.1.0"}
 
         ;; 对象存储 (S3 兼容)
-        com.cognitect.aws/api {:mvn/version "0.8.692"}
-        com.cognitect.aws/endpoints {:mvn/version "1.1.12.772"}
+        com.cognitect.aws/api {:mvn/version "0.8.774"}
+        com.cognitect.aws/endpoints {:mvn/version "871.2.41.2"}
         com.cognitect.aws/s3 {:mvn/version "871.2.40.9"}
 
         ;; 安全
@@ -49,16 +51,20 @@
         :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}
                      io.github.nextjournal/beholder {:git/tag "v1.0.2" :git/sha "87b5220"}
                      org.clojure/tools.namespace {:mvn/version "1.5.0"}}
+        :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
         :main-opts ["-m" "user"]}
 
   :repl {:extra-paths ["dev"]
-         :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}}
+         :extra-deps {ring/ring-devel {:mvn/version "1.15.3"}}
+         :jvm-opts ["--enable-native-access=ALL-UNNAMED"]}
 
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner {:git/tag "v0.5.1" :git/sha "dfb30dd"}
                       ring/ring-mock {:mvn/version "0.6.2"}}
          :main-opts ["-m" "cognitect.test-runner"]
+         :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
          :exec-fn cognitect.test-runner.api/test}
 
   :build {:deps {io.github.clojure/tools.build {:git/tag "v0.10.5" :git/sha "2a21b7a"}}
+          :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
           :ns-default build}}}

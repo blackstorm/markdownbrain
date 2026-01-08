@@ -12,6 +12,8 @@
 (def ^:dynamic *conn* nil)
 
 (defn create-tables! [conn]
+  ;; Enable foreign key enforcement for CASCADE deletes
+  (jdbc/execute! conn ["PRAGMA foreign_keys = ON"])
   (jdbc/execute! conn
                  ["CREATE TABLE tenants (
                      id TEXT PRIMARY KEY,
@@ -1147,3 +1149,199 @@
       (delete-note-asset-refs-by-note! vault-id note-1)
       (is (= 1 (count-asset-refs vault-id shared-asset)))
       (is (= 0 (count-asset-refs vault-id unique-asset))))))
+
+;;; ============================================================
+;;; Vault Cascade Delete 测试
+;;; ============================================================
+
+(defn delete-vault! [vault-id]
+  "删除 vault（测试辅助函数）"
+  (execute-one! ["DELETE FROM vaults WHERE id = ?" vault-id]))
+
+(defn count-notes-by-vault [vault-id]
+  (let [result (execute-one! ["SELECT COUNT(*) as count FROM notes WHERE vault_id = ?" vault-id])]
+    (:count result)))
+
+(defn count-note-links-by-vault [vault-id]
+  (let [result (execute-one! ["SELECT COUNT(*) as count FROM note_links WHERE vault_id = ?" vault-id])]
+    (:count result)))
+
+(defn count-assets-by-vault [vault-id]
+  (let [result (execute-one! ["SELECT COUNT(*) as count FROM assets WHERE vault_id = ?" vault-id])]
+    (:count result)))
+
+(defn count-note-asset-refs-by-vault [vault-id]
+  (let [result (execute-one! ["SELECT COUNT(*) as count FROM note_asset_refs WHERE vault_id = ?" vault-id])]
+    (:count result)))
+
+(deftest test-vault-cascade-delete-notes
+  (testing "Deleting vault cascades to delete all notes"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "cascade-notes.com" (utils/generate-uuid))
+          ;; Create multiple notes
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "note1.md" "c1" "# Note 1" "{}" "h1" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "note2.md" "c2" "# Note 2" "{}" "h2" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "folder/note3.md" "c3" "# Note 3" "{}" "h3" "2024-01-01T00:00:00Z")
+          
+          ;; Verify notes exist
+          notes-before (count-notes-by-vault vault-id)
+          _ (is (= 3 notes-before))
+          
+          ;; Delete vault
+          _ (delete-vault! vault-id)
+          
+          ;; Verify notes are deleted via CASCADE
+          notes-after (count-notes-by-vault vault-id)]
+      (is (= 0 notes-after)))))
+
+(deftest test-vault-cascade-delete-note-links
+  (testing "Deleting vault cascades to delete all note_links"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "cascade-links.com" (utils/generate-uuid))
+          ;; Create notes with links
+          source-client-id "source-client"
+          target-client-id "target-client"
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "source.md" source-client-id "# Source" "{}" "h1" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "target.md" target-client-id "# Target" "{}" "h2" "2024-01-01T00:00:00Z")
+          _ (insert-note-link! vault-id source-client-id target-client-id "target.md" "link" "Target" "[[Target]]")
+          _ (insert-note-link! vault-id source-client-id target-client-id "target.md" "embed" "Target" "![[Target]]")
+          
+          ;; Verify links exist
+          links-before (count-note-links-by-vault vault-id)
+          _ (is (= 2 links-before))
+          
+          ;; Delete vault
+          _ (delete-vault! vault-id)
+          
+          ;; Verify links are deleted via CASCADE
+          links-after (count-note-links-by-vault vault-id)]
+      (is (= 0 links-after)))))
+
+(deftest test-vault-cascade-delete-assets
+  (testing "Deleting vault cascades to delete all assets"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "cascade-assets.com" (utils/generate-uuid))
+          ;; Create assets
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "images/a.png" "assets/a" 1000 "image/png" "h1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "images/b.jpg" "assets/b" 2000 "image/jpeg" "h2")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id (utils/generate-uuid) "docs/c.pdf" "assets/c" 3000 "application/pdf" "h3")
+          
+          ;; Verify assets exist
+          assets-before (count-assets-by-vault vault-id)
+          _ (is (= 3 assets-before))
+          
+          ;; Delete vault
+          _ (delete-vault! vault-id)
+          
+          ;; Verify assets are deleted via CASCADE
+          assets-after (count-assets-by-vault vault-id)]
+      (is (= 0 assets-after)))))
+
+(deftest test-vault-cascade-delete-note-asset-refs
+  (testing "Deleting vault cascades to delete all note_asset_refs"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "cascade-refs.com" (utils/generate-uuid))
+          ;; Create note-asset references
+          note-client-1 (utils/generate-uuid)
+          note-client-2 (utils/generate-uuid)
+          asset-client-1 (utils/generate-uuid)
+          asset-client-2 (utils/generate-uuid)
+          _ (upsert-note-asset-ref! vault-id note-client-1 asset-client-1)
+          _ (upsert-note-asset-ref! vault-id note-client-1 asset-client-2)
+          _ (upsert-note-asset-ref! vault-id note-client-2 asset-client-1)
+          
+          ;; Verify refs exist
+          refs-before (count-note-asset-refs-by-vault vault-id)
+          _ (is (= 3 refs-before))
+          
+          ;; Delete vault
+          _ (delete-vault! vault-id)
+          
+          ;; Verify refs are deleted via CASCADE
+          refs-after (count-note-asset-refs-by-vault vault-id)]
+      (is (= 0 refs-after)))))
+
+(deftest test-vault-cascade-delete-all-related
+  (testing "Deleting vault cascades to delete all related data at once"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "cascade-all.com" (utils/generate-uuid))
+          
+          ;; Create comprehensive data set
+          note-client-1 "note-1"
+          note-client-2 "note-2"
+          asset-client-1 (utils/generate-uuid)
+          asset-client-2 (utils/generate-uuid)
+          
+          ;; Notes
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "note1.md" note-client-1 "# Note 1" "{}" "h1" "2024-01-01T00:00:00Z")
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id "note2.md" note-client-2 "# Note 2" "{}" "h2" "2024-01-01T00:00:00Z")
+          
+          ;; Links between notes
+          _ (insert-note-link! vault-id note-client-1 note-client-2 "note2.md" "link" "Note 2" "[[note2]]")
+          
+          ;; Assets
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-client-1 "img/a.png" "assets/a" 1000 "image/png" "h1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-client-2 "img/b.png" "assets/b" 2000 "image/png" "h2")
+          
+          ;; Asset references
+          _ (upsert-note-asset-ref! vault-id note-client-1 asset-client-1)
+          _ (upsert-note-asset-ref! vault-id note-client-2 asset-client-2)
+          
+          ;; Verify all data exists
+          _ (is (= 2 (count-notes-by-vault vault-id)))
+          _ (is (= 1 (count-note-links-by-vault vault-id)))
+          _ (is (= 2 (count-assets-by-vault vault-id)))
+          _ (is (= 2 (count-note-asset-refs-by-vault vault-id)))
+          
+          ;; Delete vault
+          _ (delete-vault! vault-id)]
+      
+      ;; Verify everything is deleted
+      (is (= 0 (count-notes-by-vault vault-id)))
+      (is (= 0 (count-note-links-by-vault vault-id)))
+      (is (= 0 (count-assets-by-vault vault-id)))
+      (is (= 0 (count-note-asset-refs-by-vault vault-id))))))
+
+(deftest test-vault-cascade-delete-isolation
+  (testing "Deleting one vault does not affect other vault's data"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id-1 (utils/generate-uuid)
+          vault-id-2 (utils/generate-uuid)
+          _ (create-vault! vault-id-1 tenant-id "Blog 1" "cascade-iso1.com" (utils/generate-uuid))
+          _ (create-vault! vault-id-2 tenant-id "Blog 2" "cascade-iso2.com" (utils/generate-uuid))
+          
+          ;; Create data in vault 1
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id-1 "v1-note.md" "v1-c" "# V1" "{}" "h1" "2024-01-01T00:00:00Z")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id-1 (utils/generate-uuid) "v1.png" "assets/v1" 100 "image/png" "h1")
+          
+          ;; Create data in vault 2
+          _ (upsert-note! (utils/generate-uuid) tenant-id vault-id-2 "v2-note.md" "v2-c" "# V2" "{}" "h2" "2024-01-01T00:00:00Z")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id-2 (utils/generate-uuid) "v2.png" "assets/v2" 200 "image/png" "h2")
+          
+          ;; Verify both have data
+          _ (is (= 1 (count-notes-by-vault vault-id-1)))
+          _ (is (= 1 (count-notes-by-vault vault-id-2)))
+          _ (is (= 1 (count-assets-by-vault vault-id-1)))
+          _ (is (= 1 (count-assets-by-vault vault-id-2)))
+          
+          ;; Delete vault 1 only
+          _ (delete-vault! vault-id-1)]
+      
+      ;; Vault 1 data is gone
+      (is (= 0 (count-notes-by-vault vault-id-1)))
+      (is (= 0 (count-assets-by-vault vault-id-1)))
+      
+      ;; Vault 2 data is intact
+      (is (= 1 (count-notes-by-vault vault-id-2)))
+      (is (= 1 (count-assets-by-vault vault-id-2))))))

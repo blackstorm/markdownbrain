@@ -2,10 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [markdownbrain.config :as config]
    [markdownbrain.db :as db]
    [markdownbrain.markdown :as md]
+   [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
-   [selmer.parser :as selmer]))
+   [selmer.parser :as selmer])
+  (:import [java.io InputStream]))
 
 (defn get-current-vault
   [request]
@@ -170,3 +173,70 @@
                              "HX-Replace-Url" corrected-path}
                    :body response-body}
                   (resp/html response-body))))))))))
+
+;; ============================================================
+;; Asset Serving (Local Storage Only)
+;; ============================================================
+
+(defn- input-stream->bytes
+  "Convert InputStream to byte array."
+  [^InputStream is]
+  (let [baos (java.io.ByteArrayOutputStream.)]
+    (clojure.java.io/copy is baos)
+    (.toByteArray baos)))
+
+(defn serve-asset
+  "Serve assets from local storage.
+   Vault isolation is enforced via Host header -> vault lookup.
+   
+   Route: GET /storage/*path
+   
+   Security:
+   - Vault determined by domain (Host header)
+   - Path traversal prevented by object-store/normalize-path
+   - Only serves assets belonging to the resolved vault"
+  [request]
+  (let [path (get-in request [:path-params :path])
+        vault (get-current-vault request)]
+    
+    (cond
+      ;; No vault found for this domain
+      (nil? vault)
+      (do
+        (log/warn "Asset request for unknown domain:" (get-in request [:headers "host"]))
+        {:status 404
+         :headers {"Content-Type" "text/plain"}
+         :body "Not found"})
+      
+      ;; Storage is S3 - assets served directly from S3, not through app
+      (= :s3 (config/storage-type))
+      (do
+        (log/warn "Asset request to /storage/* when using S3 storage")
+        {:status 404
+         :headers {"Content-Type" "text/plain"}
+         :body "Not found"})
+      
+      ;; Missing path
+      (or (nil? path) (str/blank? path))
+      {:status 400
+       :headers {"Content-Type" "text/plain"}
+       :body "Bad request"}
+      
+      ;; Serve from local storage
+      :else
+      (let [vault-id (:id vault)
+            object-key (object-store/asset-object-key path)
+            result (object-store/get-object vault-id object-key)]
+        (if result
+          (let [body (input-stream->bytes (:Body result))
+                content-type (or (:ContentType result) "application/octet-stream")]
+            (log/debug "Serving asset:" path "for vault:" vault-id)
+            {:status 200
+             :headers {"Content-Type" content-type
+                       "Cache-Control" "public, max-age=31536000, immutable"}
+             :body body})
+          (do
+            (log/debug "Asset not found:" path "for vault:" vault-id)
+            {:status 404
+             :headers {"Content-Type" "text/plain"}
+             :body "Not found"}))))))

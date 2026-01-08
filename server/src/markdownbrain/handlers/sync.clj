@@ -217,10 +217,10 @@
                        :path path
                        :action "unchanged"
                        :skipped true}))
-      (if-not (config/s3-enabled?)
+      (if-not (config/storage-enabled?)
         (do
-          (log/warn "S3 not configured, skipping asset upload")
-          (resp/error 503 "S3 storage not configured"))
+          (log/warn "Storage not configured, skipping asset upload")
+          (resp/error 503 "Storage not configured"))
         (let [object-key (store/asset-object-key path)
               content-bytes (decode-base64 content-base64)]
           (if-not content-bytes

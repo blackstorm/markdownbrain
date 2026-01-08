@@ -114,6 +114,10 @@
     :bucket (or (getenv "S3_BUCKET") "markdownbrain")
     :public-url (getenv "S3_PUBLIC_URL")}
 
+   :storage
+   {:type (keyword (or (getenv "STORAGE_TYPE") "local"))
+    :local-path (or (getenv "LOCAL_STORAGE_PATH") "./data/storage")}
+
    :environment
    (keyword (or (getenv "ENVIRONMENT") "development"))})
 
@@ -138,19 +142,40 @@
 (defn s3-enabled? []
   (some? (:endpoint (s3-config))))
 
+(defn storage-config []
+  (get-config :storage))
+
+(defn storage-type []
+  (:type (storage-config)))
+
+(defn storage-enabled?
+  "Returns true if storage is configured and valid.
+   For S3: requires endpoint to be set.
+   For local: always enabled (uses default path if not set)."
+  []
+  (case (storage-type)
+    :s3 (s3-enabled?)
+    :local true
+    false))
+
 (defn validate-required-config!
   "Validate required configuration. Returns nil if valid, throws exception if invalid."
   []
-  (let [s3 (s3-config)
-        errors (cond-> []
-                 (nil? (:endpoint s3))
-                 (conj "S3_ENDPOINT is required")
-                 
-                 (nil? (:access-key s3))
-                 (conj "S3_ACCESS_KEY is required")
-                 
-                 (nil? (:secret-key s3))
-                 (conj "S3_SECRET_KEY is required"))]
+  (let [storage-type (storage-type)
+        s3 (s3-config)
+        errors (case storage-type
+                 :s3 (cond-> []
+                       (nil? (:endpoint s3))
+                       (conj "S3_ENDPOINT is required when STORAGE_TYPE=s3")
+                       
+                       (nil? (:access-key s3))
+                       (conj "S3_ACCESS_KEY is required when STORAGE_TYPE=s3")
+                       
+                       (nil? (:secret-key s3))
+                       (conj "S3_SECRET_KEY is required when STORAGE_TYPE=s3"))
+                 :local []
+                 ;; Unknown storage type
+                 [(str "Unknown STORAGE_TYPE: " storage-type ". Supported: s3, local")])]
     (when (seq errors)
       (throw (ex-info "Missing required configuration"
                       {:errors errors})))))

@@ -76,8 +76,8 @@
   (log/info "Initializing database...")
   (db/init-db!)
   
-  (log/info "Initializing S3 storage...")
-  (object-store/ensure-bucket!)
+  (log/info "Initializing storage...")
+  (object-store/init-storage!)
 
   (let [frontend (start-frontend-server)
         admin (start-admin-server)]
