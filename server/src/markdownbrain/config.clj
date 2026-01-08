@@ -1,11 +1,12 @@
 (ns markdownbrain.config
-  (:require [clojure.java.io :as io]
-            [clojure.edn :as edn]
-            [clojure.string :as str]
-            [clojure.tools.logging :as log]
-            [cprop.core :refer [load-config]]
-            [cprop.source :refer [from-env from-env-file]])
-  (:import [java.security MessageDigest SecureRandom]))
+  (:require
+   [clojure.edn :as edn]
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [clojure.tools.logging :as log]
+   [cprop.source :refer [from-env from-env-file]])
+  (:import
+   [java.security MessageDigest SecureRandom]))
 
 ;; ============================================================
 ;; Configuration loading (System env + .env file)

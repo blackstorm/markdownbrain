@@ -7,7 +7,8 @@
             [markdownbrain.object-store :as store]
             [markdownbrain.config :as config]
             [clojure.data.json :as json]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.string :as str])
   (:import [java.util Base64]))
 
 (defn validate-sync-key [sync-key]
@@ -17,6 +18,113 @@
   (when-let [auth-header (get-in request [:headers "authorization"])]
     (when-let [[_ key] (re-matches #"Bearer\s+(.+)" auth-header)]
       key)))
+
+;; ============================================================
+;; Asset Reference Tracking
+;; ============================================================
+
+(defn- normalize-asset-path
+  "规范化 asset 路径用于匹配
+   - 移除前导 / 
+   - 转小写
+   
+   示例: '/images/photo.png' -> 'images/photo.png'"
+  [path]
+  (-> path
+      str/trim
+      (str/replace #"^/" "")
+      str/lower-case))
+
+(defn- extract-filename
+  "从路径中提取文件名（不含目录）
+   
+   示例: 'folder/subfolder/image.png' -> 'image.png'"
+  [path]
+  (-> path
+      (str/split #"/")
+      last
+      str/lower-case))
+
+(defn- resolve-embed-to-asset
+  "将 embed 路径解析到 asset client-id
+   
+   匹配逻辑（与 Obsidian 一致）：
+   1. 完整路径匹配
+   2. 文件名匹配（跨目录）"
+  [embed-path assets]
+  (let [normalized (normalize-asset-path embed-path)
+        filename (extract-filename embed-path)
+        ;; 先尝试完整路径匹配
+        full-match (first (filter #(= (normalize-asset-path (:path %)) normalized) assets))
+        ;; 再尝试文件名匹配
+        filename-match (first (filter #(= (extract-filename (:path %)) filename) assets))]
+    (or full-match filename-match)))
+
+(defn- extract-asset-refs-from-content
+  "从 note 内容中提取所有 asset 引用的 client-id
+   
+   流程：
+   1. 使用 link-parser 提取所有 embeds (![[...]])
+   2. 解析每个 embed 到 asset client-id
+   3. 返回有效的 asset client-ids"
+  [content vault-id]
+  (let [links (link-parser/extract-links content)
+        embeds (filter #(= "embed" (:link-type %)) links)
+        assets (db/list-assets-by-vault vault-id)]
+    (when (seq embeds)
+      (log/debug "Found" (count embeds) "embeds in note")
+      (let [resolved-assets (keep #(resolve-embed-to-asset (:path %) assets) embeds)
+            client-ids (map :client-id resolved-assets)]
+        (log/debug "Resolved" (count client-ids) "assets from embeds")
+        (distinct client-ids)))))
+
+(defn- update-asset-refs-and-cleanup-orphans!
+  "更新 note 的 asset 引用，并清理孤立 assets
+   
+   流程：
+   1. 更新 note_asset_refs 表
+   2. 找出引用计数变为 0 的 assets
+   3. 软删除这些孤立 assets"
+  [vault-id note-client-id new-asset-client-ids]
+  ;; 获取旧的引用
+  (let [old-refs (db/get-asset-refs-by-note vault-id note-client-id)
+        old-asset-ids (set (map :asset-client-id old-refs))
+        new-asset-ids (set new-asset-client-ids)
+        ;; 找出被移除引用的 assets
+        removed-asset-ids (clojure.set/difference old-asset-ids new-asset-ids)]
+    
+    ;; 更新引用
+    (db/update-note-asset-refs! vault-id note-client-id new-asset-client-ids)
+    (log/debug "Updated asset refs for note" note-client-id 
+               "- Old:" (count old-asset-ids) "New:" (count new-asset-ids))
+    
+    ;; 检查被移除引用的 assets 是否成为孤儿
+    (when (seq removed-asset-ids)
+      (doseq [asset-id removed-asset-ids]
+        (let [ref-count (db/count-asset-refs vault-id asset-id)]
+          (when (zero? ref-count)
+            (log/info "Soft deleting orphan asset - ClientId:" asset-id)
+            (db/soft-delete-asset! vault-id asset-id)))))))
+
+(defn- cleanup-orphan-assets-for-deleted-note!
+  "当 note 被删除时，清理可能成为孤儿的 assets
+   
+   流程：
+   1. 获取该 note 引用的所有 assets
+   2. 删除该 note 的所有引用
+   3. 检查每个 asset 是否成为孤儿
+   4. 软删除孤儿 assets"
+  [vault-id note-client-id]
+  (let [refs (db/get-asset-refs-by-note vault-id note-client-id)
+        asset-ids (map :asset-client-id refs)]
+    ;; 先删除引用
+    (db/delete-note-asset-refs-by-note! vault-id note-client-id)
+    ;; 检查并清理孤儿
+    (doseq [asset-id asset-ids]
+      (let [ref-count (db/count-asset-refs vault-id asset-id)]
+        (when (zero? ref-count)
+          (log/info "Soft deleting orphan asset after note deletion - ClientId:" asset-id)
+          (db/soft-delete-asset! vault-id asset-id))))))
 
 (defn vault-info [request]
   (if-let [sync-key (parse-sync-key request)]
@@ -30,6 +138,9 @@
 
 (defn- handle-delete [vault-id clientId path]
   (log/info "Deleting note - Path:" path "ClientId:" clientId)
+  ;; 先清理 asset 引用和孤立 assets
+  (cleanup-orphan-assets-for-deleted-note! vault-id clientId)
+  ;; 再删除 note
   (db/delete-note-by-client-id! vault-id clientId)
   (log/info "Note deleted successfully")
   (resp/success {:vault-id vault-id
@@ -99,6 +210,10 @@
                   (log/error "Failed to insert link:" (.getMessage e)))))
 
             (log/info "Links sync completed - Inserted:" (count valid-links)))
+
+          ;; Asset reference tracking
+          (let [asset-client-ids (extract-asset-refs-from-content content vault-id)]
+            (update-asset-refs-and-cleanup-orphans! vault-id clientId (or asset-client-ids [])))
 
           (resp/success {:vault-id vault-id
                          :path path

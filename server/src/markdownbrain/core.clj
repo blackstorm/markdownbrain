@@ -1,6 +1,7 @@
 (ns markdownbrain.core
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.logging :as log]
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]
@@ -18,9 +19,9 @@
   [handler context-path resource-root]
   (fn [request]
     (let [uri (:uri request)]
-      (if (clojure.string/starts-with? uri context-path)
+      (if (str/starts-with? uri context-path)
         (let [resource-path (subs uri (count context-path))
-              resource-path (if (clojure.string/starts-with? resource-path "/")
+              resource-path (if (str/starts-with? resource-path "/")
                               (subs resource-path 1)
                               resource-path)
               full-path (str resource-root "/" resource-path)
