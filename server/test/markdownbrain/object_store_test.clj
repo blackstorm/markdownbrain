@@ -65,19 +65,13 @@
            (store/vault-prefix "550e8400-e29b-41d4-a716-446655440000")))))
 
 (deftest test-asset-object-key
-  (testing "prefixes with assets/"
-    (is (= "assets/images/photo.png"
-           (store/asset-object-key "images/photo.png"))))
+  (testing "generates key from client_id"
+    (is (= "assets/abc123"
+           (store/asset-object-key "abc123"))))
   
-  (testing "normalizes path before prefixing"
-    (is (= "assets/images/photo.png"
-           (store/asset-object-key "/images/photo.png")))
-    (is (= "assets/images/photo.png"
-           (store/asset-object-key "../images/photo.png"))))
-  
-  (testing "handles backslashes"
-    (is (= "assets/images/subfolder/photo.png"
-           (store/asset-object-key "images\\subfolder\\photo.png")))))
+  (testing "handles UUID format"
+    (is (= "assets/550e8400-e29b-41d4-a716-446655440000"
+           (store/asset-object-key "550e8400-e29b-41d4-a716-446655440000")))))
 
 (deftest test-logo-object-key
   (testing "prefixes with site/logo/"

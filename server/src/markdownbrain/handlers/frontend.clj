@@ -187,20 +187,15 @@
 
 (defn serve-asset
   "Serve assets from local storage.
-   Vault isolation is enforced via Host header -> vault lookup.
-   
    Route: GET /storage/*path
    
-   Security:
-   - Vault determined by domain (Host header)
-   - Path traversal prevented by object-store/normalize-path
-   - Only serves assets belonging to the resolved vault"
+   The path is the full object_key (e.g., 'assets/{client_id}').
+   Vault isolation is enforced via Host header -> vault lookup."
   [request]
   (let [path (get-in request [:path-params :path])
         vault (get-current-vault request)]
     
     (cond
-      ;; No vault found for this domain
       (nil? vault)
       (do
         (log/warn "Asset request for unknown domain:" (get-in request [:headers "host"]))
@@ -208,7 +203,6 @@
          :headers {"Content-Type" "text/plain"}
          :body "Not found"})
       
-      ;; Storage is S3 - assets served directly from S3, not through app
       (= :s3 (config/storage-type))
       (do
         (log/warn "Asset request to /storage/* when using S3 storage")
@@ -216,17 +210,14 @@
          :headers {"Content-Type" "text/plain"}
          :body "Not found"})
       
-      ;; Missing path
       (or (nil? path) (str/blank? path))
       {:status 400
        :headers {"Content-Type" "text/plain"}
        :body "Bad request"}
       
-      ;; Serve from local storage
       :else
       (let [vault-id (:id vault)
-            object-key (object-store/asset-object-key path)
-            result (object-store/get-object vault-id object-key)]
+            result (object-store/get-object vault-id path)]
         (if result
           (let [body (input-stream->bytes (:Body result))
                 content-type (or (:ContentType result) "application/octet-stream")]

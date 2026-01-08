@@ -255,11 +255,11 @@
         (is (str/includes? result "broken"))
         (is (str/includes? result "Non Existent"))))
 
-    (testing "图片嵌入 - 资源文件直接使用 /r/ 路径"
+    (testing "图片嵌入 - 资源文件直接使用 /storage/ 路径"
       (let [result (md/replace-obsidian-links "![[image.png]]" vault-id [])]
         (is (str/includes? result "<img"))
-        (is (str/includes? result "/r/image.png"))
-        (is (str/includes? result "resource-embed"))))
+        (is (str/includes? result "/storage/image.png"))
+        (is (str/includes? result "asset-embed"))))
     
     (testing "嵌入 .md 文件 - 使用 client-id"
       (let [result (md/replace-obsidian-links "![[embedded-note.md]]" vault-id links)]
@@ -270,20 +270,20 @@
       ;; PNG
       (let [result (md/replace-obsidian-links "![[assets/photo.png]]" vault-id [])]
         (is (str/includes? result "<img"))
-        (is (str/includes? result "/r/assets/photo.png")))
+        (is (str/includes? result "/storage/assets/photo.png")))
       ;; PDF
       (let [result (md/replace-obsidian-links "![[docs/report.pdf]]" vault-id [])]
         (is (str/includes? result "<a"))
-        (is (str/includes? result "/r/docs/report.pdf"))
+        (is (str/includes? result "/storage/docs/report.pdf"))
         (is (str/includes? result "pdf-link")))
       ;; MP4
       (let [result (md/replace-obsidian-links "![[video.mp4]]" vault-id [])]
         (is (str/includes? result "<video"))
-        (is (str/includes? result "/r/video.mp4")))
+        (is (str/includes? result "/storage/video.mp4")))
       ;; MP3
       (let [result (md/replace-obsidian-links "![[audio.mp3]]" vault-id [])]
         (is (str/includes? result "<audio"))
-        (is (str/includes? result "/r/audio.mp3"))))))
+        (is (str/includes? result "/storage/audio.mp3"))))))
 
 ;;; 测试 7: 完整渲染流程
 (deftest test-render-markdown

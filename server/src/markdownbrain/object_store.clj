@@ -77,9 +77,9 @@
            (str/join "/")))))
 
 (defn asset-object-key
-  "Generate object key for an asset."
-  [path]
-  (str "assets/" (normalize-path path)))
+  "Generate object key for an asset based on client_id (stable across renames)."
+  [client-id]
+  (str "assets/" client-id))
 
 (defn logo-object-key
   "Generate object key for a site logo."

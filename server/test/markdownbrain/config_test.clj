@@ -24,9 +24,10 @@
       (is (number? port))
       (is (pos? port))))
 
-  (testing "Get database name"
-    (let [db-name (config/get-config :database :dbname)]
-      (is (string? db-name))))
+  (testing "Get database jdbcUrl"
+    (let [jdbc-url (config/get-config :database :jdbcUrl)]
+      (is (string? jdbc-url))
+      (is (clojure.string/starts-with? jdbc-url "jdbc:sqlite:"))))
 
   (testing "Get top-level config"
     (let [server-config (config/get-config :server)]
@@ -64,8 +65,7 @@
 
   (testing "Database config has required keys"
     (let [db-config (config/get-config :database)]
-      (is (contains? db-config :dbtype))
-      (is (contains? db-config :dbname)))))
+      (is (contains? db-config :jdbcUrl)))))
 
 ;; Config Values Type Check 测试
 (deftest test-config-value-types
@@ -81,8 +81,8 @@
   (testing "Admin server port is number"
     (is (number? (config/get-config :server :admin :port))))
 
-  (testing "Database name is string"
-    (is (string? (config/get-config :database :dbname)))))
+  (testing "Database jdbcUrl is string"
+    (is (string? (config/get-config :database :jdbcUrl)))))
 
 ;; Session & Token 函数测试
 (deftest test-session-and-token-functions
@@ -114,7 +114,6 @@
     (let [host (config/get-config :server :frontend :host)]
       (is (or (= "0.0.0.0" host) (= "localhost" host)))))
 
-  (testing "Database name is configurable"
-    (let [db-name (config/get-config :database :dbname)]
-      (is (or (clojure.string/ends-with? db-name ".db")
-              (= ":memory:" db-name))))))
+  (testing "Database jdbcUrl is configurable"
+    (let [jdbc-url (config/get-config :database :jdbcUrl)]
+      (is (clojure.string/starts-with? jdbc-url "jdbc:sqlite:")))))

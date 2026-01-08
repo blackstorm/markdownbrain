@@ -1,5 +1,9 @@
 # MarkdownBrain
 
+# Data directory (database, local storage, secrets)
+data/
+server/data/
+
 # Database files
 *.db
 *.db-shm

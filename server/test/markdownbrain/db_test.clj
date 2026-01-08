@@ -745,7 +745,6 @@
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       ON CONFLICT(vault_id, client_id) DO UPDATE SET
         path = excluded.path,
-        object_key = excluded.object_key,
         size_bytes = excluded.size_bytes,
         content_type = excluded.content_type,
         sha256 = excluded.sha256,
@@ -823,7 +822,20 @@
           result (get-asset-by-client-id vault-id client-id)]
       (is (= 200 (:size-bytes result)))
       (is (= "new-hash" (:sha256 result)))
-      (is (= "images/logo-renamed.svg" (:path result))))))
+      (is (= "images/logo-renamed.svg" (:path result)))))
+
+  (testing "MOVE scenario: object_key remains stable when path changes"
+    (let [tenant-id (utils/generate-uuid)
+          _ (create-tenant! tenant-id "Test Org")
+          vault-id (utils/generate-uuid)
+          _ (create-vault! vault-id tenant-id "Blog" "asset-move.com" (utils/generate-uuid))
+          client-id (utils/generate-uuid)
+          original-object-key (str "assets/" client-id)
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id "images/photo.png" original-object-key 1000 "image/png" "hash1")
+          _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id "attachments/photo.png" "assets/new-path" 1000 "image/png" "hash1")
+          result (get-asset-by-client-id vault-id client-id)]
+      (is (= "attachments/photo.png" (:path result)) "path should update")
+      (is (= original-object-key (:object-key result)) "object_key should NOT change on move"))))
 
 (deftest test-soft-delete-asset
   (testing "Soft delete asset by client_id"

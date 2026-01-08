@@ -51,25 +51,36 @@
   (let [order-clause (if order-by (str " ORDER BY " (name order-by)) "")]
     (execute! [(str "SELECT * FROM " (name table) " WHERE " (name column) " = ?" order-clause) value])))
 
+(defn- extract-db-path-from-jdbc-url
+  "Extract database file path from JDBC URL.
+   e.g., jdbc:sqlite:data/markdownbrain.db?journal_mode=WAL -> data/markdownbrain.db"
+  [jdbc-url]
+  (when jdbc-url
+    (-> jdbc-url
+        (str/replace #"^jdbc:sqlite:" "")
+        (str/replace #"\?.*$" ""))))
+
+(defn- ensure-db-directory!
+  "Ensure the parent directory of the database file exists."
+  []
+  (let [jdbc-url (config/get-config :database :jdbcUrl)
+        db-path (extract-db-path-from-jdbc-url jdbc-url)
+        db-file (io/file db-path)
+        parent-dir (.getParentFile db-file)]
+    (when (and parent-dir (not (.exists parent-dir)))
+      (log/info "Creating database directory:" (.getPath parent-dir))
+      (.mkdirs parent-dir))))
+
 (defn init-db! []
-  ;; Enable foreign keys FIRST - SQLite requires this per-connection for CASCADE to work
-  ;; Since we use a single datasource throughout the app lifecycle, this is sufficient.
-  ;; Note: This must be done before any table operations.
-  (jdbc/execute! @datasource ["PRAGMA foreign_keys = ON"])
-  (log/info "SQLite foreign keys enabled")
-  
-  (let [migrations ["migrations/001-initial-schema.sql"
-                    "migrations/002-resources.sql"
-                    "migrations/003-rename-resources-to-assets.sql"]]
-    (doseq [migration migrations]
-      (let [schema (slurp (io/resource migration))
-            statements (-> schema
-                           (clojure.string/split #";")
-                           (->> (map clojure.string/trim)
-                                (filter #(not (clojure.string/blank? %)))))]
-        (log/info "Running migration:" migration)
-        (doseq [stmt statements]
-          (jdbc/execute! @datasource [stmt]))))))
+  (ensure-db-directory!)
+  (let [schema (slurp (io/resource "migrations/001-initial-schema.sql"))
+        statements (-> schema
+                       (clojure.string/split #";")
+                       (->> (map clojure.string/trim)
+                            (filter #(not (clojure.string/blank? %)))))]
+    (log/info "Running schema migration")
+    (doseq [stmt statements]
+      (jdbc/execute! @datasource [stmt]))))
 
 ;; Tenant 操作
 (defn create-tenant! [id name]
@@ -300,7 +311,6 @@
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       ON CONFLICT(vault_id, client_id) DO UPDATE SET
         path = excluded.path,
-        object_key = excluded.object_key,
         size_bytes = excluded.size_bytes,
         content_type = excluded.content_type,
         sha256 = excluded.sha256,

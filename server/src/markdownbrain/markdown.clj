@@ -339,7 +339,7 @@
         asset (db/find-asset vault-id path)
         asset-url (if asset
                     (or (object-store/public-asset-url vault-id (:object-key asset))
-                        (str "/storage/" escaped-path))
+                        (str "/storage/" (:object-key asset)))
                     (str "/storage/" escaped-path))]
     (cond
       ;; Image files

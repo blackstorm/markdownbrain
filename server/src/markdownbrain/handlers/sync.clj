@@ -207,26 +207,42 @@
   (log/info "Processing asset upsert - ClientId:" client-id "Path:" path "Size:" size "Type:" content-type)
 
   (let [existing (db/get-asset-by-client-id vault-id client-id)
-        hash-unchanged? (and existing sha256 (= sha256 (:sha256 existing)))]
+        hash-unchanged? (and existing sha256 (= sha256 (:sha256 existing)))
+        path-changed? (and existing (not= path (:path existing)))]
 
-    (if hash-unchanged?
+    (cond
+      (and hash-unchanged? (not path-changed?))
       (do
-        (log/info "Asset unchanged (same hash) - ClientId:" client-id)
+        (log/info "Asset unchanged - ClientId:" client-id)
         (resp/success {:vault-id vault-id
                        :client-id client-id
                        :path path
                        :action "unchanged"
                        :skipped true}))
+
+      (and hash-unchanged? path-changed?)
+      (do
+        (log/info "Asset moved (path changed, same content) - ClientId:" client-id "OldPath:" (:path existing) "NewPath:" path)
+        (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id path (:object-key existing) size content-type sha256)
+        (resp/success {:vault-id vault-id
+                       :client-id client-id
+                       :path path
+                       :action "moved"
+                       :old-path (:path existing)}))
+
+      :else
       (if-not (config/storage-enabled?)
         (do
           (log/warn "Storage not configured, skipping asset upload")
           (resp/error 503 "Storage not configured"))
-        (let [object-key (store/asset-object-key path)
+        (let [object-key (if existing
+                           (:object-key existing)
+                           (store/asset-object-key client-id))
               content-bytes (decode-base64 content-base64)]
           (if-not content-bytes
             (resp/bad-request "Invalid or missing base64 content")
             (do
-              (log/info "Uploading asset to S3 - Object-key:" object-key)
+              (log/info "Uploading asset - Object-key:" object-key)
               (store/put-object! vault-id object-key content-bytes content-type)
 
               (let [asset-id (utils/generate-uuid)]

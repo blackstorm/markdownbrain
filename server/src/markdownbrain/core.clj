@@ -1,14 +1,14 @@
 (ns markdownbrain.core
   (:require
+   [clojure.java.io :as io]
+   [clojure.tools.logging :as log]
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]
    [markdownbrain.middleware :as middleware]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.routes :as routes]
    [ring.adapter.undertow :as undertow]
-   [ring.util.response :as response]
-   [clojure.java.io :as io]
-   [clojure.tools.logging :as log])
+   [ring.util.response :as response])
   (:gen-class))
 
 (defn wrap-resource-with-context
@@ -72,18 +72,18 @@
       (doseq [err (:errors (ex-data e))]
         (log/error "  -" err))
       (System/exit 1)))
-  
+
   (log/info "Initializing database...")
   (db/init-db!)
-  
+
   (log/info "Initializing storage...")
   (object-store/init-storage!)
 
   (let [frontend (start-frontend-server)
         admin (start-admin-server)]
     (log/info "=== MarkdownBrain Servers Started ===")
-    (log/info "Frontend: http://localhost:" (:port frontend))
-    (log/info "Admin:    http://localhost:" (:port admin))
+    (log/info (str "Frontend: http://localhost:" (:port frontend)))
+    (log/info (str "Admin:    http://localhost:" (:port admin)))
     (log/info "=====================================")
     {:frontend frontend
      :admin admin

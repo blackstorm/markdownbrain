@@ -103,8 +103,9 @@
      :host (or (getenv "HOST") "0.0.0.0")}}
 
    :database
-   {:dbtype "sqlite"
-    :dbname (or (getenv "DB_PATH") "markdownbrain.db")}
+   {:jdbcUrl (str "jdbc:sqlite:" 
+                  (or (getenv "DB_PATH") "data/markdownbrain.db")
+                  "?journal_mode=WAL&foreign_keys=ON")}
 
    :s3
    {:endpoint (getenv "S3_ENDPOINT")
