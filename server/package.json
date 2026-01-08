@@ -3,13 +3,13 @@
   "version": "1.0.0",
   "description": "MarkdownBrain frontend assets",
   "scripts": {
-    "build:admin": "npx @tailwindcss/cli@latest -i ./admin.css -o ./resources/public/admin/css/app.css --minify",
-    "watch:admin": "npx @tailwindcss/cli@latest -i ./admin.css -o ./resources/public/admin/css/app.css --watch",
-    "build:frontend": "npx @tailwindcss/cli@latest -i ./frontend.css -o ./resources/public/frontend/css/frontend.css --minify",
-    "watch:frontend": "npx @tailwindcss/cli@latest -i ./frontend.css -o ./resources/public/frontend/css/frontend.css --watch",
-    "build": "npm run build:admin && npm run build:frontend",
-    "watch": "npm run watch:admin & npm run watch:frontend",
-    "setup": "cp node_modules/htmx.org/dist/htmx.min.js resources/public/js/"
+    "build:admin": "bunx @tailwindcss/cli@latest -i ./admin.css -o ./resources/publics/admin/css/app.css --minify",
+    "watch:admin": "bunx @tailwindcss/cli@latest -i ./admin.css -o ./resources/publics/admin/css/app.css --watch",
+    "build:frontend": "bunx @tailwindcss/cli@latest -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --minify",
+    "watch:frontend": "bunx @tailwindcss/cli@latest -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --watch",
+    "build": "bun run build:admin && bun run build:frontend",
+    "watch": "bun run watch:admin & bun run watch:frontend",
+    "setup": "cp node_modules/htmx.org/dist/htmx.min.js resources/publics/shared/"
   },
   "devDependencies": {
     "@tailwindcss/cli": "latest",

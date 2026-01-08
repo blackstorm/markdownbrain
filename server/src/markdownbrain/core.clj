@@ -6,19 +6,39 @@
    [markdownbrain.object-store :as object-store]
    [markdownbrain.routes :as routes]
    [ring.adapter.undertow :as undertow]
-   [ring.middleware.resource :as resource]
+   [ring.util.response :as response]
+   [clojure.java.io :as io]
    [clojure.tools.logging :as log])
   (:gen-class))
 
+(defn wrap-resource-with-context
+  "Serve static resources from classpath at a specific URL context path.
+   Example: (wrap-resource-with-context handler \"/publics/admin\" \"publics/admin\")
+   This will serve files from classpath:publics/admin/* at URL /publics/admin/*"
+  [handler context-path resource-root]
+  (fn [request]
+    (let [uri (:uri request)]
+      (if (clojure.string/starts-with? uri context-path)
+        (let [resource-path (subs uri (count context-path))
+              resource-path (if (clojure.string/starts-with? resource-path "/")
+                              (subs resource-path 1)
+                              resource-path)
+              full-path (str resource-root "/" resource-path)
+              resource (io/resource full-path)]
+          (if resource
+            (response/resource-response resource-path {:root resource-root})
+            (handler request)))
+        (handler request)))))
+
 (defn start-frontend-server []
-  "启动 Frontend 服务器 (端口 8080) - 公开文档展示"
   (let [port (config/get-config :server :frontend :port)
         host (config/get-config :server :frontend :host)]
     (log/info "Starting Frontend server on" host ":" port)
     (let [server (undertow/run-undertow
                   (-> routes/frontend-app
                       (middleware/wrap-middleware)
-                      (resource/wrap-resource "public"))
+                      (wrap-resource-with-context "/publics/frontend" "publics/frontend")
+                      (wrap-resource-with-context "/publics/shared" "publics/shared"))
                   {:port port
                    :host host})]
       {:server server
@@ -27,14 +47,14 @@
        :stop #(.stop server)})))
 
 (defn start-admin-server []
-  "启动 Admin 服务器 (端口 9090) - 管理后台 + Obsidian 同步"
   (let [port (config/get-config :server :admin :port)
         host (config/get-config :server :admin :host)]
     (log/info "Starting Admin server on" host ":" port)
     (let [server (undertow/run-undertow
                   (-> routes/admin-app
                       (middleware/wrap-middleware)
-                      (resource/wrap-resource "public"))
+                      (wrap-resource-with-context "/publics/admin" "publics/admin")
+                      (wrap-resource-with-context "/publics/shared" "publics/shared"))
                   {:port port
                    :host host})]
       {:server server

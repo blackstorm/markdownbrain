@@ -1,4 +1,7 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "./resources/templates/frontend";
+@source "./resources/publics/frontend";
+@source "./src/**/*.clj";
 @plugin "@tailwindcss/typography";
 
 :root {
