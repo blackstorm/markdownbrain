@@ -1,0 +1,7 @@
+# Caddyfile without on-demand TLS
+# Use this when you manage SSL certificates externally (e.g., Cloudflare, nginx, etc.)
+# or when running behind a reverse proxy that handles TLS termination
+
+:80 {
+	reverse_proxy markdownbrain:8080
+}

@@ -129,9 +129,8 @@
           (log/info "Deleted vault directory:" (.getPath vault-dir))))))
   
   (public-url* [_ vault-id object-key]
-    ;; Local storage doesn't support public URLs
-    ;; Assets are served via the /a/... route in the application
-    nil))
+    ;; Local storage serves assets via the /storage/{object-key} route
+    (str "/storage/" object-key)))
 
 ;; ============================================================
 ;; Factory Function

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}MarkdownBrain{% endblock %}</title>
   {% if description %}<meta name="description" content="{{ description }}">{% endif %}
-  <link rel="shortcut icon" type="image/x-icon" href="/static/favicon.ico">
+  {% if vault.logo-url %}<link rel="icon" href="{{ vault.logo-url }}">{% endif %}
   <link rel="stylesheet" href="/publics/frontend/css/frontend.css">
   <link rel="stylesheet" href="/publics/shared/katex.min.css">
 </head>

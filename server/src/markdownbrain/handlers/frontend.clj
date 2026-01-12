@@ -98,11 +98,17 @@
              :body html-body})
           {:status 404 :body "Note not found"})))))
 
+(defn- enrich-vault-with-logo
+  [vault]
+  (if-let [key (:logo-object-key vault)]
+    (assoc vault :logo-url (object-store/public-asset-url (:id vault) key))
+    vault))
+
 (defn get-note
   [request]
   (let [path (get-in request [:path-params :path] "/")
         path-client-ids (parse-path-ids path)
-        vault (get-current-vault request)
+        vault (some-> (get-current-vault request) enrich-vault-with-logo)
         is-htmx? (get-in request [:headers "hx-request"])]
 
     (if-not vault

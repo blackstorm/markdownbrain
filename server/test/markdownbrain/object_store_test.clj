@@ -65,22 +65,51 @@
            (store/vault-prefix "550e8400-e29b-41d4-a716-446655440000")))))
 
 (deftest test-asset-object-key
-  (testing "generates key from client_id"
-    (is (= "assets/abc123"
-           (store/asset-object-key "abc123"))))
+  (testing "generates key from client_id with extension"
+    (is (= "assets/abc123.png"
+           (store/asset-object-key "abc123" "png"))))
   
-  (testing "handles UUID format"
-    (is (= "assets/550e8400-e29b-41d4-a716-446655440000"
-           (store/asset-object-key "550e8400-e29b-41d4-a716-446655440000")))))
+  (testing "handles UUID format with extension"
+    (is (= "assets/550e8400-e29b-41d4-a716-446655440000.webp"
+           (store/asset-object-key "550e8400-e29b-41d4-a716-446655440000" "webp"))))
+  
+  (testing "handles various extensions"
+    (is (= "assets/client-id.jpg" (store/asset-object-key "client-id" "jpg")))
+    (is (= "assets/client-id.gif" (store/asset-object-key "client-id" "gif")))
+    (is (= "assets/client-id.svg" (store/asset-object-key "client-id" "svg")))
+    (is (= "assets/client-id.pdf" (store/asset-object-key "client-id" "pdf")))))
 
 (deftest test-logo-object-key
-  (testing "prefixes with site/logo/"
-    (is (= "site/logo/logo.png"
-           (store/logo-object-key "logo.png"))))
+  (testing "generates key with content hash and extension"
+    (is (= "site/logo/abc123def456.png"
+           (store/logo-object-key "abc123def456" "png"))))
   
-  (testing "handles complex filenames"
-    (is (= "site/logo/my-company-logo-2024.svg"
-           (store/logo-object-key "my-company-logo-2024.svg")))))
+  (testing "handles various extensions"
+    (is (= "site/logo/hash123.jpg" (store/logo-object-key "hash123" "jpg")))
+    (is (= "site/logo/hash123.gif" (store/logo-object-key "hash123" "gif")))
+    (is (= "site/logo/hash123.webp" (store/logo-object-key "hash123" "webp")))
+    (is (= "site/logo/hash123.svg" (store/logo-object-key "hash123" "svg"))))
+  
+  (testing "handles full SHA256 hash"
+    (is (= "site/logo/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.png"
+           (store/logo-object-key "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" "png")))))
+
+(deftest test-content-type->extension
+  (testing "maps common image content types"
+    (is (= "png" (store/content-type->extension "image/png")))
+    (is (= "jpg" (store/content-type->extension "image/jpeg")))
+    (is (= "gif" (store/content-type->extension "image/gif")))
+    (is (= "webp" (store/content-type->extension "image/webp")))
+    (is (= "svg" (store/content-type->extension "image/svg+xml"))))
+  
+  (testing "maps document content types"
+    (is (= "pdf" (store/content-type->extension "application/pdf")))
+    (is (= "json" (store/content-type->extension "application/json"))))
+  
+  (testing "defaults to bin for unknown types"
+    (is (= "bin" (store/content-type->extension "application/octet-stream")))
+    (is (= "bin" (store/content-type->extension "unknown/type")))
+    (is (= "bin" (store/content-type->extension nil)))))
 
 ;; =============================================================================
 ;; S3 Client Mock Tests (using with-redefs)

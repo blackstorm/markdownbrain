@@ -350,9 +350,10 @@
         (do
           (log/warn "Storage not configured, skipping asset upload")
           (resp/error 503 "Storage not configured"))
-        (let [object-key (if existing
+        (let [extension (store/content-type->extension content-type)
+              object-key (if existing
                            (:object-key existing)
-                           (store/asset-object-key client-id))
+                           (store/asset-object-key client-id extension))
               content-bytes (decode-base64 content-base64)]
           (if-not content-bytes
             (resp/bad-request "Invalid or missing base64 content")

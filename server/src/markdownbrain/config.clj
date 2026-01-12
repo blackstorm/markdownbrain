@@ -160,6 +160,12 @@
     :local true
     false))
 
+(defn on-demand-tls-enabled?
+  "Returns true if on-demand TLS is enabled.
+   When enabled, the /admin/domain-check endpoint is registered for Caddy to verify domains."
+  []
+  (= "true" (getenv "CADDY_ON_DEMAND_TLS_ENABLED")))
+
 (defn validate-required-config!
   "Validate required configuration. Returns nil if valid, throws exception if invalid."
   []

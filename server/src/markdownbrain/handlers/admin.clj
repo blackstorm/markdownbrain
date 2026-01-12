@@ -62,6 +62,12 @@
     (< bytes (* 1024 1024 1024)) (format "%.1f MB" (/ bytes (* 1024.0 1024)))
     :else (format "%.2f GB" (/ bytes (* 1024.0 1024 1024)))))
 
+(defn admin-asset-url
+  "Generate admin storage URL for an asset.
+   Returns URL like /admin/storage/{vault-id}/{object-key}"
+  [vault-id object-key]
+  (str "/admin/storage/" vault-id "/" object-key))
+
 (defn admin-home [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         tenant (db/get-tenant tenant-id)
@@ -70,11 +76,14 @@
                                  (let [sync-key (:sync-key vault)
                                        masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
                                        notes (db/search-notes-by-vault (:id vault) "")
-                                       storage-bytes (db/get-vault-storage-size (:id vault))]
+                                       storage-bytes (db/get-vault-storage-size (:id vault))
+                                       logo-url (when-let [key (:logo-object-key vault)]
+                                                  (admin-asset-url (:id vault) key))]
                                    (assoc vault
                                           :masked-key masked
                                           :notes notes
-                                          :storage-size (format-storage-size storage-bytes))))
+                                          :storage-size (format-storage-size storage-bytes)
+                                          :logo-url logo-url)))
                                vaults)]
     (resp/html (selmer/render-file "templates/admin/vaults.html"
                                     {:tenant tenant
@@ -95,7 +104,7 @@
                                        notes (db/search-notes-by-vault (:id vault) "")
                                        storage-bytes (db/get-vault-storage-size (:id vault))
                                        logo-url (when-let [key (:logo-object-key vault)]
-                                                  (object-store/public-asset-url (:id vault) key))]
+                                                  (admin-asset-url (:id vault) key))]
                                    (assoc vault
                                           :masked-key masked
                                           :notes notes
@@ -310,18 +319,22 @@
 
       :else
       (let [extension (get logo-extension-map (:content-type file) "png")
-            filename (str "logo." extension)
-            object-key (object-store/logo-object-key filename)
             content (with-open [in (io/input-stream (:tempfile file))]
                       (let [baos (java.io.ByteArrayOutputStream.)]
                         (io/copy in baos)
-                        (.toByteArray baos)))]
+                        (.toByteArray baos)))
+            content-hash (utils/sha256-hex content)
+            object-key (object-store/logo-object-key content-hash extension)]
+        ;; Delete old logo if exists (different key means different file)
+        (when-let [old-key (:logo-object-key vault)]
+          (when (not= old-key object-key)
+            (object-store/delete-object! vault-id old-key)))
         ;; Upload to S3
         (object-store/put-object! vault-id object-key content (:content-type file))
         ;; Update DB
         (db/update-vault-logo! vault-id object-key)
         (resp/success {:message "Logo uploaded successfully"
-                       :logo-url (object-store/public-asset-url vault-id object-key)})))))
+                       :logo-url (admin-asset-url vault-id object-key)})))))
 
 (defn delete-vault-logo
   "Remove the logo for a vault."
@@ -349,3 +362,54 @@
         ;; Clear DB reference
         (db/update-vault-logo! vault-id nil)
         (resp/success {:message "Logo deleted successfully"})))))
+
+;; ============================================================
+;; Admin Asset Serving
+;; ============================================================
+
+(defn- input-stream->bytes
+  "Convert InputStream to byte array."
+  [is]
+  (let [baos (java.io.ByteArrayOutputStream.)]
+    (io/copy is baos)
+    (.toByteArray baos)))
+
+(defn serve-admin-asset
+  "Serve assets from storage for admin panel.
+   Route: GET /admin/storage/:id/*path
+   
+   Unlike frontend's /storage/* which uses Host header for vault resolution,
+   this route takes vault-id explicitly and verifies tenant isolation via session."
+  [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        path (get-in request [:path-params :path])
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 404
+       :headers {"Content-Type" "text/plain"}
+       :body "Vault not found"}
+      
+      (not= (:tenant-id vault) tenant-id)
+      {:status 403
+       :headers {"Content-Type" "text/plain"}
+       :body "Permission denied"}
+      
+      (or (nil? path) (str/blank? path))
+      {:status 400
+       :headers {"Content-Type" "text/plain"}
+       :body "Missing path"}
+      
+      :else
+      (let [result (object-store/get-object vault-id path)]
+        (if result
+          (let [body (input-stream->bytes (:Body result))
+                content-type (or (:ContentType result) "application/octet-stream")]
+            {:status 200
+             :headers {"Content-Type" content-type
+                       "Cache-Control" "public, max-age=31536000, immutable"}
+             :body body})
+          {:status 404
+           :headers {"Content-Type" "text/plain"}
+           :body "Not found"})))))

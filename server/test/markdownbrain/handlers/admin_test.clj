@@ -286,3 +286,87 @@
       (is (= 200 (:status response)))
       (is (false? (get-in response [:body :success])))
       (is (= "Site not found" (get-in response [:body :error]))))))
+
+;; Serve Admin Asset 测试
+(deftest test-serve-admin-asset
+  (testing "Serve asset for authenticated user's vault"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "asset-admin" "hash")
+          vault-id (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Asset Test" "asset-test.com" (utils/generate-uuid))
+          test-content (.getBytes "test image content")
+          ;; Mock get-object to return test content
+          mock-result {:Body (java.io.ByteArrayInputStream. test-content)
+                       :ContentType "image/png"}]
+      (with-redefs [object-store/get-object (fn [vid key]
+                                              (when (and (= vid vault-id)
+                                                         (= key "site/logo/abc123.png"))
+                                                mock-result))]
+        (let [request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/site/logo/abc123.png")
+                                                tenant-id user-id)
+                          (assoc :path-params {:id vault-id :path "site/logo/abc123.png"}))
+              response (admin/serve-admin-asset request)]
+          (is (= 200 (:status response)))
+          (is (= "image/png" (get-in response [:headers "Content-Type"])))
+          (is (bytes? (:body response)))))))
+
+  (testing "Serve asset for non-existent vault returns 404"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "notfound-asset-admin" "hash")
+          
+          request (-> (authenticated-request :get "/admin/storage/non-existent-id/site/logo/test.png"
+                                            tenant-id user-id)
+                      (assoc :path-params {:id "non-existent-id" :path "site/logo/test.png"}))
+          response (admin/serve-admin-asset request)]
+      (is (= 404 (:status response)))))
+
+  (testing "Serve asset for vault from different tenant returns 403"
+    (let [tenant-id-1 (utils/generate-uuid)
+          tenant-id-2 (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id-1 "Org 1")
+          _ (db/create-tenant! tenant-id-2 "Org 2")
+          user-id-1 (utils/generate-uuid)
+          user-id-2 (utils/generate-uuid)
+          _ (db/create-user! user-id-1 tenant-id-1 "tenant1-asset" "hash")
+          _ (db/create-user! user-id-2 tenant-id-2 "tenant2-asset" "hash")
+          vault-id (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" (utils/generate-uuid))
+          
+          ;; User from tenant-2 tries to access vault from tenant-1
+          request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/site/logo/test.png")
+                                            tenant-id-2 user-id-2)
+                      (assoc :path-params {:id vault-id :path "site/logo/test.png"}))
+          response (admin/serve-admin-asset request)]
+      (is (= 403 (:status response)))))
+
+  (testing "Serve asset with missing path returns 400"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "missing-path-admin" "hash")
+          vault-id (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "Missing Path Test" "missingpath.com" (utils/generate-uuid))
+          
+          request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/")
+                                            tenant-id user-id)
+                      (assoc :path-params {:id vault-id :path nil}))
+          response (admin/serve-admin-asset request)]
+      (is (= 400 (:status response)))))
+
+  (testing "Serve non-existent asset returns 404"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "nonexist-asset-admin" "hash")
+          vault-id (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "NonExist Asset Test" "nonexistasset.com" (utils/generate-uuid))]
+      (with-redefs [object-store/get-object (fn [_ _] nil)]
+        (let [request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/site/logo/notfound.png")
+                                                tenant-id user-id)
+                          (assoc :path-params {:id vault-id :path "site/logo/notfound.png"}))
+              response (admin/serve-admin-asset request)]
+          (is (= 404 (:status response))))))))

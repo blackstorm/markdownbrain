@@ -76,15 +76,39 @@
                    [])
            (str/join "/")))))
 
+(def ^:private content-type-extension-map
+  "Map from content-type to file extension."
+  {"image/png" "png"
+   "image/jpeg" "jpg"
+   "image/gif" "gif"
+   "image/webp" "webp"
+   "image/svg+xml" "svg"
+   "application/pdf" "pdf"
+   "application/json" "json"
+   "text/plain" "txt"
+   "text/markdown" "md"
+   "text/html" "html"
+   "text/css" "css"
+   "application/javascript" "js"
+   "video/mp4" "mp4"
+   "video/webm" "webm"
+   "audio/mpeg" "mp3"
+   "audio/wav" "wav"})
+
+(defn content-type->extension
+  "Convert content-type to file extension. Returns 'bin' for unknown types."
+  [content-type]
+  (get content-type-extension-map content-type "bin"))
+
 (defn asset-object-key
-  "Generate object key for an asset based on client_id (stable across renames)."
-  [client-id]
-  (str "assets/" client-id))
+  "Generate object key for an asset based on client_id and extension."
+  [client-id extension]
+  (str "assets/" client-id "." extension))
 
 (defn logo-object-key
-  "Generate object key for a site logo."
-  [filename]
-  (str "site/logo/" filename))
+  "Generate object key for a site logo using content hash and extension."
+  [content-hash extension]
+  (str "site/logo/" content-hash "." extension))
 
 ;; ============================================================
 ;; Public API (backward compatible, delegates to store instance)

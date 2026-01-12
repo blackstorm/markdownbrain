@@ -1,3 +1,7 @@
+# Caddyfile with on-demand TLS enabled
+# Use this when CADDY_ON_DEMAND_TLS_ENABLED=true
+# Caddy will automatically obtain SSL certificates for any domain that passes the domain-check
+
 {
 	on_demand_tls {
 		ask http://markdownbrain:9090/admin/domain-check?token={$INTERNAL_TOKEN}

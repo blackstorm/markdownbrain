@@ -225,10 +225,18 @@
 ;; public-url* Tests
 ;; =============================================================================
 
-(deftest test-public-url-returns-nil
-  (testing "local storage returns nil for public URL"
+(deftest test-public-url-returns-storage-path
+  (testing "local storage returns /storage/{object-key} path"
     (let [result (store/public-url* *test-store* test-vault-id "some-file.txt")]
-      (is (nil? result) "Local storage should not support public URLs"))))
+      (is (= "/storage/some-file.txt" result) "Local storage should return /storage/ path")))
+  
+  (testing "handles nested paths"
+    (let [result (store/public-url* *test-store* test-vault-id "assets/image.png")]
+      (is (= "/storage/assets/image.png" result))))
+  
+  (testing "handles logo paths"
+    (let [result (store/public-url* *test-store* test-vault-id "site/logo/abc123.png")]
+      (is (= "/storage/site/logo/abc123.png" result)))))
 
 ;; =============================================================================
 ;; Factory Function Tests

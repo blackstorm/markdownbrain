@@ -9,6 +9,13 @@
 (defn generate-uuid []
   (str (UUID/randomUUID)))
 
+(defn sha256-hex
+  "Compute SHA-256 hash of byte array and return as hex string."
+  [^bytes data]
+  (let [md (MessageDigest/getInstance "SHA-256")
+        hash-bytes (.digest md data)]
+    (apply str (map #(format "%02x" %) hash-bytes))))
+
 (defn generate-note-id
   [vault-id path]
   (let [md (MessageDigest/getInstance "SHA-256")

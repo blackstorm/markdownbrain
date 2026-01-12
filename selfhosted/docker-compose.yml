@@ -8,6 +8,7 @@ services:
     volumes:
       - markdownbrain:/app/data
     environment:
+      - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
       - INTERNAL_TOKEN=${INTERNAL_TOKEN}
       - S3_ENDPOINT=http://rustfs:9000
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-rustfsadmin}
@@ -53,10 +54,14 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy-entrypoint.sh:/entrypoint.sh:ro
+      - ./Caddyfile.on-demand-tls:/etc/caddy/Caddyfile.on-demand-tls:ro
+      - ./Caddyfile.simple:/etc/caddy/Caddyfile.simple:ro
       - caddy:/data
     environment:
+      - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
       - INTERNAL_TOKEN=${INTERNAL_TOKEN}
+    entrypoint: ["/entrypoint.sh"]
     depends_on:
       markdownbrain:
         condition: service_healthy
