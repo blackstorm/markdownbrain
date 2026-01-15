@@ -56,14 +56,14 @@
    Throws if target-size > original-dimensions."
   [bytes target-size format]
   (try
-    (let [in (ByteArrayInputStream. bytes)
-          out (ByteArrayOutputStream.)
-          builder (Thumbnails/of (into-array ByteArrayInputStream [in]))]
-      (.size builder target-size target-size)
-      (.crop builder Positions/CENTER)
-      (.outputFormat builder format)
-      (.toOutputStream builder out)
-      (.toByteArray out))
+    (with-open [in (ByteArrayInputStream. bytes)]
+      (let [out (ByteArrayOutputStream.)
+            builder (Thumbnails/of (into-array ByteArrayInputStream [in]))]
+        (.size builder target-size target-size)
+        (.crop builder Positions/CENTER)
+        (.outputFormat builder format)
+        (.toOutputStream builder out)
+        (.toByteArray out)))
     (catch Exception e
       (log/error "Failed to generate thumbnail:" target-size (.getMessage e))
       (throw e))))

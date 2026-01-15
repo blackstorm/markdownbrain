@@ -65,3 +65,12 @@
   {:status status
    :body {:success false
           :error error-msg}})
+
+(defn json-error
+  "Return error response with JSON Content-Type header.
+   Use this for API endpoints that return JSON errors."
+  [status error-msg]
+  {:status status
+   :headers {"Content-Type" "application/json"}
+   :body {:success false
+          :error error-msg}})

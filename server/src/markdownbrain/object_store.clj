@@ -66,7 +66,11 @@
 
 (defn- prune-cache-if-needed
   "Remove oldest entries if cache exceeds max size.
-   This prevents memory leaks from unlimited cache growth."
+   This prevents memory leaks from unlimited cache growth.
+
+   NOTE: This uses simple truncation, not LRU eviction. In high-traffic
+   scenarios with many logos, frequently-accessed entries may be evicted.
+   Consider using clojure.core.cache/lru-cache if this becomes an issue."
   []
   (swap! logo-thumbnail-cache
     (fn [cache]

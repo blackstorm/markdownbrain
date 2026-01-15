@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [markdownbrain.db :as db]
    [markdownbrain.image-processing :as image-processing]
    [markdownbrain.object-store :as object-store]
@@ -10,6 +11,8 @@
    [selmer.parser :as selmer]))
 
 (declare input-stream->bytes)
+
+(def ^:private default-logo-size 512)
 
 (defn init-admin [request]
   (if (db/has-any-user?)
@@ -289,7 +292,11 @@
   "Upload a logo image for a vault.
    Expects multipart form data with 'logo' file field.
    Validates: vault ownership, file type (png/jpg/webp only), max size (2MB).
-   Generates thumbnails: 512x512, 256x256, 128x128, 64x64, 32x32."
+   Generates thumbnails: 512x512, 256x256, 128x128, 64x64, 32x32.
+
+   NOTE: WebP support depends on ImageIO plugins. Standard Java ImageIO doesn't
+   include WebP support by default. If WebP files fail to process, consider using
+   PNG or JPEG format instead, or add a WebP ImageIO plugin to your classpath."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -315,9 +322,11 @@
        :body {:success false
               :error (str "Invalid file type. Allowed: PNG, JPEG, WebP. Got: " (:content-type file))}}
 
-      (> (:size file) (* 2 1024 1024)) ; 2MB limit
+      (or (zero? (:size file)) (> (:size file) (* 2 1024 1024))) ; 2MB limit, min 1 byte
       {:status 400
-       :body {:success false :error "File too large. Maximum size is 2MB."}}
+       :body {:success false :error (if (zero? (:size file))
+                                      "File is empty. Please upload a valid image file."
+                                      "File too large. Maximum size is 2MB.")}}
 
       :else
       (let [extension (get logo-extension-map (:content-type file) "png")
@@ -339,9 +348,8 @@
               (let [thumb-key (object-store/thumbnail-object-key-for-logo old-key size)]
                 (try
                   (object-store/delete-object! vault-id thumb-key)
-                  (catch Exception _
-                    ;; Ignore if thumbnail doesn't exist
-                    ))))
+                  (catch Exception e
+                    (log/debug "Failed to delete old thumbnail" thumb-key "for vault" vault-id ":" (.getMessage e))))))
             ;; Delete old logo
             (object-store/delete-object! vault-id old-key)))
 
@@ -417,9 +425,8 @@
           (let [thumb-key (object-store/thumbnail-object-key-for-logo (:logo-object-key vault) size)]
             (try
               (object-store/delete-object! vault-id thumb-key)
-              (catch Exception _
-                ;; Ignore if thumbnail doesn't exist
-                ))))
+              (catch Exception e
+                (log/debug "Failed to delete thumbnail" thumb-key "for vault" vault-id ":" (.getMessage e))))))
         ;; Delete original logo from storage
         (object-store/delete-object! vault-id (:logo-object-key vault))
         ;; Clear DB reference
@@ -441,24 +448,18 @@
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
         vault (db/get-vault-by-id vault-id)
-        size-param (or (get-in request [:params "size"]) "512")
+        size-param (or (get-in request [:params "size"]) (str default-logo-size))
         requested-size (try (Integer/parseInt size-param)
-                           (catch Exception _ 512))]
+                           (catch Exception _ default-logo-size))]
     (cond
       (nil? vault)
-      {:status 404
-       :headers {"Content-Type" "application/json"}
-       :body "{\"success\":false,\"error\":\"Vault not found\"}"}
+      (resp/json-error 404 "Vault not found")
 
       (not= (:tenant-id vault) tenant-id)
-      {:status 403
-       :headers {"Content-Type" "application/json"}
-       :body "{\"success\":false,\"error\":\"Permission denied\"}"}
+      (resp/json-error 403 "Permission denied")
 
       (str/blank? (:logo-object-key vault))
-      {:status 404
-       :headers {"Content-Type" "application/json"}
-       :body "{\"success\":false,\"error\":\"Logo not found\"}"}
+      (resp/json-error 404 "Logo not found")
 
       :else
       (let [logo-key (:logo-object-key vault)
@@ -477,9 +478,7 @@
                            "Content-Length" (count body)
                            "Cache-Control" "public, max-age=31536000, immutable"}
                  :body body})
-              {:status 404
-               :headers {"Content-Type" "application/json"}
-               :body "{\"success\":false,\"error\":\"Logo not found\"}"}))
+              (resp/json-error 404 "Logo not found")))
           ;; No thumbnail available, serve original
           (let [result (object-store/get-object vault-id logo-key)]
             (if result
@@ -490,9 +489,7 @@
                            "Content-Length" (count body)
                            "Cache-Control" "public, max-age=31536000, immutable"}
                  :body body})
-              {:status 404
-               :headers {"Content-Type" "application/json"}
-               :body "{\"success\":false,\"error\":\"Logo not found\"}"})))))))
+              (resp/json-error 404 "Logo not found"))))))))
 
 ;; ============================================================
 ;; Admin Asset Serving
@@ -518,20 +515,14 @@
         vault (db/get-vault-by-id vault-id)]
     (cond
       (nil? vault)
-      {:status 404
-       :headers {"Content-Type" "application/json"}
-       :body "{\"success\":false,\"error\":\"Vault not found\"}"}
-      
+      (resp/json-error 404 "Vault not found")
+
       (not= (:tenant-id vault) tenant-id)
-      {:status 403
-       :headers {"Content-Type" "application/json"}
-       :body "{\"success\":false,\"error\":\"Permission denied\"}"}
-      
+      (resp/json-error 403 "Permission denied")
+
       (or (nil? path) (str/blank? path))
-      {:status 400
-       :headers {"Content-Type" "application/json"}
-       :body "{\"success\":false,\"error\":\"Missing path\"}"}
-      
+      (resp/json-error 400 "Missing path")
+
       :else
       (let [result (object-store/get-object vault-id path)]
         (if result
@@ -542,6 +533,4 @@
                        "Content-Length" (count body)
                        "Cache-Control" "public, max-age=31536000, immutable"}
              :body body})
-          {:status 404
-           :headers {"Content-Type" "application/json"}
-           :body "{\"success\":false,\"error\":\"Not found\"}"})))))
+          (resp/json-error 404 "Not found"))))))
