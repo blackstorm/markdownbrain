@@ -54,10 +54,12 @@
                                     :put admin/update-vault-root-note}]
           ["/vaults/:id/root-note-selector" {:middleware [middleware/wrap-auth]
                                               :get admin/get-root-note-selector}]
-          ["/vaults/:id/logo" {:post {:middleware [middleware/wrap-auth]
-                                       :handler admin/upload-vault-logo}
-                                :delete {:middleware [middleware/wrap-auth]
-                                         :handler admin/delete-vault-logo}}]]]
+          ["/vaults/:id/logo" {:get {:middleware [middleware/wrap-auth]
+                                      :handler admin/serve-vault-logo}
+                               :post {:middleware [middleware/wrap-auth]
+                                      :handler admin/upload-vault-logo}
+                               :delete {:middleware [middleware/wrap-auth]
+                                        :handler admin/delete-vault-logo}}]]]
         ;; Conditionally add domain-check route when on-demand TLS is enabled
         domain-check-route ["/admin/domain-check" {:get internal/domain-check}]]
     (if (config/on-demand-tls-enabled?)

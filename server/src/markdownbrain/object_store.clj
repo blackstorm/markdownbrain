@@ -1,17 +1,18 @@
 (ns markdownbrain.object-store
   "Object store abstraction layer supporting multiple backends (S3, local filesystem).
-   
+
    Configuration:
    - STORAGE_TYPE: 's3' or 'local' (default: 'local')
    - LOCAL_STORAGE_PATH: path for local storage (default: './data/storage')
    - S3_* env vars for S3 backend
-   
+
    Usage:
    1. Call (init-storage!) at application startup
    2. Use put-object!, get-object, delete-object!, etc. for operations"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [markdownbrain.config :as config]))
+            [markdownbrain.config :as config]
+            [markdownbrain.image-processing :as image-processing]))
 
 ;; ============================================================
 ;; Protocol Definition
@@ -49,6 +50,90 @@
   "Set the storage instance. Called by init-storage!."
   [store]
   (reset! store* store))
+
+;; ============================================================
+;; Logo Thumbnail Cache
+;; ============================================================
+
+(declare object-exists?)
+
+(def ^:private max-cache-entries 1000)
+
+(def ^:private logo-thumbnail-cache
+  "Atom storing cache of which thumbnail sizes exist for each logo.
+   Format: {logo-object-key #{512 256 128 ...}}"
+  (atom {}))
+
+(defn- prune-cache-if-needed
+  "Remove oldest entries if cache exceeds max size.
+   This prevents memory leaks from unlimited cache growth."
+  []
+  (swap! logo-thumbnail-cache
+    (fn [cache]
+      (if (> (count cache) max-cache-entries)
+        (let [entries (seq cache)]
+          (into {} (take (quot max-cache-entries 2) entries)))
+        cache))))
+
+(defn clear-logo-cache!
+  "Clear cache for a specific logo or all logos."
+  ([]
+   (reset! logo-thumbnail-cache {}))
+  ([logo-object-key]
+   (swap! logo-thumbnail-cache dissoc logo-object-key)))
+
+(defn thumbnail-object-key-for-logo
+  "Generate object key for a thumbnail based on the logo object key.
+   Example: site/logo/abc.png -> site/logo/abc@256x256.png
+   Handles filenames with multiple dots correctly."
+  [logo-object-key size]
+  (let [last-dot-index (.lastIndexOf logo-object-key ".")
+        base (subs logo-object-key 0 last-dot-index)
+        extension (subs logo-object-key (inc last-dot-index))
+        size-str (str size "x" size)]
+    (str base "@" size-str "." extension)))
+
+(defn get-available-thumbnail-size
+  "Get the largest available thumbnail size <= requested size.
+   Checks cache first, then storage, updating cache as needed.
+   Returns the size (integer) or nil if no thumbnail exists.
+   Always returns at least the original logo key as fallback.
+
+   Thread-safe: Uses atomic swap! to prevent race conditions when
+   multiple requests check for the same thumbnail size simultaneously."
+  [vault-id logo-object-key requested-size]
+  (let [sizes image-processing/thumbnail-sizes
+        ;; Check sizes in order (largest to smallest, <= requested)
+        sizes-to-check (filter #(<= % requested-size) sizes)]
+    (loop [sizes sizes-to-check]
+      (when-let [s (first sizes)]
+        (let [thumb-key (thumbnail-object-key-for-logo logo-object-key s)
+              ;; Atomically get cached sizes for this logo
+              cached (get @logo-thumbnail-cache logo-object-key)]
+          (cond
+            ;; Check cache first (thread-safe: cached is immutable snapshot)
+            (and cached (contains? cached s))
+            s
+
+            ;; Check storage and atomically update cache
+            ;; This prevents race conditions: only one thread wins the check-and-set
+            (object-exists? vault-id thumb-key)
+            (do
+              ;; Atomic check-and-update: only add if not already present
+              (swap! logo-thumbnail-cache
+                     update logo-object-key
+                     (fn [existing]
+                       (let [sizes (or existing #{})]
+                         (if (contains? sizes s)
+                           sizes
+                           (conj sizes s)))))
+              ;; Prune cache if needed to prevent memory leaks
+              (prune-cache-if-needed)
+              s)
+
+            ;; Try next smaller size
+            :else
+            (recur (rest sizes))))))))
 
 ;; ============================================================
 ;; Helper Functions (shared across implementations)

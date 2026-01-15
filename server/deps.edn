@@ -42,7 +42,10 @@
         ;; 工具
         metosin/jsonista {:mvn/version "0.3.13"}
         clj-time/clj-time {:mvn/version "0.15.2"}
-        
+
+        ;; 图片处理
+        net.coobird/thumbnailator {:mvn/version "0.4.20"}
+
         ;; 配置管理
         cprop/cprop {:mvn/version "0.1.20"}}
 

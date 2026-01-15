@@ -1,7 +1,15 @@
 (ns markdownbrain.object-store-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+            [clojure.string :as str]
             [markdownbrain.object-store :as store]
             [markdownbrain.object-store.s3 :as s3]))
+
+;; Clear logo thumbnail cache before each test to prevent state leakage
+(defn clear-cache-fixture [f]
+  (store/clear-logo-cache!)
+  (f))
+
+(use-fixtures :each clear-cache-fixture)
 
 ;; =============================================================================
 ;; Pure Function Tests (no mocking needed)
@@ -119,6 +127,140 @@
 ;; For now, we test the pure functions above. Integration tests with 
 ;; actual S3/RustFS can be added later with test containers or a 
 ;; dedicated test S3 endpoint.
+
+;; =============================================================================
+;; Logo Thumbnail Cache Tests
+;; =============================================================================
+
+(deftest test-thumbnail-object-key-for-logo-simple
+  (testing "Generate thumbnail key for simple filename"
+    (is (= "site/logo/abc123@256x256.png"
+           (store/thumbnail-object-key-for-logo "site/logo/abc123.png" 256))
+        "Should insert @256x256 before extension")
+
+    (is (= "site/logo/abc123@512x512.jpg"
+           (store/thumbnail-object-key-for-logo "site/logo/abc123.jpg" 512))
+        "Should work with JPEG extension")
+
+    (is (= "site/logo/abc123@32x32.webp"
+           (store/thumbnail-object-key-for-logo "site/logo/abc123.webp" 32))
+        "Should work with WebP extension")))
+
+(deftest test-thumbnail-object-key-for-logo-multi-segment
+  (testing "Generate thumbnail key for filename with multiple dots"
+    (is (= "site/logo/v2.0@256x256.png"
+           (store/thumbnail-object-key-for-logo "site/logo/v2.0.png" 256))
+        "Should handle version numbers with dots")
+
+    (is (= "site/logo/my.logo.file@128x128.png"
+           (store/thumbnail-object-key-for-logo "site/logo/my.logo.file.png" 128))
+        "Should handle multiple dots in filename")
+
+    (is (= "site/logo/test.image.final@64x64.jpg"
+           (store/thumbnail-object-key-for-logo "site/logo/test.image.final.jpg" 64))
+        "Should handle complex filenames")))
+
+(deftest test-thumbnail-object-key-for-logo-all-sizes
+  (testing "Generate thumbnail keys for all supported sizes"
+    (let [base-key "site/logo/test.png"]
+      (doseq [size [512 256 128 64 32]]
+        (let [thumb-key (store/thumbnail-object-key-for-logo base-key size)]
+          (is (str/includes? thumb-key (str size "x" size))
+              (str "Should contain " size "x" size))
+          (is (str/ends-with? thumb-key ".png")
+              "Should end with .png")
+          (is (str/includes? thumb-key "@")
+              "Should contain @ separator"))))))
+
+(deftest test-clear-logo-cache-all
+  (testing "Clear all logo cache"
+    ;; Note: We can't directly manipulate the private cache atom,
+    ;; but we can verify that calling clear-logo-cache! doesn't throw
+    (store/clear-logo-cache!)
+    (is true "Clear all cache should not throw")))
+
+(deftest test-clear-logo-cache-specific
+  (testing "Clear cache for specific logo"
+    ;; Note: We can't directly manipulate the private cache atom,
+    ;; but we can verify that calling clear-logo-cache! doesn't throw
+    (store/clear-logo-cache! "site/logo/a.png")
+    (is true "Clear specific logo cache should not throw")))
+
+(deftest test-get-available-thumbnail-size-cache-hit
+  (testing "Get available thumbnail size from cache"
+    ;; Note: Can't test cache directly without accessing private atom,
+    ;; but we can test the get-available-thumbnail-size function with mocking
+    (with-redefs [store/object-exists? (fn [_ _] false)]
+
+      ;; When no objects exist, should return nil
+      (let [result (store/get-available-thumbnail-size "vault-id" "site/logo/test.png" 256)]
+        (is (nil? result)
+            "Should return nil when no thumbnail exists")))))
+
+(deftest test-get-available-thumbnail-size-cache-miss-storage-hit
+  (testing "Get available thumbnail size from storage when not in cache"
+    (with-redefs [store/object-exists? (fn [vault-id key]
+                                         (and (= vault-id "vault-id")
+                                              (= key "site/logo/test@256x256.png")))]
+
+      ;; Request 256 - should check storage and find it
+      (let [result (store/get-available-thumbnail-size "vault-id" "site/logo/test.png" 256)]
+        (is (= 256 result)
+            "Should return 256 from storage")))))
+
+(deftest test-get-available-thumbnail-size-fallback-to-smaller
+  (testing "Fallback to smaller size when requested size not available"
+    (with-redefs [store/object-exists? (fn [vault-id key]
+                                         (cond
+                                           ;; Only 256 exists
+                                           (= key "site/logo/test@256x256.png") true
+                                           ;; Others don't exist
+                                           :else false))]
+
+      ;; Request 512 - should fall back to 256
+      (let [result (store/get-available-thumbnail-size "vault-id" "site/logo/test.png" 512)]
+        (is (= 256 result)
+            "Should return 256 as fallback")))))
+
+(deftest test-get-available-thumbnail-size-no-match
+  (testing "Return nil when no thumbnail available"
+    (with-redefs [store/object-exists? (fn [_ _] false)]
+
+      ;; Request 512 - nothing available
+      (let [result (store/get-available-thumbnail-size "vault-id" "site/logo/test.png" 512)]
+        (is (nil? result)
+            "Should return nil when no thumbnail available")))))
+
+(deftest test-get-available-thumbnail-size-cascade-through-sizes
+  (testing "Cascade through sizes in descending order"
+    (let [checked-sizes (atom [])]
+      (with-redefs [store/object-exists? (fn [vault-id key]
+                                           (when-let [[_ size] (re-find #"(\d+)x\d+" key)]
+                                             (swap! checked-sizes conj (Integer/parseInt size))
+                                             ;; Only 64 exists
+                                             (= size "64")))]
+
+        ;; Request 512 - should check 512, 256, 128, then find 64
+        (let [result (store/get-available-thumbnail-size "vault-id" "site/logo/test.png" 512)]
+          (is (= 64 result)
+              "Should find 64 after checking larger sizes")
+
+          (is (= [512 256 128 64] @checked-sizes)
+              "Should have checked sizes in descending order"))))))
+
+(deftest test-get-available-thumbnail-size-respects-requested-limit
+  (testing "Only check sizes <= requested size"
+    (let [checked-sizes (atom [])]
+      (with-redefs [store/object-exists? (fn [vault-id key]
+                                           (when-let [[_ size] (re-find #"(\d+)x\d+" key)]
+                                             (swap! checked-sizes conj (Integer/parseInt size))
+                                             false))]
+
+        ;; Request 64 - should only check sizes <= 64
+        (let [result (store/get-available-thumbnail-size "vault-id" "site/logo/test.png" 64)]
+          (is (nil? result))
+          (is (= [64 32] @checked-sizes)
+              "Should only check 64 and 32 (both <= 64)"))))))
 
 ;; TODO: Add integration tests when RustFS is available in test environment
 ;; - test-put-object!

@@ -3,10 +3,13 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [markdownbrain.db :as db]
+   [markdownbrain.image-processing :as image-processing]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
    [markdownbrain.utils :as utils]
    [selmer.parser :as selmer]))
+
+(declare input-stream->bytes)
 
 (defn init-admin [request]
   (if (db/has-any-user?)
@@ -275,19 +278,18 @@
                                      :root-note-id root-note-id})}))))
 
 (def ^:private allowed-logo-types
-  #{"image/png" "image/jpeg" "image/gif" "image/webp" "image/svg+xml"})
+  #{"image/png" "image/jpeg" "image/webp"})
 
 (def ^:private logo-extension-map
   {"image/png" "png"
    "image/jpeg" "jpg"
-   "image/gif" "gif"
-   "image/webp" "webp"
-   "image/svg+xml" "svg"})
+   "image/webp" "webp"})
 
 (defn upload-vault-logo
   "Upload a logo image for a vault.
    Expects multipart form data with 'logo' file field.
-   Validates: vault ownership, file type (png/jpg/gif/webp/svg), max size (2MB)."
+   Validates: vault ownership, file type (png/jpg/webp only), max size (2MB).
+   Generates thumbnails: 512x512, 256x256, 128x128, 64x64, 32x32."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -311,7 +313,7 @@
       (not (contains? allowed-logo-types (:content-type file)))
       {:status 400
        :body {:success false
-              :error (str "Invalid file type. Allowed: PNG, JPEG, GIF, WebP, SVG. Got: " (:content-type file))}}
+              :error (str "Invalid file type. Allowed: PNG, JPEG, WebP. Got: " (:content-type file))}}
 
       (> (:size file) (* 2 1024 1024)) ; 2MB limit
       {:status 400
@@ -324,20 +326,71 @@
                         (io/copy in baos)
                         (.toByteArray baos)))
             content-hash (utils/sha256-hex content)
+            content-type (:content-type file)
             object-key (object-store/logo-object-key content-hash extension)]
-        ;; Delete old logo if exists (different key means different file)
+
+        ;; Delete old logo and all possible thumbnails if exists (different key means different file)
         (when-let [old-key (:logo-object-key vault)]
           (when (not= old-key object-key)
+            ;; Clear cache for old logo
+            (object-store/clear-logo-cache! old-key)
+            ;; Delete old thumbnails by trying each size
+            (doseq [size image-processing/thumbnail-sizes]
+              (let [thumb-key (object-store/thumbnail-object-key-for-logo old-key size)]
+                (try
+                  (object-store/delete-object! vault-id thumb-key)
+                  (catch Exception _
+                    ;; Ignore if thumbnail doesn't exist
+                    ))))
+            ;; Delete old logo
             (object-store/delete-object! vault-id old-key)))
-        ;; Upload to S3
-        (object-store/put-object! vault-id object-key content (:content-type file))
-        ;; Update DB
-        (db/update-vault-logo! vault-id object-key)
-        (resp/success {:message "Logo uploaded successfully"
-                       :logo-url (admin-asset-url vault-id object-key)})))))
+
+        ;; Upload original
+        (object-store/put-object! vault-id object-key content content-type)
+
+        ;; Generate and upload thumbnails with transaction safety (fixes problem 4)
+        (try
+          (let [thumbnails (image-processing/generate-thumbnails
+                           content content-type content-hash extension)
+                ;; Track uploaded thumbnail keys for rollback
+                uploaded-thumbs (atom [])]
+
+            ;; Upload all thumbnails, tracking for rollback
+            (try
+              (doseq [{:keys [object-key thumb-bytes]} (vals thumbnails)]
+                (object-store/put-object! vault-id object-key thumb-bytes content-type)
+                (swap! uploaded-thumbs conj object-key))
+
+              ;; If all thumbnails uploaded successfully, update DB
+              (db/update-vault-logo! vault-id object-key)
+
+              ;; Clear cache for new logo so it will be lazily loaded on first request
+              ;; This removes the need for synchronous pre-warming (fixes problem 6)
+              (object-store/clear-logo-cache! object-key)
+
+              (resp/success {:message "Logo uploaded successfully"
+                             :logo-url (admin-asset-url vault-id object-key)})
+
+              (catch Exception e
+                ;; Rollback: delete any thumbnails that were uploaded
+                (doseq [thumb-key @uploaded-thumbs]
+                  (try
+                    (object-store/delete-object! vault-id thumb-key)
+                    (catch Exception _)))
+                ;; Also delete the original logo
+                (try
+                  (object-store/delete-object! vault-id object-key)
+                  (catch Exception _))
+                ;; Re-throw the exception
+                (throw e))))
+
+          (catch Exception e
+            {:status 500
+             :body {:success false
+                    :error (str "Failed to upload logo: " (.getMessage e))}}))))))
 
 (defn delete-vault-logo
-  "Remove the logo for a vault."
+  "Remove the logo and all thumbnails for a vault."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -357,11 +410,89 @@
 
       :else
       (do
-        ;; Delete from S3
+        ;; Clear cache for this logo
+        (object-store/clear-logo-cache! (:logo-object-key vault))
+        ;; Delete all thumbnails from storage (try each size)
+        (doseq [size image-processing/thumbnail-sizes]
+          (let [thumb-key (object-store/thumbnail-object-key-for-logo (:logo-object-key vault) size)]
+            (try
+              (object-store/delete-object! vault-id thumb-key)
+              (catch Exception _
+                ;; Ignore if thumbnail doesn't exist
+                ))))
+        ;; Delete original logo from storage
         (object-store/delete-object! vault-id (:logo-object-key vault))
         ;; Clear DB reference
         (db/update-vault-logo! vault-id nil)
         (resp/success {:message "Logo deleted successfully"})))))
+
+;; ============================================================
+;; Vault Logo Serving with Smart Thumbnail Fallback
+;; ============================================================
+
+(defn serve-vault-logo
+  "Serve vault logo with smart thumbnail fallback.
+   Route: GET /admin/vaults/:id/logo?size=N
+
+   Query param ?size=N (default: 512)
+   If requested size doesn't exist, falls back to next smaller size.
+   Returns 404 if no logo is set."
+  [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)
+        size-param (or (get-in request [:params "size"]) "512")
+        requested-size (try (Integer/parseInt size-param)
+                           (catch Exception _ 512))]
+    (cond
+      (nil? vault)
+      {:status 404
+       :headers {"Content-Type" "application/json"}
+       :body "{\"success\":false,\"error\":\"Vault not found\"}"}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 403
+       :headers {"Content-Type" "application/json"}
+       :body "{\"success\":false,\"error\":\"Permission denied\"}"}
+
+      (str/blank? (:logo-object-key vault))
+      {:status 404
+       :headers {"Content-Type" "application/json"}
+       :body "{\"success\":false,\"error\":\"Logo not found\"}"}
+
+      :else
+      (let [logo-key (:logo-object-key vault)
+            available-size (object-store/get-available-thumbnail-size
+                            vault-id logo-key requested-size)]
+        (if (and available-size (<= available-size requested-size))
+          (let [object-key (if (= available-size requested-size)
+                            logo-key
+                            (object-store/thumbnail-object-key-for-logo logo-key available-size))
+                result (object-store/get-object vault-id object-key)]
+            (if result
+              (let [body (input-stream->bytes (:Body result))
+                    content-type (or (:ContentType result) "application/octet-stream")]
+                {:status 200
+                 :headers {"Content-Type" content-type
+                           "Content-Length" (count body)
+                           "Cache-Control" "public, max-age=31536000, immutable"}
+                 :body body})
+              {:status 404
+               :headers {"Content-Type" "application/json"}
+               :body "{\"success\":false,\"error\":\"Logo not found\"}"}))
+          ;; No thumbnail available, serve original
+          (let [result (object-store/get-object vault-id logo-key)]
+            (if result
+              (let [body (input-stream->bytes (:Body result))
+                    content-type (or (:ContentType result) "application/octet-stream")]
+                {:status 200
+                 :headers {"Content-Type" content-type
+                           "Content-Length" (count body)
+                           "Cache-Control" "public, max-age=31536000, immutable"}
+                 :body body})
+              {:status 404
+               :headers {"Content-Type" "application/json"}
+               :body "{\"success\":false,\"error\":\"Logo not found\"}"})))))))
 
 ;; ============================================================
 ;; Admin Asset Serving
@@ -388,18 +519,18 @@
     (cond
       (nil? vault)
       {:status 404
-       :headers {"Content-Type" "text/plain"}
-       :body "Vault not found"}
+       :headers {"Content-Type" "application/json"}
+       :body "{\"success\":false,\"error\":\"Vault not found\"}"}
       
       (not= (:tenant-id vault) tenant-id)
       {:status 403
-       :headers {"Content-Type" "text/plain"}
-       :body "Permission denied"}
+       :headers {"Content-Type" "application/json"}
+       :body "{\"success\":false,\"error\":\"Permission denied\"}"}
       
       (or (nil? path) (str/blank? path))
       {:status 400
-       :headers {"Content-Type" "text/plain"}
-       :body "Missing path"}
+       :headers {"Content-Type" "application/json"}
+       :body "{\"success\":false,\"error\":\"Missing path\"}"}
       
       :else
       (let [result (object-store/get-object vault-id path)]
@@ -408,8 +539,9 @@
                 content-type (or (:ContentType result) "application/octet-stream")]
             {:status 200
              :headers {"Content-Type" content-type
+                       "Content-Length" (count body)
                        "Cache-Control" "public, max-age=31536000, immutable"}
              :body body})
           {:status 404
-           :headers {"Content-Type" "text/plain"}
-           :body "Not found"})))))
+           :headers {"Content-Type" "application/json"}
+           :body "{\"success\":false,\"error\":\"Not found\"}"})))))
