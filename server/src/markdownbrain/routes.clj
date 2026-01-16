@@ -59,7 +59,9 @@
                                :post {:middleware [middleware/wrap-auth]
                                       :handler admin/upload-vault-logo}
                                :delete {:middleware [middleware/wrap-auth]
-                                        :handler admin/delete-vault-logo}}]]]
+                                        :handler admin/delete-vault-logo}}]
+          ["/vaults/:id/favicon" {:get {:middleware [middleware/wrap-auth]
+                                        :handler admin/serve-vault-favicon}}]]]
         ;; Conditionally add domain-check route when on-demand TLS is enabled
         domain-check-route ["/admin/domain-check" {:get internal/domain-check}]]
     (if (config/on-demand-tls-enabled?)

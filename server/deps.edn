@@ -44,7 +44,7 @@
         clj-time/clj-time {:mvn/version "0.15.2"}
 
         ;; 图片处理
-        net.coobird/thumbnailator {:mvn/version "0.4.20"}
+        net.coobird/thumbnailator {:mvn/version "0.4.21"}
 
         ;; 配置管理
         cprop/cprop {:mvn/version "0.1.20"}}

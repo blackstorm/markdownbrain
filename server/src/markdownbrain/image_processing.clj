@@ -1,6 +1,6 @@
 (ns markdownbrain.image-processing
-  "Image processing utilities for thumbnail generation.
-   Supports PNG, JPEG, WebP formats only (no SVG/GIF for logos)."
+  "Image processing utilities for favicon generation.
+   Simplified to only generate 32x32 favicon for website logos."
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log])
   (:import [javax.imageio ImageIO]
@@ -9,14 +9,8 @@
            [net.coobird.thumbnailator Thumbnails]
            [net.coobird.thumbnailator.geometry Positions]))
 
-;; Supported thumbnail sizes (1:1 aspect ratio)
-(def ^:private thumbnail-sizes
-  "Supported thumbnail sizes for logo generation."
-  [512 256 128 64 32])
-
-(def thumbnail-sizes
-  "Public constant for thumbnail sizes, used by other modules."
-  thumbnail-sizes)
+;; Favicon size (1:1 aspect ratio)
+(def ^:private favicon-size 32)
 
 (defn- format-from-content-type
   "Get image format name from content-type.
@@ -68,33 +62,23 @@
       (log/error "Failed to generate thumbnail:" target-size (.getMessage e))
       (throw e))))
 
-(defn thumbnail-object-key
-  "Generate object key for a thumbnail.
-   Example: site/logo/abc123@256x256.png"
-  [content-hash size extension]
-  (str "site/logo/" content-hash "@" size "x" size "." extension))
+(defn generate-favicon
+  "Generate 32x32 favicon for a logo.
+   Returns nil if image is too small or format is unsupported.
 
-(defn generate-thumbnails
-  "Generate all applicable thumbnails for a logo.
-   Returns map of {size {:object-key key :bytes bytes}}.
-   Skips sizes larger than original dimensions."
+   NOTE: WebP support depends on ImageIO plugins. Standard Java ImageIO doesn't
+   include WebP support by default. If WebP files fail to process, consider using
+   PNG or JPEG format instead, or add a WebP ImageIO plugin to your classpath."
   [bytes content-type content-hash extension]
   (let [format (format-from-content-type content-type)
         original-dims (get-image-dimensions bytes)]
-    (if (and format original-dims)
-      (into {}
-            (for [size thumbnail-sizes
-                  :when (can-generate-thumbnail? original-dims size)]
-              (try
-                (let [thumb-bytes (generate-square-thumbnail bytes size format)
-                      object-key (thumbnail-object-key content-hash size extension)]
-                  (log/debug "Generated thumbnail:" size "x" size)
-                  [(keyword (str size))
-                   {:object-key object-key
-                    :bytes thumb-bytes}])
-                (catch Exception e
-                  (log/warn "Failed to generate" size "x" size "thumbnail:" (.getMessage e))
-                  nil))))
-      (do
-        (log/warn "Could not generate thumbnails - unsupported format or could not read dimensions")
-        {}))))
+    (when (and format (can-generate-thumbnail? original-dims favicon-size))
+      (try
+        (let [thumb-bytes (generate-square-thumbnail bytes favicon-size format)
+              object-key (str "site/logo/" content-hash "@favicon." extension)]
+          (log/debug "Generated favicon:" favicon-size "x" favicon-size)
+          {:object-key object-key
+           :bytes thumb-bytes})
+        (catch Exception e
+          (log/warn "Failed to generate favicon:" (.getMessage e))
+          nil)))))
