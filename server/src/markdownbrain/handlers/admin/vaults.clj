@@ -215,3 +215,29 @@
                                    {:notes notes
                                     :vault-id vault-id
                                     :root-note-id root-note-id})}))))
+
+(defn renew-vault-sync-key
+  "Generate a new sync key for a vault."
+  [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        vault (db/get-vault-by-id vault-id)
+        new-sync-key (utils/generate-uuid)]
+    (cond
+      (nil? vault)
+      {:status 200
+       :body {:success false
+              :error "Site not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 200
+       :body {:success false
+              :error "Permission denied"}}
+
+      :else
+      (do
+        (db/update-vault-sync-key! vault-id new-sync-key)
+        {:status 200
+         :body {:success true
+                :message "Sync key renewed"
+                :sync-key new-sync-key}}))))

@@ -35,6 +35,7 @@
 (def search-vault-notes vaults/search-vault-notes)
 (def update-vault-root-note vaults/update-vault-root-note)
 (def get-root-note-selector vaults/get-root-note-selector)
+(def renew-vault-sync-key vaults/renew-vault-sync-key)
 
 ;; ============================================================
 ;; Logo handlers

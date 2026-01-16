@@ -143,6 +143,11 @@
   (execute-one! ["UPDATE vaults SET name = ?, domain = ? WHERE id = ?"
                  name domain vault-id]))
 
+(defn update-vault-sync-key! [vault-id new-sync-key]
+  "Update the sync key for a vault."
+  (execute-one! ["UPDATE vaults SET sync_key = ? WHERE id = ?"
+                 new-sync-key vault-id]))
+
 ;; Note 操作
 (defn upsert-note! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!

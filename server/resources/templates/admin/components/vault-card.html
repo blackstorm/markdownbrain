@@ -3,126 +3,177 @@
   - vault: vault object with id, name, domain, sync-key, masked-key, root-note-id, notes, logo-object-key
 -->
 <div class="vault-card">
-    <!-- Header -->
-    <div class="vault-header">
-      <div class="vault-info">
-        <h3>{{vault.name}}</h3>
-        <a href="http://{{vault.domain}}" target="_blank" class="vault-domain">
-          <i data-lucide="globe" class="icon-xs"></i>
-          <span>{{vault.domain}}</span>
+  <!-- Header -->
+  <div class="vault-header">
+    <div class="vault-info">
+      <h3>{{vault.name}}</h3>
+      <a href="http://{{vault.domain}}" target="_blank" class="vault-domain">
+        <i data-lucide="globe" class="icon-xs"></i>
+        <span>{{vault.domain}}</span>
+        <i data-lucide="external-link" class="icon-xs"></i>
+      </a>
+    </div>
+
+    <!-- Actions -->
+    <div class="vault-actions">
+      <button
+        type="button"
+        class="action-menu-btn"
+        onclick="toggleActionMenu(this)"
+      >
+        <i data-lucide="more-vertical" class="icon-md"></i>
+      </button>
+      <div class="action-menu">
+        <button
+          type="button"
+          onclick="window.open('http://{{vault.domain}}', '_blank'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
           <i data-lucide="external-link" class="icon-xs"></i>
-        </a>
-      </div>
-
-      <!-- Actions -->
-      <div class="vault-actions">
-        <button type="button"
-                class="action-menu-btn"
-                onclick="toggleActionMenu(this)">
-          <i data-lucide="more-vertical" class="icon-md"></i>
+          <span>Open site</span>
         </button>
-        <div class="action-menu">
-          <button type="button" onclick="window.open('http://{{vault.domain}}', '_blank'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))">
-            <i data-lucide="external-link" class="icon-xs"></i>
-            <span>Open site</span>
-          </button>
-          <button type="button" onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))">
-            <i data-lucide="pencil" class="icon-xs"></i>
-            <span>Edit</span>
-          </button>
-          <button type="button"
-                  class="danger"
-                  hx-delete="/admin/vaults/{{vault.id}}"
-                  hx-confirm="Are you sure you want to delete '{{vault.name}}'? This cannot be undone."
-                  hx-swap="none"
-                  hx-on::after-request="if(event.detail.successful) { showNotification('Site deleted', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Delete failed', 'error'); }">
+        <button
+          type="button"
+          onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          <i data-lucide="pencil" class="icon-xs"></i>
+          <span>Edit</span>
+        </button>
+        <button
+          type="button"
+          class="warning"
+          hx-post="/admin/vaults/{{vault.id}}/renew-sync-key"
+          hx-confirm="Are you sure you want to renew the sync key for '{{vault.name}}'? The old key will no longer work for syncing."
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { showNotification('Sync key renewed', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Failed to renew sync key', 'error'); } toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          <i data-lucide="refresh-cw" class="icon-xs"></i>
+          <span>Renew key</span>
+        </button>
+        <button
+          type="button"
+          class="danger"
+          hx-delete="/admin/vaults/{{vault.id}}"
+          hx-confirm="Are you sure you want to delete '{{vault.name}}'? This cannot be undone."
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { showNotification('Site deleted', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Delete failed', 'error'); }"
+        >
+          <i data-lucide="trash-2" class="icon-xs"></i>
+          <span>Delete</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site Logo Section -->
+  <div class="vault-section">
+    <span class="section-label">Site Logo</span>
+    <div class="logo-upload-box" id="logo-box-{{vault.id}}">
+      {% if vault.logo-url %}
+      <!-- Logo exists - show preview with delete option -->
+      <div class="logo-preview-container">
+        <img
+          src="{{vault.logo-url}}"
+          alt="Site logo"
+          class="logo-preview-img"
+          id="logo-preview-{{vault.id}}"
+        />
+        <div class="logo-actions">
+          <label class="icon-btn" title="Change logo">
+            <i data-lucide="upload" class="icon-xs"></i>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+              class="hidden"
+              onchange="uploadLogo(this, '{{vault.id}}')"
+            />
+          </label>
+          <button
+            type="button"
+            class="icon-btn"
+            title="Delete logo"
+            onclick="deleteLogo('{{vault.id}}')"
+          >
             <i data-lucide="trash-2" class="icon-xs"></i>
-            <span>Delete</span>
           </button>
         </div>
       </div>
+      {% else %}
+      <!-- No logo - show upload area -->
+      <label class="logo-upload-area" id="logo-upload-area-{{vault.id}}">
+        <i
+          data-lucide="image-plus"
+          class="icon-lg text-(--text-tertiary)"
+        ></i>
+        <span class="text-xs text-(--text-tertiary)"
+          >Click to upload logo</span
+        >
+        <span class="text-xs text-(--text-tertiary)"
+          >PNG, JPEG, GIF, WebP, SVG (max 2MB)</span
+        >
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+          class="hidden"
+          onchange="uploadLogo(this, '{{vault.id}}')"
+        />
+      </label>
+      {% endif %}
     </div>
+  </div>
 
-    <!-- Site Logo Section -->
-    <div class="vault-section">
-      <span class="section-label">Site Logo</span>
-      <div class="logo-upload-box" id="logo-box-{{vault.id}}">
-        {% if vault.logo-url %}
-        <!-- Logo exists - show preview with delete option -->
-        <div class="logo-preview-container">
-          <img src="{{vault.logo-url}}" alt="Site logo" class="logo-preview-img" id="logo-preview-{{vault.id}}">
-          <div class="logo-actions">
-            <label class="icon-btn" title="Change logo">
-              <i data-lucide="upload" class="icon-xs"></i>
-              <input type="file"
-                     accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-                     class="hidden"
-                     onchange="uploadLogo(this, '{{vault.id}}')">
-            </label>
-            <button type="button"
-                    class="icon-btn"
-                    title="Delete logo"
-                    onclick="deleteLogo('{{vault.id}}')">
-              <i data-lucide="trash-2" class="icon-xs"></i>
-            </button>
-          </div>
-        </div>
-        {% else %}
-        <!-- No logo - show upload area -->
-        <label class="logo-upload-area" id="logo-upload-area-{{vault.id}}">
-          <i data-lucide="image-plus" class="icon-lg text-[var(--text-tertiary)]"></i>
-          <span class="text-xs text-[var(--text-tertiary)]">Click to upload logo</span>
-          <span class="text-xs text-[var(--text-tertiary)]">PNG, JPEG, GIF, WebP, SVG (max 2MB)</span>
-          <input type="file"
-                 accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
-                 class="hidden"
-                 onchange="uploadLogo(this, '{{vault.id}}')">
-        </label>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- Sync Key Section -->
-    <div class="vault-section">
-      <span class="section-label">Sync Key</span>
-      <div class="sync-key-box">
-        <div class="sync-key-header">
-          <span class="text-xs text-[var(--text-tertiary)]">For Obsidian plugin sync</span>
-          <div class="sync-key-actions">
-            <button type="button"
-                    class="icon-btn"
-                    onclick="toggleSyncKey(this, '{{vault.id}}')"
-                    title="Show/Hide">
-              <i data-lucide="eye" class="icon-xs"></i>
-            </button>
-            <button type="button"
-                    class="icon-btn"
-                    onclick="copyToClipboard('{{vault.sync-key}}')"
-                    title="Copy">
-              <i data-lucide="copy" class="icon-xs"></i>
-            </button>
-          </div>
-        </div>
-        <div class="sync-key-value" id="key-{{vault.id}}" data-key="{{vault.sync-key}}">
-          {{vault.masked-key}}
+  <!-- Sync Key Section -->
+  <div class="vault-section">
+    <span class="section-label">Sync Key</span>
+    <div class="sync-key-box">
+      <div class="sync-key-header">
+        <span class="text-xs text-(--text-tertiary)"
+          >For Obsidian plugin sync</span
+        >
+        <div class="sync-key-actions">
+          <button
+            type="button"
+            class="icon-btn"
+            onclick="toggleSyncKey(this, '{{vault.id}}')"
+            title="Show/Hide"
+          >
+            <i data-lucide="eye" class="icon-xs"></i>
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            onclick="copyToClipboard('{{vault.sync-key}}')"
+            title="Copy"
+          >
+            <i data-lucide="copy" class="icon-xs"></i>
+          </button>
         </div>
       </div>
-    </div>
-
-    <!-- Home Page Section -->
-    <div class="vault-section">
-      <span class="section-label">Home Page</span>
-      {% with vault-id=vault.id root-note-id=vault.root-note-id notes=vault.notes %}
-        {% include "templates/admin/root-note-selector.html" %}
-      {% endwith %}
-    </div>
-
-    <!-- Storage Section -->
-    <div class="vault-section">
-      <span class="section-label">Storage</span>
-      <div class="storage-info">
-        <i data-lucide="hard-drive" class="icon-xs text-[var(--text-tertiary)]"></i>
-        <span class="text-sm">{{vault.storage-size}}</span>
+      <div
+        class="sync-key-value"
+        id="key-{{vault.id}}"
+        data-key="{{vault.sync-key}}"
+      >
+        {{vault.masked-key}}
       </div>
     </div>
+  </div>
+
+  <!-- Home Page Section -->
+  <div class="vault-section">
+    <span class="section-label">Home Page</span>
+    {% with vault-id=vault.id root-note-id=vault.root-note-id notes=vault.notes
+    %} {% include "templates/admin/root-note-selector.html" %} {% endwith %}
+  </div>
+
+  <!-- Storage Section -->
+  <div class="vault-section">
+    <span class="section-label">Storage</span>
+    <div class="storage-info">
+      <i
+        data-lucide="hard-drive"
+        class="icon-xs text-[var(--text-tertiary)]"
+      ></i>
+      <span class="text-sm">{{vault.storage-size}}</span>
+    </div>
+  </div>
 </div>

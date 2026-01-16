@@ -129,3 +129,61 @@
         (is (= 200 (:status response)))
         (is (false? (get-in response [:body :success])))
         (is (= "Permission denied" (get-in response [:body :error])))))))
+
+(deftest test-renew-sync-key-success
+  (testing "Renew sync key successfully"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "renew-admin" "hash")
+          vault-id (utils/generate-uuid)
+          old-sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id "My Blog" "renew-test.com" old-sync-key)
+          request (-> (authenticated-request :post (str "/api/admin/vaults/" vault-id "/renew-sync-key")
+                                             tenant-id user-id)
+                      (assoc :path-params {:id vault-id}))
+          response (vaults/renew-vault-sync-key request)]
+      (is (= 200 (:status response)))
+      (is (get-in response [:body :success]))
+      (is (string? (get-in response [:body :sync-key])))
+      (is (not= old-sync-key (get-in response [:body :sync-key])))
+      (let [vault-after (db/get-vault-by-id vault-id)]
+        (is (= (get-in response [:body :sync-key]) (:sync-key vault-after)))
+        (is (not= old-sync-key (:sync-key vault-after)))))))
+
+(deftest test-renew-sync-key-not-found
+  (testing "Renew sync key for non-existent vault"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org")
+          user-id (utils/generate-uuid)
+          _ (db/create-user! user-id tenant-id "notfound-admin" "hash")
+          request (-> (authenticated-request :post "/api/admin/vaults/nonexistent/renew-sync-key"
+                                             tenant-id user-id)
+                      (assoc :path-params {:id "nonexistent"}))
+          response (vaults/renew-vault-sync-key request)]
+      (is (= 200 (:status response)))
+      (is (false? (get-in response [:body :success])))
+      (is (= "Site not found" (get-in response [:body :error]))))))
+
+(deftest test-renew-sync-key-wrong-tenant
+  (testing "Renew sync key from different tenant returns permission denied"
+    (let [tenant-id-1 (utils/generate-uuid)
+          tenant-id-2 (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id-1 "Org 1")
+          _ (db/create-tenant! tenant-id-2 "Org 2")
+          user-id-1 (utils/generate-uuid)
+          user-id-2 (utils/generate-uuid)
+          _ (db/create-user! user-id-1 tenant-id-1 "tenant1-admin" "hash")
+          _ (db/create-user! user-id-2 tenant-id-2 "tenant2-admin" "hash")
+          vault-id (utils/generate-uuid)
+          old-sync-key (utils/generate-uuid)
+          _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" old-sync-key)
+          request (-> (authenticated-request :post (str "/api/admin/vaults/" vault-id "/renew-sync-key")
+                                             tenant-id-2 user-id-2)
+                      (assoc :path-params {:id vault-id}))
+          response (vaults/renew-vault-sync-key request)]
+      (is (= 200 (:status response)))
+      (is (false? (get-in response [:body :success])))
+      (is (= "Permission denied" (get-in response [:body :error])))
+      (let [vault-after (db/get-vault-by-id vault-id)]
+        (is (= old-sync-key (:sync-key vault-after)))))))
