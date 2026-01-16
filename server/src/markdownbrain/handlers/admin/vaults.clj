@@ -80,7 +80,7 @@
       (nil? vault)
       {:status 200
        :body {:success false
-              :error "Site not found"}}
+              :error "Vault not found"}}
 
       (not= (:tenant-id vault) tenant-id)
       {:status 200
@@ -91,7 +91,7 @@
       (do
         (object-store/delete-vault-objects! vault-id)
         (db/delete-vault! vault-id)
-        (resp/success {:message "Site deleted"})))))
+        (resp/success {:message "Vault deleted"})))))
 
 (defn update-vault
   "Update vault name and domain."
@@ -106,7 +106,7 @@
       (nil? vault)
       {:status 200
        :body {:success false
-              :error "Site not found"}}
+              :error "Vault not found"}}
 
       (not= (:tenant-id vault) tenant-id)
       {:status 200
@@ -116,7 +116,7 @@
       (or (nil? name) (str/blank? name))
       {:status 200
        :body {:success false
-              :error "Site name is required"}}
+              :error "Vault name is required"}}
 
       (or (nil? domain) (str/blank? domain))
       {:status 200
@@ -227,7 +227,7 @@
       (nil? vault)
       {:status 200
        :body {:success false
-              :error "Site not found"}}
+              :error "Vault not found"}}
 
       (not= (:tenant-id vault) tenant-id)
       {:status 200

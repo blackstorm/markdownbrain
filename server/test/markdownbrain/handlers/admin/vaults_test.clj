@@ -107,7 +107,7 @@
           response (vaults/delete-vault request)]
       (is (= 200 (:status response)))
       (is (false? (get-in response [:body :success])))
-      (is (= "Site not found" (get-in response [:body :error]))))))
+      (is (= "Vault not found" (get-in response [:body :error]))))))
 
 (deftest test-delete-vault-wrong-tenant
   (testing "Delete vault from different tenant returns permission denied"
@@ -163,7 +163,7 @@
           response (vaults/renew-vault-sync-key request)]
       (is (= 200 (:status response)))
       (is (false? (get-in response [:body :success])))
-      (is (= "Site not found" (get-in response [:body :error]))))))
+      (is (= "Vault not found" (get-in response [:body :error]))))))
 
 (deftest test-renew-sync-key-wrong-tenant
   (testing "Renew sync key from different tenant returns permission denied"
