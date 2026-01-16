@@ -6,6 +6,7 @@
    [markdownbrain.handlers.internal :as internal]
    [markdownbrain.handlers.sync :as sync]
    [markdownbrain.middleware :as middleware]
+   [markdownbrain.response :as response]
    [muuntaja.core :as m]
    [reitit.ring :as ring]
    [reitit.ring.middleware.muuntaja :as muuntaja]
@@ -26,13 +27,14 @@
 
 (def admin-routes
   (let [base-routes
-        [["/obsidian"
+        [["/" {:get (fn [_] (response/redirect "/admin"))}]
+         ["/obsidian"
           ["/vault/info" {:get sync/vault-info}]
           ["/sync" {:post sync/sync-file}]
           ["/sync/full" {:post sync/sync-full}]
           ["/assets/sync" {:post sync/sync-asset}]]
 
-         ["/admin" 
+         ["/admin"
           ["" {:middleware [middleware/wrap-auth] :get admin/admin-home}]
           ["/health" {:get internal/health}]
           ["/login" {:get admin/login-page

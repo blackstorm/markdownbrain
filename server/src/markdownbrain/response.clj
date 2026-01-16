@@ -66,6 +66,13 @@
    :body {:success false
           :error error-msg}})
 
+(defn redirect
+  "返回 302 重定向响应"
+  [location]
+  {:status 302
+   :headers {"Location" location}
+   :body ""})
+
 (defn json-error
   "Return error response with JSON Content-Type header.
    Use this for API endpoints that return JSON errors."

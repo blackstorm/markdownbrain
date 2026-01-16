@@ -59,7 +59,7 @@
                       (let [baos (java.io.ByteArrayOutputStream.)]
                         (io/copy in baos)
                         (.toByteArray baos)))
-            content-hash (utils/sha256-hex content)
+            content-hash (utils/sha256-hex content 16)
             content-type (:content-type file)
             logo-object-key (object-store/logo-object-key content-hash extension)]
 
