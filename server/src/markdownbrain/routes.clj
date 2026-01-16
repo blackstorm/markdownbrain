@@ -19,7 +19,8 @@
     {:decode-key-fn true})))
 
 (def frontend-routes
-  [["/storage/{*path}" {:get frontend/serve-asset}]
+  [["/favicon.ico" {:get frontend/serve-favicon}]
+   ["/storage/{*path}" {:get frontend/serve-asset}]
    ["/" {:get frontend/get-note}]
    ["/{*path}" {:get frontend/get-note}]])
 

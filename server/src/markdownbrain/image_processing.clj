@@ -14,13 +14,12 @@
 
 (defn- format-from-content-type
   "Get image format name from content-type.
-   Returns 'png', 'jpeg', 'webp' or nil for unsupported."
+   Returns 'png', 'jpeg' or nil for unsupported."
   [content-type]
   (case content-type
     "image/png" "png"
     "image/jpeg" "jpeg"
     "image/jpg" "jpeg"
-    "image/webp" "webp"
     nil))
 
 (defn get-image-dimensions
@@ -65,17 +64,16 @@
 (defn generate-favicon
   "Generate 32x32 favicon for a logo.
    Returns nil if image is too small or format is unsupported.
-
-   NOTE: WebP support depends on ImageIO plugins. Standard Java ImageIO doesn't
-   include WebP support by default. If WebP files fail to process, consider using
-   PNG or JPEG format instead, or add a WebP ImageIO plugin to your classpath."
+   
+   Object key format: site/logo/{hash}.{ext}@favicon.{ext}
+   This matches how serve-favicon constructs the key from logo-object-key."
   [bytes content-type content-hash extension]
   (let [format (format-from-content-type content-type)
         original-dims (get-image-dimensions bytes)]
     (when (and format (can-generate-thumbnail? original-dims favicon-size))
       (try
         (let [thumb-bytes (generate-square-thumbnail bytes favicon-size format)
-              object-key (str "site/logo/" content-hash "@favicon." extension)]
+              object-key (str "site/logo/" content-hash "." extension "@favicon." extension)]
           (log/debug "Generated favicon:" favicon-size "x" favicon-size)
           {:object-key object-key
            :bytes thumb-bytes})

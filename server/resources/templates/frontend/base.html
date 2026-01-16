@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}MarkdownBrain{% endblock %}</title>
   {% if description %}<meta name="description" content="{{ description }}">{% endif %}
-  {% if vault.logo-url %}<link rel="icon" href="{{ vault.logo-url }}">{% endif %}
+  {% if vault.logo-object-key %}<link rel="icon" href="/favicon.ico">{% endif %}
   <link rel="stylesheet" href="/publics/frontend/css/frontend.css">
   <link rel="stylesheet" href="/publics/shared/katex.min.css">
 </head>
@@ -14,7 +14,10 @@
     <header class="navbar">
       <div class="navbar-content px-4 md:px-8">
         <div class="navbar-left">
-          <a href="/" class="navbar-logo">{{ vault.name|default:"MarkdownBrain" }}</a>
+          <a href="/" class="navbar-logo">
+            {% if vault.logo-object-key %}<img src="/storage/{{ vault.logo-object-key }}" alt="{{ vault.name }}" class="navbar-logo-img">{% endif %}
+            <span>{{ vault.name|default:"MarkdownBrain" }}</span>
+          </a>
         </div>
         <div class="navbar-right">
           <small class="navbar-link">Powered by <a href="https://github.com/blackstorm/markdownbrain" target="_blank">MarkdownBrain</a></small>

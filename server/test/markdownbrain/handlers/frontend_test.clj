@@ -445,5 +445,106 @@
           (is (str/includes? (get-in response [:headers "Cache-Control"]) "max-age"))
           (is (str/includes? (get-in response [:headers "Cache-Control"]) "immutable")))))))
 
+;; ============================================================
+;; Favicon Serving Tests
+;; ============================================================
+
+(deftest test-serve-favicon
+  (testing "Serve favicon successfully"
+    (let [temp-storage (create-temp-storage)
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org Favicon")
+          vault-id (utils/generate-uuid)
+          domain "favicon-test.com"
+          _ (db/create-vault! vault-id tenant-id "Favicon Test" domain (utils/generate-uuid))
+          logo-hash "fav123"
+          logo-object-key (str "site/logo/" logo-hash ".png")
+          favicon-object-key (str logo-object-key "@favicon.png")
+          _ (db/update-vault-logo! vault-id logo-object-key)]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        (object-store/put-object! vault-id favicon-object-key "favicon-content" "image/png")
+        
+        (let [request (-> (mock/request :get "/favicon.ico")
+                          (assoc :headers {"host" domain}))
+              response (frontend/serve-favicon request)]
+          
+          (is (= 200 (:status response)))
+          (is (= "image/png" (get-in response [:headers "Content-Type"])))
+          (is (= "favicon-content" (String. (:body response) "UTF-8")))
+          (is (str/includes? (get-in response [:headers "Cache-Control"]) "max-age=3600"))
+          (is (= (str "\"" logo-hash "\"") (get-in response [:headers "ETag"])))))))
+  
+  (testing "Fallback to logo when favicon not found"
+    (let [temp-storage (create-temp-storage)
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org Favicon Fallback")
+          vault-id (utils/generate-uuid)
+          domain "favicon-fallback-test.com"
+          _ (db/create-vault! vault-id tenant-id "Favicon Fallback Test" domain (utils/generate-uuid))
+          logo-hash "fallback456"
+          logo-object-key (str "site/logo/" logo-hash ".png")
+          _ (db/update-vault-logo! vault-id logo-object-key)]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        ;; Only store logo, not favicon
+        (object-store/put-object! vault-id logo-object-key "original-logo" "image/png")
+        
+        (let [request (-> (mock/request :get "/favicon.ico")
+                          (assoc :headers {"host" domain}))
+              response (frontend/serve-favicon request)]
+          
+          (is (= 200 (:status response)))
+          (is (= "original-logo" (String. (:body response) "UTF-8")))))))
+  
+  (testing "Return 304 Not Modified when ETag matches"
+    (let [temp-storage (create-temp-storage)
+          tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org Favicon ETag")
+          vault-id (utils/generate-uuid)
+          domain "favicon-etag-test.com"
+          _ (db/create-vault! vault-id tenant-id "Favicon ETag Test" domain (utils/generate-uuid))
+          logo-hash "etag789"
+          logo-object-key (str "site/logo/" logo-hash ".png")
+          _ (db/update-vault-logo! vault-id logo-object-key)]
+      
+      (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
+                    config/storage-type (constantly :local)]
+        (object-store/set-store! (local-store/create-local-store))
+        (object-store/put-object! vault-id logo-object-key "favicon-content" "image/png")
+        
+        ;; Request with matching ETag
+        (let [request (-> (mock/request :get "/favicon.ico")
+                          (assoc :headers {"host" domain
+                                           "if-none-match" (str "\"" logo-hash "\"")}))
+              response (frontend/serve-favicon request)]
+          
+          (is (= 304 (:status response)))
+          (is (nil? (:body response)))))))
+  
+  (testing "Return 404 for vault without logo"
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org No Favicon")
+          vault-id (utils/generate-uuid)
+          domain "no-favicon-test.com"
+          _ (db/create-vault! vault-id tenant-id "No Favicon Test" domain (utils/generate-uuid))]
+      
+      (let [request (-> (mock/request :get "/favicon.ico")
+                        (assoc :headers {"host" domain}))
+            response (frontend/serve-favicon request)]
+        
+        (is (= 404 (:status response))))))
+  
+  (testing "Return 404 for unknown domain"
+    (let [request (-> (mock/request :get "/favicon.ico")
+                      (assoc :headers {"host" "unknown-favicon-domain.com"}))
+          response (frontend/serve-favicon request)]
+      
+      (is (= 404 (:status response))))))
+
 
 

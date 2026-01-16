@@ -12,22 +12,17 @@
    [markdownbrain.utils :as utils]))
 
 (def ^:private allowed-logo-types
-  #{"image/png" "image/jpeg" "image/webp"})
+  #{"image/png" "image/jpeg"})
 
 (def ^:private logo-extension-map
   {"image/png" "png"
-   "image/jpeg" "jpg"
-   "image/webp" "webp"})
+   "image/jpeg" "jpg"})
 
 (defn upload-vault-logo
   "Upload a logo image for a vault.
    Expects multipart form data with 'logo' file field.
-   Validates: vault ownership, file type (png/jpg/webp only), max size (2MB).
-   Stores original logo (for website) and generates 32x32 favicon.
-
-   NOTE: WebP support depends on ImageIO plugins. Standard Java ImageIO doesn't
-   include WebP support by default. If WebP files fail to process, consider using
-   PNG or JPEG format instead, or add a WebP ImageIO plugin to your classpath."
+   Validates: vault ownership, file type (png/jpg only), max size (2MB), min dimensions (128x128).
+   Stores original logo (for website) and generates 32x32 favicon."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -50,7 +45,7 @@
       (not (contains? allowed-logo-types (:content-type file)))
       {:status 400
        :body {:success false
-              :error (str "Invalid file type. Allowed: PNG, JPEG, WebP. Got: " (:content-type file))}}
+              :error (str "Invalid file type. Allowed: PNG, JPEG. Got: " (:content-type file))}}
 
       (or (zero? (:size file)) (> (:size file) (* 2 1024 1024)))
       {:status 400
@@ -88,7 +83,7 @@
             (object-store/put-object! vault-id (:object-key favicon)
                                       (:bytes favicon) content-type))
           (catch Exception e
-            (log/warn "Favicon generation failed, continuing without it:" (.getMessage e))))
+            (log/warn "Favicon generation failed:" (.getMessage e))))
 
         ;; Update database with logo key
         (db/update-vault-logo! vault-id logo-object-key)

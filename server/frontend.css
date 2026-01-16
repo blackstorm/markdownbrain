@@ -35,6 +35,9 @@ body {
 }
 
 .navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   color: #111827;
@@ -43,6 +46,11 @@ body {
 
 .navbar-logo:hover {
   color: #2563eb;
+}
+
+.navbar-logo-img {
+  height: 24px;
+  width: auto;
 }
 
 .navbar-link {

@@ -925,6 +925,9 @@ body {
   justify-content: space-between;
 }
 .navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   color: #111827;
@@ -932,6 +935,13 @@ body {
 }
 .navbar-logo:hover {
   color: #2563eb;
+}
+.navbar-logo-img {
+  height: 24px;
+  max-height: 24px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
 }
 .navbar-link {
   font-size: 0.75rem;
