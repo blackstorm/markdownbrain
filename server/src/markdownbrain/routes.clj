@@ -4,7 +4,7 @@
    [markdownbrain.handlers.admin :as admin]
    [markdownbrain.handlers.frontend :as frontend]
    [markdownbrain.handlers.internal :as internal]
-   [markdownbrain.handlers.sync :as sync]
+   [markdownbrain.handlers.sync-v2 :as sync]
    [markdownbrain.middleware :as middleware]
    [markdownbrain.response :as response]
    [muuntaja.core :as m]
@@ -28,11 +28,12 @@
 (def admin-routes
   (let [base-routes
         [["/" {:get (fn [_] (response/redirect "/admin"))}]
+         ["/v1/sync"
+          ["/plan" {:post sync/sync-plan}]
+          ["/commit" {:post sync/sync-commit}]]
+         
          ["/obsidian"
-          ["/vault/info" {:get sync/vault-info}]
-          ["/sync" {:post sync/sync-file}]
-          ["/sync/full" {:post sync/sync-full}]
-          ["/assets/sync" {:post sync/sync-asset}]]
+          ["/vault/info" {:get sync/vault-info}]]
 
          ["/admin"
           ["" {:middleware [middleware/wrap-auth] :get admin/admin-home}]

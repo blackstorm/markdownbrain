@@ -1,6 +1,6 @@
 @import "tailwindcss" source(none);
-@source "./resources/templates/frontend";
-@source "./resources/publics/frontend";
+@source "./resources/templates/frontend/**/*.html";
+@source "./resources/publics/frontend/**/*.{html,js}";
 @source "./src/**/*.clj";
 @plugin "@tailwindcss/typography";
 

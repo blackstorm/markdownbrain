@@ -4,9 +4,9 @@
   "description": "MarkdownBrain frontend assets",
   "scripts": {
     "build:admin": "bunx tailwindcss -i ./admin.css -o ./resources/publics/admin/css/app.css --minify",
-    "watch:admin": "bunx tailwindcss -i ./admin.css -o ./resources/publics/admin/css/app.css --watch",
+    "watch:admin": "bunx tailwindcss -i ./admin.css -o ./resources/publics/admin/css/app.css && bunx tailwindcss -i ./admin.css -o ./resources/publics/admin/css/app.css --watch",
     "build:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --minify",
-    "watch:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --watch",
+    "watch:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css && bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --watch",
     "build": "bun run build:admin && bun run build:frontend",
     "watch": "bun run watch:admin & bun run watch:frontend & wait"
   },
