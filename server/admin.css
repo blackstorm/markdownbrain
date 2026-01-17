@@ -5,8 +5,8 @@
 @import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap");
 
 @import "tailwindcss" source(none);
-@source "./resources/templates/admin";
-@source "./resources/publics/admin";
+@source "./resources/templates/admin/**/*.html";
+@source "./resources/publics/admin/**/*.{html,js}";
 @source "./src/**/*.clj";
 
 @theme {
