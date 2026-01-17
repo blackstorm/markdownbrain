@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS notes (
   metadata TEXT,
   hash TEXT,
   mtime TIMESTAMP,
+  deleted_at INTEGER,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(vault_id, client_id),
@@ -110,7 +111,7 @@ CREATE TABLE IF NOT EXISTS assets (
   object_key TEXT NOT NULL,
   size_bytes INTEGER NOT NULL,
   content_type TEXT NOT NULL,
-  sha256 TEXT NOT NULL,
+  md5 TEXT NOT NULL,
   deleted_at INTEGER,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
@@ -132,7 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_assets_deleted ON assets(vault_id, deleted_at);
 CREATE INDEX IF NOT EXISTS idx_assets_client_id ON assets(vault_id, client_id);
 --;;
 
-CREATE INDEX IF NOT EXISTS idx_assets_hash ON assets(vault_id, sha256);
+CREATE INDEX IF NOT EXISTS idx_assets_hash ON assets(vault_id, md5);
 --;;
 
 -- Note-Asset references (tracks which notes reference which assets)

@@ -7,6 +7,7 @@
    [markdownbrain.handlers.admin.logo :as logo]
    [markdownbrain.handlers.admin.test-utils :as test-utils
     :refer [authenticated-request create-test-png create-temp-file bytes=]]
+   [markdownbrain.image-processing :as image-processing]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.utils :as utils]))
 
@@ -25,7 +26,10 @@
           uploaded-logo-key (atom nil)
           uploaded-favicon-key (atom nil)]
 
-      (with-redefs [object-store/put-object! (fn [vid key content content-type]
+      (with-redefs [image-processing/generate-favicon (fn [_bytes _content-type _content-hash _extension]
+                                                        {:object-key "site/logo/fake.png@favicon.png"
+                                                         :bytes (byte-array [1 2 3])})
+                    object-store/put-object! (fn [vid key content content-type]
                                                (when (= vid vault-id)
                                                  (if (str/includes? key "@favicon.")
                                                    (reset! uploaded-favicon-key key)
@@ -62,7 +66,8 @@
 
       (db/update-vault-logo! vault-id first-logo-key)
 
-      (with-redefs [object-store/put-object! (fn [vid key content content-type] nil)
+      (with-redefs [image-processing/generate-favicon (fn [& _] nil)
+                    object-store/put-object! (fn [vid key content content-type] nil)
                     object-store/delete-object! (fn [vid key]
                                                   (swap! deleted-keys conj key))]
 
@@ -90,7 +95,8 @@
           uploaded-logo-key (atom nil)
           uploaded-favicon-key (atom nil)]
 
-      (with-redefs [object-store/put-object! (fn [vid key content content-type]
+      (with-redefs [image-processing/generate-favicon (fn [& _] nil)
+                    object-store/put-object! (fn [vid key content content-type]
                                                (when (= vid vault-id)
                                                  (if (str/includes? key "@favicon.")
                                                    (reset! uploaded-favicon-key key)
