@@ -5,7 +5,7 @@
  */
 
 import { requestUrl } from 'obsidian';
-import type { HttpClient, HttpRequest, HttpResponse } from './sync-api';
+import type { HttpClient, HttpRequest, HttpResponse } from './http-client';
 
 export class ObsidianHttpClient implements HttpClient {
   async request(req: HttpRequest): Promise<HttpResponse> {

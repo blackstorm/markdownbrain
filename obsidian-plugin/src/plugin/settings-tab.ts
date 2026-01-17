@@ -48,16 +48,16 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
 
                     new Notice('正在测试连接...');
 
-                    const result = await this.plugin.syncManager.testConnection(30000);
+                    const result = await this.plugin.syncClient.getVaultInfo();
 
                     button.setDisabled(false);
                     button.setButtonText('测试');
 
-                    if (result.success && result.vaultInfo) {
+                    if (result.success && result.vault) {
                         new Notice(
                             `✅ 连接成功！\n` +
-                            `Vault: ${result.vaultInfo.name}\n` +
-                            `Domain: ${result.vaultInfo.domain}`,
+                            `Vault: ${result.vault.name}\n` +
+                            `Domain: ${result.vault.domain || '未设置'}`,
                             5000
                         );
                     } else {
@@ -74,7 +74,7 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
                     button.setDisabled(true);
                     button.setButtonText('同步中...');
 
-                    await this.plugin.syncAllFiles();
+                    await this.plugin.fullSync();
 
                     button.setDisabled(false);
                     button.setButtonText('开始同步');
