@@ -1,7 +1,7 @@
 {
-  "name": "markdownbrain-sync",
-  "version": "1.0.0",
-  "description": "MarkdownBrain Obsidian sync plugin",
+  "name": "markdownbrain",
+  "version": "0.0.1",
+  "description": "MarkdownBrain Obsidian plugin",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
