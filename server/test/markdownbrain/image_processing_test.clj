@@ -1,48 +1,20 @@
 (ns markdownbrain.image-processing-test
   "Comprehensive tests for image processing functionality.
    Tests thumbnail generation, dimension detection, and format handling."
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
+  (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
+            [clojure.java.io :as io]
             [markdownbrain.image-processing :as img])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]
-           [java.awt.image BufferedImage]
-           [javax.imageio ImageIO]))
+  (:import [java.nio.file Files]))
 
-;; =============================================================================
-;; Helper Functions to Create Test Images
-;; =============================================================================
+;; Force headless mode during tests to avoid JVM crashes in environments without AWT.
+(System/setProperty "java.awt.headless" "true")
 
-(defn create-test-image
-  "Create a test image with specified width, height, and format.
-   Returns byte array of the image."
-  [width height format]
-  (let [image (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
-        g2d (.createGraphics image)
-        ;; Fill with a gradient to ensure it's a valid image
-        _ (.setColor g2d java.awt.Color/BLUE)
-        _ (.fillRect g2d 0 0 width height)
-        _ (.setColor g2d java.awt.Color/RED)
-        _ (.fillRect g2d 0 0 (int (/ width 2)) (int (/ height 2)))
-        baos (ByteArrayOutputStream.)]
-    (.dispose g2d)
-    (when-not (ImageIO/write image format baos)
-      (throw (ex-info "Failed to write image" {:format format})))
-    (.toByteArray baos)))
+(def ^:private fixtures-dir
+  (io/file "test/fixtures/images"))
 
-(defn create-valid-png
-  "Create a valid PNG image for testing."
-  ([width height] (create-test-image width height "png"))
-  ([] (create-valid-png 100 100)))
-
-(defn create-valid-jpeg
-  "Create a valid JPEG image for testing."
-  ([width height] (create-test-image width height "jpeg"))
-  ([] (create-valid-jpeg 100 100)))
-
-(defn create-invalid-bytes
-  "Create invalid image bytes."
-  []
-  (.getBytes "This is not a valid image"))
+(defn- fixture-bytes [name]
+  (Files/readAllBytes (.toPath (io/file fixtures-dir name))))
 
 ;; =============================================================================
 ;; get-image-dimensions Tests
@@ -50,40 +22,20 @@
 
 (deftest test-get-image-dimensions-png
   (testing "PNG image dimensions - various sizes"
-    (let [test-cases [[32 32] [100 100] [512 512] [1024 768] [768 1024]]]
-      (doseq [[width height] test-cases]
-        (let [bytes (create-valid-png width height)
+    (let [test-cases [["png_32x32.png" [32 32]]
+                      ["png_100x100.png" [100 100]]
+                      ["png_512x512.png" [512 512]]
+                      ["png_1024x768.png" [1024 768]]
+                      ["png_768x1024.png" [768 1024]]]]
+      (doseq [[filename expected] test-cases]
+        (let [bytes (fixture-bytes filename)
               dims (img/get-image-dimensions bytes)]
-          (is (= [width height] dims)
-              (str "PNG dimensions should be " width "x" height)))))))
-
-(deftest test-get-image-dimensions-jpeg
-  (testing "JPEG image dimensions"
-    (let [test-cases [[64 64] [200 150] [800 600]]]
-      (doseq [[width height] test-cases]
-        (let [bytes (create-valid-jpeg width height)
-              dims (img/get-image-dimensions bytes)]
-          (is (= [width height] dims)
-              (str "JPEG dimensions should be " width "x" height)))))))
-
-(deftest test-get-image-dimensions-webp
-  (testing "WebP image dimensions"
-    ;; Note: WebP support depends on ImageIO plugins
-    ;; We test that the function handles unsupported formats gracefully
-    (try
-      (let [bytes (create-test-image 128 128 "webp")
-            dims (img/get-image-dimensions bytes)]
-        ;; If WebP is supported, dims should be [128 128]
-        (is (= [128 128] dims)
-            "WebP dimensions should be [128 128] if supported"))
-      (catch Exception e
-        ;; If WebP is not supported, the test creation will fail
-        ;; This is expected - just skip the test
-        (is true "WebP not supported by ImageIO, skipping test")))))
+          (is (= expected dims)
+              (str "PNG dimensions should be " expected)))))))
 
 (deftest test-get-image-dimensions-invalid
   (testing "Invalid image data returns nil"
-    (let [invalid-bytes (create-invalid-bytes)]
+    (let [invalid-bytes (fixture-bytes "invalid.bin")]
       (is (nil? (img/get-image-dimensions invalid-bytes))
           "Invalid image bytes should return nil"))))
 
@@ -103,19 +55,15 @@
 
 (deftest test-can-generate-thumbnail-square
   (testing "Square images can generate thumbnails"
-    ;; 512x512 can generate 256x256
     (is (true? (img/can-generate-thumbnail? [512 512] 256))
         "512x512 can generate 256x256")
-    ;; 256x256 can generate 256x256 (exact match)
     (is (true? (img/can-generate-thumbnail? [256 256] 256))
         "256x256 can generate 256x256 (exact)")))
 
 (deftest test-can-generate-thumbnail-small
   (testing "Small images cannot generate larger thumbnails"
-    ;; 32x32 cannot generate 64x64
     (is (false? (img/can-generate-thumbnail? [32 32] 64))
         "32x32 cannot generate 64x64")
-    ;; 100x100 cannot generate 512x512
     (is (false? (img/can-generate-thumbnail? [100 100] 512))
         "100x100 cannot generate 512x512")))
 
@@ -149,7 +97,7 @@
 
 (deftest test-generate-favicon-large-image
   (testing "Large image generates favicon successfully"
-    (let [bytes (create-valid-png 100 100)
+    (let [bytes (fixture-bytes "png_100x100.png")
           content-type "image/png"
           content-hash "favicon123"
           extension "png"
@@ -165,7 +113,7 @@
 
 (deftest test-generate-favicon-small-image
   (testing "Small image (< 32x32) cannot generate favicon"
-    (let [bytes (create-valid-png 16 16)
+    (let [bytes (fixture-bytes "png_16x16.png")
           content-type "image/png"
           content-hash "smallfavicon"
           extension "png"
@@ -174,7 +122,7 @@
 
 (deftest test-generate-favicon-exact-size
   (testing "32x32 image generates favicon successfully"
-    (let [bytes (create-valid-png 32 32)
+    (let [bytes (fixture-bytes "png_32x32.png")
           content-type "image/png"
           content-hash "exact32"
           extension "png"

@@ -51,8 +51,8 @@
                      metadata TEXT,
                      hash TEXT,
                      mtime TIMESTAMP,
+                     deleted_at INTEGER,
                      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                     UNIQUE(vault_id, path),
                      UNIQUE(vault_id, client_id),
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
                      FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
@@ -89,12 +89,11 @@
                      object_key TEXT NOT NULL,
                      size_bytes INTEGER NOT NULL,
                      content_type TEXT NOT NULL,
-                     sha256 TEXT NOT NULL,
+                     md5 TEXT NOT NULL,
                      original_name TEXT,
                      deleted_at INTEGER,
                      created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
                      updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-                     UNIQUE(vault_id, path),
                      UNIQUE(vault_id, client_id),
                      FOREIGN KEY (tenant_id) REFERENCES tenants(id),
                      FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE)"])
@@ -105,7 +104,7 @@
   (jdbc/execute! conn
                  ["CREATE INDEX idx_assets_client_id ON assets(vault_id, client_id)"])
   (jdbc/execute! conn
-                 ["CREATE INDEX idx_assets_hash ON assets(vault_id, sha256)"])
+                 ["CREATE INDEX idx_assets_hash ON assets(vault_id, md5)"])
   (jdbc/execute! conn
                  ["CREATE TABLE note_asset_refs (
                      id TEXT PRIMARY KEY,
@@ -739,18 +738,18 @@
 ;;; Asset 测试
 ;;; ============================================================
 
-(defn upsert-asset! [id tenant-id vault-id client-id path object-key size-bytes content-type sha256]
+(defn upsert-asset! [id tenant-id vault-id client-id path object-key size-bytes content-type md5]
   (execute-one!
-    ["INSERT INTO assets (id, tenant_id, vault_id, client_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
+    ["INSERT INTO assets (id, tenant_id, vault_id, client_id, path, object_key, size_bytes, content_type, md5, deleted_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       ON CONFLICT(vault_id, client_id) DO UPDATE SET
         path = excluded.path,
         size_bytes = excluded.size_bytes,
         content_type = excluded.content_type,
-        sha256 = excluded.sha256,
+        md5 = excluded.md5,
         deleted_at = NULL,
         updated_at = strftime('%s', 'now')"
-     id tenant-id vault-id client-id path object-key size-bytes content-type sha256]))
+     id tenant-id vault-id client-id path object-key size-bytes content-type md5]))
 
 (defn soft-delete-asset! [vault-id client-id]
   (execute-one!
@@ -779,7 +778,7 @@
 
 (defn list-assets-by-vault [vault-id]
   (let [results (jdbc/execute! *conn*
-                               ["SELECT client_id, path, sha256, size_bytes FROM assets
+                               ["SELECT client_id, path, md5, size_bytes FROM assets
                                  WHERE vault_id = ? AND deleted_at IS NULL
                                  ORDER BY path ASC"
                                 vault-id]
@@ -798,8 +797,8 @@
           object-key "assets/images/photo.png"
           size-bytes 12345
           content-type "image/png"
-          sha256 "abc123def456"]
-      (upsert-asset! asset-id tenant-id vault-id client-id path object-key size-bytes content-type sha256)
+          md5 "abc123def456"]
+      (upsert-asset! asset-id tenant-id vault-id client-id path object-key size-bytes content-type md5)
       (let [result (get-asset-by-client-id vault-id client-id)]
         (is (map? result))
         (is (= client-id (:client-id result)))
@@ -807,7 +806,7 @@
         (is (= object-key (:object-key result)))
         (is (= size-bytes (:size-bytes result)))
         (is (= content-type (:content-type result)))
-        (is (= sha256 (:sha256 result))))))
+        (is (= md5 (:md5 result))))))
 
   (testing "Update existing asset by client_id"
     (let [tenant-id (utils/generate-uuid)
@@ -821,7 +820,7 @@
           _ (upsert-asset! (utils/generate-uuid) tenant-id vault-id client-id "images/logo-renamed.svg" "assets/new" 200 "image/svg+xml" "new-hash")
           result (get-asset-by-client-id vault-id client-id)]
       (is (= 200 (:size-bytes result)))
-      (is (= "new-hash" (:sha256 result)))
+      (is (= "new-hash" (:md5 result)))
       (is (= "images/logo-renamed.svg" (:path result)))))
 
   (testing "MOVE scenario: object_key remains stable when path changes"

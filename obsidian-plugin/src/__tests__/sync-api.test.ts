@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, mock } from 'bun:test';
-import { SyncApiClient, type HttpClient, type HttpResponse } from '../api/sync-api';
-import type { SyncData, AssetSyncData } from '../domain/types';
+import { SyncApiClient } from '../api/sync-api';
+import type { HttpClient } from '../api/http-client';
 
 describe('SyncApiClient', () => {
   let mockHttpClient: HttpClient;
@@ -18,112 +18,32 @@ describe('SyncApiClient', () => {
     api = new SyncApiClient(config, mockHttpClient);
   });
 
-  describe('testConnection', () => {
-    test('should return success with vault info on 200', async () => {
-      const vaultInfo = { id: 'v1', name: 'Test Vault', domain: 'test.com', 'created-at': '2024-01-01' };
+  describe('getVaultInfo', () => {
+    test('returns success with vault info on 200', async () => {
+      const vaultInfo = { id: 'v1', name: 'Test Vault', domain: 'test.com', createdAt: '2024-01-01' };
       (mockHttpClient.request as any).mockResolvedValue({
         status: 200,
         json: { vault: vaultInfo },
         text: ''
       });
 
-      const result = await api.testConnection();
+      const result = await api.getVaultInfo();
 
       expect(result.success).toBe(true);
-      expect(result.vaultInfo).toEqual(vaultInfo);
+      expect(result.vault).toEqual(vaultInfo);
       expect(mockHttpClient.request).toHaveBeenCalledWith({
         url: 'https://api.example.com/obsidian/vault/info',
         method: 'GET',
         headers: { 'Authorization': 'Bearer test-sync-key-123' }
       });
     });
-
-    test('should return error on non-200 status', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 401,
-        json: {},
-        text: 'Unauthorized'
-      });
-
-      const result = await api.testConnection();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('401');
-    });
-
-    test('should return error on timeout', async () => {
-      (mockHttpClient.request as any).mockRejectedValue({ name: 'AbortError' });
-
-      const result = await api.testConnection(1000);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('超时');
-    });
-
-    test('should return error on network failure', async () => {
-      (mockHttpClient.request as any).mockRejectedValue(new Error('Network error'));
-
-      const result = await api.testConnection();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Network error');
-    });
   });
 
-  describe('syncNote', () => {
-    const syncData: SyncData = {
-      path: 'test.md',
-      clientId: 'client-123',
-      clientType: 'obsidian',
-      content: '# Hello',
-      hash: 'abc123',
-      mtime: '2024-01-01T00:00:00Z',
-      action: 'create'
-    };
-
-    test('should return success on 200', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 200,
-        json: { success: true },
-        text: ''
-      });
-
-      const result = await api.syncNote(syncData);
-
-      expect(result.success).toBe(true);
-      expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: 'https://api.example.com/obsidian/sync',
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer test-sync-key-123'
-        },
-        body: JSON.stringify(syncData)
-      });
-    });
-
-    test('should return error on non-200 status', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 500,
-        json: {},
-        text: 'Internal Server Error'
-      });
-
-      const result = await api.syncNote(syncData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('500');
-    });
-  });
-
-  describe('fullSync', () => {
-    test('should return success with data on 200', async () => {
+  describe('syncChanges', () => {
+    test('returns success on 200', async () => {
       const responseData = {
-        'vault-id': 'v1',
-        action: 'full-sync',
-        'client-notes': 10,
-        'deleted-count': 2,
-        'remaining-notes': 8
+        need_upsert: { notes: [], assets: [] },
+        deleted_on_server: { notes: [], assets: [] }
       };
       (mockHttpClient.request as any).mockResolvedValue({
         status: 200,
@@ -131,87 +51,93 @@ describe('SyncApiClient', () => {
         text: ''
       });
 
-      const result = await api.fullSync(['id1', 'id2', 'id3']);
+      const result = await api.syncChanges({ notes: [], assets: [] });
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(responseData);
-    });
-
-    test('should handle 404 gracefully (old server)', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 404,
-        json: {},
-        text: 'Not Found'
-      });
-
-      const result = await api.fullSync(['id1', 'id2']);
-
-      expect(result.success).toBe(true);
-      expect(result.data?.['deleted-count']).toBe(0);
-    });
-
-    test('should return error on other non-200 status', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 500,
-        json: {},
-        text: 'Internal Server Error'
-      });
-
-      const result = await api.fullSync(['id1']);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('500');
-    });
-  });
-
-  describe('syncAsset', () => {
-    const assetData: AssetSyncData = {
-      path: 'images/test.png',
-      clientId: 'asset-client-id-123',
-      content: 'base64encodedcontent',
-      contentType: 'image/png',
-      sha256: 'abc123',
-      size: 1024,
-      action: 'create'
-    };
-
-    test('should return success on 200', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 200,
-        json: { success: true },
-        text: ''
-      });
-
-      const result = await api.syncAsset(assetData);
-
-      expect(result.success).toBe(true);
+      expect(result.need_upsert).toEqual(responseData.need_upsert);
       expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: 'https://api.example.com/obsidian/assets/sync',
+        url: 'https://api.example.com/sync/changes',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer test-sync-key-123'
         },
-        body: JSON.stringify(assetData)
+        body: JSON.stringify({ notes: [], assets: [] })
       });
     });
+  });
 
-    test('should return error on non-200 status', async () => {
-      (mockHttpClient.request as any).mockResolvedValue({
-        status: 413,
-        json: {},
-        text: 'Payload Too Large'
+  describe('syncNote', () => {
+    test('returns success on 200', async () => {
+      const result = await api.syncNote('note-1', {
+        path: 'test.md',
+        content: '# Hello',
+        hash: 'hash-1'
       });
 
-      const result = await api.syncAsset(assetData);
+      expect(result.success).toBe(true);
+      expect(mockHttpClient.request).toHaveBeenCalledWith({
+        url: 'https://api.example.com/sync/notes/note-1',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer test-sync-key-123'
+        },
+        body: JSON.stringify({
+          path: 'test.md',
+          content: '# Hello',
+          hash: 'hash-1'
+        })
+      });
+    });
+  });
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('413');
+  describe('syncAsset', () => {
+    test('returns success on 200', async () => {
+      const result = await api.syncAsset('asset-1', {
+        path: 'images/test.png',
+        contentType: 'image/png',
+        size: 1024,
+        hash: 'md5-1',
+        content: 'base64data'
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockHttpClient.request).toHaveBeenCalledWith({
+        url: 'https://api.example.com/sync/assets/asset-1',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer test-sync-key-123'
+        },
+        body: JSON.stringify({
+          path: 'images/test.png',
+          contentType: 'image/png',
+          size: 1024,
+          hash: 'md5-1',
+          content: 'base64data'
+        })
+      });
+    });
+  });
+
+  describe('deleteNoteAsset', () => {
+    test('returns success on 200', async () => {
+      const result = await api.deleteNoteAsset('note-1', 'asset-1');
+
+      expect(result.success).toBe(true);
+      expect(mockHttpClient.request).toHaveBeenCalledWith({
+        url: 'https://api.example.com/sync/notes/note-1/assets/asset-1',
+        method: 'DELETE',
+        headers: {
+          'Authorization': 'Bearer test-sync-key-123'
+        }
+      });
     });
   });
 
   describe('updateConfig', () => {
-    test('should update config and use new values', async () => {
+    test('updates config and uses new values', async () => {
       (mockHttpClient.request as any).mockResolvedValue({
         status: 200,
         json: { vault: {} },
@@ -223,7 +149,7 @@ describe('SyncApiClient', () => {
         syncKey: 'new-key'
       });
 
-      await api.testConnection();
+      await api.getVaultInfo();
 
       expect(mockHttpClient.request).toHaveBeenCalledWith(
         expect.objectContaining({

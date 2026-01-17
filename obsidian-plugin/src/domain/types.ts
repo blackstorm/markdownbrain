@@ -57,88 +57,6 @@ export interface NoteMetadata {
 }
 
 // =============================================================================
-// Sync Data Payloads
-// =============================================================================
-
-export type SyncAction = 'create' | 'modify' | 'delete';
-
-export interface SyncData {
-  path: string;
-  clientId: string;
-  clientType: string;
-  content?: string;
-  hash?: string;
-  mtime?: string;
-  metadata?: NoteMetadata;
-  action: SyncAction;
-}
-
-export type AssetAction = 'create' | 'modify' | 'delete';
-
-export interface AssetSyncData {
-  path: string;
-  clientId: string;
-  content?: string;
-  contentType: string;
-  sha256?: string;
-  size?: number;
-  action: AssetAction;
-}
-
-export type ResourceSyncData = AssetSyncData;
-export type ResourceAction = AssetAction;
-
-// =============================================================================
-// API Responses
-// =============================================================================
-
-export interface VaultInfo {
-  id: string;
-  name: string;
-  domain: string;
-  'created-at': string;
-}
-
-export interface TestConnectionResult {
-  success: boolean;
-  vaultInfo?: VaultInfo;
-  error?: string;
-}
-
-export interface SyncResult {
-  success: boolean;
-  error?: string;
-}
-
-export interface FullSyncRequest {
-  clientIds: string[];
-}
-
-export interface FullSyncResponseData {
-  'vault-id': string;
-  action: string;
-  'client-notes': number;
-  'deleted-count': number;
-  'remaining-notes': number;
-}
-
-export interface FullSyncResponse {
-  success: boolean;
-  data?: FullSyncResponseData;
-  error?: string;
-}
-
-// =============================================================================
-// Sync Statistics
-// =============================================================================
-
-export interface SyncStats {
-  success: number;
-  failed: number;
-  skipped: number;
-}
-
-// =============================================================================
 // Port Interfaces (for dependency injection)
 // =============================================================================
 
@@ -183,10 +101,3 @@ export interface MetadataPort {
 // =============================================================================
 // API Client Interface
 // =============================================================================
-
-export interface SyncApi {
-  testConnection(timeout?: number): Promise<TestConnectionResult>;
-  syncNote(data: SyncData): Promise<SyncResult>;
-  fullSync(clientIds: string[]): Promise<FullSyncResponse>;
-  syncAsset(data: AssetSyncData): Promise<SyncResult>;
-}

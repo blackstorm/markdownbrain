@@ -30,16 +30,10 @@
       body (assoc :body-params body))))
 
 (defn create-test-png
-  "Create a test PNG image with specified dimensions."
-  [width height]
-  (let [image (java.awt.image.BufferedImage. width height java.awt.image.BufferedImage/TYPE_INT_RGB)
-        g2d (.createGraphics image)
-        baos (java.io.ByteArrayOutputStream.)]
-    (.setColor g2d java.awt.Color/BLUE)
-    (.fillRect g2d 0 0 width height)
-    (.dispose g2d)
-    (javax.imageio.ImageIO/write image "png" baos)
-    (.toByteArray baos)))
+  "Create test PNG bytes without using AWT (headless-safe)."
+  [_width _height]
+  (let [base64 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="]
+    (.decode (java.util.Base64/getDecoder) ^String base64)))
 
 (defn create-temp-file
   "Create a temp file map mimicking ring multipart upload.

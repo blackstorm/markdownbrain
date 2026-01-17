@@ -184,27 +184,33 @@
 
 (defn list-notes-by-vault [vault-id]
   (execute! ["SELECT client_id, path, hash, mtime FROM notes
-              WHERE vault_id = ?
+              WHERE vault_id = ? AND deleted_at IS NULL
               ORDER BY path ASC" vault-id]))
 
 (defn get-notes-for-link-resolution
   [vault-id]
-  (execute! ["SELECT client_id, path FROM notes WHERE vault_id = ?" vault-id]))
+  (execute! ["SELECT client_id, path FROM notes WHERE vault_id = ? AND deleted_at IS NULL" vault-id]))
 
 (defn get-note-by-path [vault-id path]
-  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND path = ?" vault-id path]))
+  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND path = ? AND deleted_at IS NULL"
+                 vault-id path]))
 
 (defn get-note-by-client-id [vault-id client-id]
-  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
+  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
+                 vault-id client-id]))
+
+(defn delete-note-by-client-id! [vault-id client-id]
+  (execute-one! ["DELETE FROM notes WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
 
 (defn get-note-for-frontend
   [vault-id client-id]
-  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
+  (execute-one! ["SELECT * FROM notes WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
+                 vault-id client-id]))
 
 (defn search-notes-by-vault [vault-id query]
   (execute! ["SELECT id, client_id, path, content, metadata, mtime
               FROM notes
-              WHERE vault_id = ? AND (path LIKE ? OR content LIKE ?)
+              WHERE vault_id = ? AND deleted_at IS NULL AND (path LIKE ? OR content LIKE ?)
               ORDER BY path ASC
               LIMIT 50"
              vault-id
@@ -267,37 +273,6 @@
               ORDER BY n.path ASC"
              vault-id client-id]))
 
-;; Full Sync - 孤儿笔记清理操作
-(defn list-note-client-ids-by-vault
-  [vault-id]
-  (execute! ["SELECT client_id FROM notes WHERE vault_id = ?" vault-id]))
-
-(defn delete-notes-not-in-list!
-  "删除不在列表中的笔记（孤儿笔记清理）
-   采用服务端对比方案：
-   1. 查询服务端所有 client_ids
-   2. 计算差集找出孤儿
-   3. 分批删除（避免 SQLite 参数限制）"
-  [vault-id client-ids]
-  (if (empty? client-ids)
-    (do
-      (log/warn "Full sync empty list - deleting ALL notes in vault:" vault-id)
-      (execute-one! ["DELETE FROM notes WHERE vault_id = ?" vault-id]))
-    (let [client-id-set (set client-ids)
-          server-ids (map :client-id (list-note-client-ids-by-vault vault-id))
-          orphan-ids (remove client-id-set server-ids)
-          batch-size 500]
-      (log/info "Deleting orphan notes - vault-id:" vault-id 
-                "server:" (count server-ids) 
-                "client:" (count client-ids) 
-                "orphans:" (count orphan-ids))
-      (when (seq orphan-ids)
-        (doseq [batch (partition-all batch-size orphan-ids)]
-          (let [placeholders (str/join "," (repeat (count batch) "?"))
-                sql (str "DELETE FROM notes WHERE vault_id = ? AND client_id IN (" placeholders ")")]
-            (execute-one! (into [sql vault-id] batch)))))
-      {:update-count (count orphan-ids)})))
-
 (defn delete-orphan-links!
   [vault-id]
   (log/info "Deleting orphan links - vault-id:" vault-id)
@@ -316,29 +291,27 @@
 
 ;; Asset 操作
 (defn upsert-asset!
-  [id tenant-id vault-id client-id path object-key size-bytes content-type sha256]
+  [id tenant-id vault-id client-id path object-key size-bytes content-type md5]
   (execute-one!
-    ["INSERT INTO assets (id, tenant_id, vault_id, client_id, path, object_key, size_bytes, content_type, sha256, deleted_at)
+    ["INSERT INTO assets (id, tenant_id, vault_id, client_id, path, object_key, size_bytes, content_type, md5, deleted_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
       ON CONFLICT(vault_id, client_id) DO UPDATE SET
         path = excluded.path,
         size_bytes = excluded.size_bytes,
         content_type = excluded.content_type,
-        sha256 = excluded.sha256,
+        md5 = excluded.md5,
         deleted_at = NULL,
         updated_at = strftime('%s', 'now')"
-     id tenant-id vault-id client-id path object-key size-bytes content-type sha256]))
-
-(defn soft-delete-asset! [vault-id client-id]
-  (execute-one!
-    ["UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-      WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
-     vault-id client-id]))
+     id tenant-id vault-id client-id path object-key size-bytes content-type md5]))
 
 (defn get-asset-by-client-id [vault-id client-id]
   (execute-one!
     ["SELECT * FROM assets WHERE vault_id = ? AND client_id = ? AND deleted_at IS NULL"
      vault-id client-id]))
+
+(defn delete-asset-by-client-id! [vault-id client-id]
+  (execute-one!
+    ["DELETE FROM assets WHERE vault_id = ? AND client_id = ?" vault-id client-id]))
 
 (defn get-asset-by-path [vault-id path]
   (execute-one!
@@ -357,36 +330,11 @@
 
 (defn list-assets-by-vault [vault-id]
   (execute!
-    ["SELECT client_id, path, sha256, size_bytes FROM assets
+    ["SELECT client_id, path, md5, size_bytes FROM assets
       WHERE vault_id = ? AND deleted_at IS NULL
       ORDER BY path ASC"
      vault-id]))
 
-(defn delete-assets-not-in-list!
-  [vault-id client-ids]
-  (if (empty? client-ids)
-    (do
-      (log/warn "Full asset sync empty list - soft deleting ALL assets in vault:" vault-id)
-      (execute-one!
-        ["UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-          WHERE vault_id = ? AND deleted_at IS NULL"
-         vault-id]))
-    (let [client-id-set (set client-ids)
-          server-assets (list-assets-by-vault vault-id)
-          server-client-ids (map :client-id server-assets)
-          orphan-client-ids (remove client-id-set server-client-ids)
-          batch-size 500]
-      (log/info "Soft deleting orphan assets - vault-id:" vault-id
-                "server:" (count server-client-ids)
-                "client:" (count client-ids)
-                "orphans:" (count orphan-client-ids))
-      (when (seq orphan-client-ids)
-        (doseq [batch (partition-all batch-size orphan-client-ids)]
-          (let [placeholders (str/join "," (repeat (count batch) "?"))
-                sql (str "UPDATE assets SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-                          WHERE vault_id = ? AND client_id IN (" placeholders ") AND deleted_at IS NULL")]
-            (execute-one! (into [sql vault-id] batch)))))
-      {:update-count (count orphan-client-ids)})))
 
 (defn get-vault-storage-size
   [vault-id]
@@ -411,6 +359,16 @@
     ["DELETE FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ?"
      vault-id note-client-id]))
 
+(defn delete-note-asset-refs-by-asset! [vault-id asset-client-id]
+  (execute-one!
+    ["DELETE FROM note_asset_refs WHERE vault_id = ? AND asset_client_id = ?"
+     vault-id asset-client-id]))
+
+(defn delete-note-asset-ref! [vault-id note-client-id asset-client-id]
+  (execute-one!
+    ["DELETE FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ? AND asset_client_id = ?"
+     vault-id note-client-id asset-client-id]))
+
 (defn get-asset-refs-by-note [vault-id note-client-id]
   (execute!
     ["SELECT * FROM note_asset_refs WHERE vault_id = ? AND note_client_id = ?"
@@ -434,14 +392,4 @@
   (doseq [asset-client-id new-asset-client-ids]
     (upsert-note-asset-ref! vault-id note-client-id asset-client-id)))
 
-(defn mark-orphan-assets!
-  [vault-id]
-  (execute-one!
-    ["UPDATE assets 
-      SET deleted_at = strftime('%s', 'now'), updated_at = strftime('%s', 'now')
-      WHERE vault_id = ? 
-        AND deleted_at IS NULL
-        AND client_id NOT IN (
-          SELECT DISTINCT asset_client_id FROM note_asset_refs WHERE vault_id = ?
-        )"
-     vault-id vault-id]))
+ 

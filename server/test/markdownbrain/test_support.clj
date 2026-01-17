@@ -42,14 +42,6 @@
       true (assoc :session {:tenant-id tenant-id :user-id user-id})
       body (assoc :body-params body))))
 
-(defn sync-request-with-header
-  "构建带 Bearer token 的同步请求 (Authorization header)"
-  [sync-key & {:keys [body]}]
-  (-> (mock/request :post "/api/sync")
-      (assoc :headers {"authorization" (str "Bearer " sync-key)})
-      (assoc :body-params body)))
-
-
 ;; 测试数据创建辅助函数
 
 (defn create-test-tenant!
@@ -84,11 +76,4 @@
   ([tenant-id domain]
    (create-test-vault! tenant-id "Test Vault" domain)))
 
-(defn create-test-note!
-  "创建测试笔记"
-  [tenant-id vault-id path content]
-  (let [note-id (utils/generate-uuid)]
-    (db/upsert-note! note-id tenant-id vault-id path content "{}"
-                        (str "hash-" (utils/generate-uuid))
-                        "2025-12-21T10:00:00Z")
-    note-id))
+ 
