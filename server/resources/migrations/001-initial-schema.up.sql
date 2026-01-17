@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   name TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+--;;
 
 -- Admin users (manage vaults)
 CREATE TABLE IF NOT EXISTS users (
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
+--;;
 
 -- Vaults (one tenant can have multiple vaults)
 CREATE TABLE IF NOT EXISTS vaults (
@@ -32,9 +34,13 @@ CREATE TABLE IF NOT EXISTS vaults (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
+--;;
 
 CREATE INDEX IF NOT EXISTS idx_vaults_domain ON vaults(domain);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_vaults_sync_key ON vaults(sync_key);
+--;;
 
 -- Notes (markdown files)
 CREATE TABLE IF NOT EXISTS notes (
@@ -53,11 +59,19 @@ CREATE TABLE IF NOT EXISTS notes (
   FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
+--;;
 
 CREATE INDEX IF NOT EXISTS idx_notes_vault ON notes(vault_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_notes_client_id ON notes(vault_id, client_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_notes_path ON notes(vault_id, path);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_notes_mtime ON notes(mtime);
+--;;
 
 -- Note links (bidirectional links between notes)
 CREATE TABLE IF NOT EXISTS note_links (
@@ -73,10 +87,16 @@ CREATE TABLE IF NOT EXISTS note_links (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
+--;;
 
 CREATE INDEX IF NOT EXISTS idx_links_source ON note_links(vault_id, source_client_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_links_target ON note_links(vault_id, target_client_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_links_both ON note_links(vault_id, source_client_id, target_client_id);
+--;;
 
 -- Assets (binary files: images, videos, PDFs, etc.)
 -- object_key is based on client_id (stable across renames)
@@ -98,12 +118,22 @@ CREATE TABLE IF NOT EXISTS assets (
   FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
+--;;
 
 CREATE INDEX IF NOT EXISTS idx_assets_vault ON assets(vault_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_assets_path ON assets(vault_id, path);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_assets_deleted ON assets(vault_id, deleted_at);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_assets_client_id ON assets(vault_id, client_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_assets_hash ON assets(vault_id, sha256);
+--;;
 
 -- Note-Asset references (tracks which notes reference which assets)
 CREATE TABLE IF NOT EXISTS note_asset_refs (
@@ -115,6 +145,9 @@ CREATE TABLE IF NOT EXISTS note_asset_refs (
   UNIQUE(vault_id, note_client_id, asset_client_id),
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
+--;;
 
 CREATE INDEX IF NOT EXISTS idx_asset_refs_note ON note_asset_refs(vault_id, note_client_id);
+--;;
+
 CREATE INDEX IF NOT EXISTS idx_asset_refs_asset ON note_asset_refs(vault_id, asset_client_id);

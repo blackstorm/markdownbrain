@@ -4,6 +4,7 @@
             [next.jdbc.result-set :as rs]
             [markdownbrain.config :as config]
             [markdownbrain.utils :as utils]
+            [migratus.core :as migratus]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]))
@@ -71,16 +72,21 @@
       (log/info "Creating database directory:" (.getPath parent-dir))
       (.mkdirs parent-dir))))
 
-(defn init-db! []
+(defn migratus-config
+  "Generate migratus config dynamically to support test fixtures with with-redefs."
+  []
+  {:store :database
+   :migration-dir "migrations"
+   :init-script nil
+   :db {:datasource @datasource}})
+
+(defn init-db!
+  "Initialize database by running all pending migrations."
+  []
   (ensure-db-directory!)
-  (let [schema (slurp (io/resource "migrations/001-initial-schema.sql"))
-        statements (-> schema
-                       (clojure.string/split #";")
-                       (->> (map clojure.string/trim)
-                            (filter #(not (clojure.string/blank? %)))))]
-    (log/info "Running schema migration")
-    (doseq [stmt statements]
-      (jdbc/execute! @datasource [stmt]))))
+  (log/info "Running database migrations with migratus...")
+  (migratus/migrate (migratus-config))
+  (log/info "Database migrations complete."))
 
 ;; Tenant 操作
 (defn create-tenant! [id name]

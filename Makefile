@@ -25,9 +25,11 @@ help:
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make install          - 安装所有依赖"
-	@echo "  make clean            - 清理构建产物"
-	@echo "  make db-migrate       - 运行数据库迁移"
-	@echo "  make db-reset         - 重置数据库"
+	@echo "  make clean                        - 清理构建产物"
+	@echo "  make db-migrate                   - 运行数据库迁移 (migratus)"
+	@echo "  make db-reset                     - 重置数据库"
+	@echo "  make db-pending                   - 查看待执行的迁移"
+	@echo "  make db-create-migration NAME=xxx - 创建新迁移文件"
 
 # 安装依赖
 install: backend-install frontend-install plugin-install
@@ -106,13 +108,21 @@ backend-test:
 # 数据库操作
 db-migrate:
 	@echo "Running database migrations..."
-	@cd server && clojure -M:dev -m markdownbrain.db/migrate
+	@cd server && clojure -M:dev -m markdownbrain.migrations migrate
 
 db-reset:
 	@echo "Resetting database..."
-	@rm -f data/markdownbrain.db
-	@cd server && clojure -M:dev -m markdownbrain.db/init-db!
+	@rm -f data/markdownbrain.db data/.secrets.edn
+	@cd server && clojure -M:dev -m markdownbrain.migrations migrate
 	@echo "Database reset complete"
+
+db-pending:
+	@echo "Checking pending migrations..."
+	@cd server && clojure -M:dev -m markdownbrain.migrations pending
+
+db-create-migration:
+	@echo "Creating new migration..."
+	@cd server && clojure -M:dev -m markdownbrain.migrations create $(NAME)
 
 # 清理
 clean:
