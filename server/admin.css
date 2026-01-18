@@ -1,9 +1,5 @@
 /* Typography System - Multi-font design */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap");
-
+@import "./resources/publics/shared/fonts.css";
 @import "tailwindcss" source(none);
 @source "./resources/templates/admin/**/*.html";
 @source "./resources/publics/admin/**/*.{html,js}";
