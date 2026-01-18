@@ -85,16 +85,11 @@
     (is (string? (config/get-config :database :jdbcUrl)))))
 
 ;; Session & Token 函数测试
-(deftest test-session-and-token-functions
+(deftest test-session-function
   (testing "Session secret is bytes with 16 length"
     (let [secret (config/session-secret)]
       (is (bytes? secret))
-      (is (= 16 (alength secret)))))
-
-  (testing "Internal token is string"
-    (let [token (config/internal-token)]
-      (is (string? token))
-      (is (not (clojure.string/blank? token))))))
+      (is (= 16 (alength secret))))))
 
 ;; Environment helpers 测试
 (deftest test-environment-helpers

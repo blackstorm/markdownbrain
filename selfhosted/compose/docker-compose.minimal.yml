@@ -1,0 +1,14 @@
+services:
+  markdownbrain:
+    build: .
+    ports:
+      - "127.0.0.1:9090:9090"
+      - "8080:8080"
+    volumes:
+      - markdownbrain:/app/data
+    environment:
+      - STORAGE_TYPE=local
+    restart: unless-stopped
+
+volumes:
+  markdownbrain:

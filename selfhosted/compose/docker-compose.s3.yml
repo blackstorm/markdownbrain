@@ -8,8 +8,8 @@ services:
     volumes:
       - markdownbrain:/app/data
     environment:
+      - STORAGE_TYPE=s3
       - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
-      - INTERNAL_TOKEN=${INTERNAL_TOKEN}
       - S3_ENDPOINT=http://rustfs:9000
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-rustfsadmin}
       - S3_SECRET_KEY=${S3_SECRET_KEY:-rustfsadmin}
@@ -21,7 +21,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/admin/health?token=$INTERNAL_TOKEN"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/admin/health"]
       interval: 30s
       timeout: 3s
       start_period: 5s
@@ -54,13 +54,12 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./caddy-entrypoint.sh:/entrypoint.sh:ro
-      - ./Caddyfile.on-demand-tls:/etc/caddy/Caddyfile.on-demand-tls:ro
-      - ./Caddyfile.simple:/etc/caddy/Caddyfile.simple:ro
+      - ../caddy/caddy-entrypoint.sh:/entrypoint.sh:ro
+      - ../caddy/Caddyfile.on-demand-tls:/etc/caddy/Caddyfile.on-demand-tls:ro
+      - ../caddy/Caddyfile.simple:/etc/caddy/Caddyfile.simple:ro
       - caddy:/data
     environment:
       - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
-      - INTERNAL_TOKEN=${INTERNAL_TOKEN}
     entrypoint: ["/entrypoint.sh"]
     depends_on:
       markdownbrain:

@@ -48,8 +48,8 @@ make build           # 构建所有项目
 |------|------|------|
 | `S3_PUBLIC_URL` | S3 存储公开访问地址 (用于直接访问图片等资源) | 是 |
 | `CADDY_ON_DEMAND_TLS_ENABLED` | 启用 Caddy 自动 SSL 证书 (默认 `false`) | 否 |
-| `INTERNAL_TOKEN` | 内部 API 认证 Token (仅 on-demand TLS 启用时需要) | 条件必填 |
 | `SESSION_SECRET` | Session 加密密钥 | 否 (自动生成) |
+| `DB_PATH` | SQLite 数据库路径 (默认 `data/markdownbrain.db`) | 否 |
 | `S3_BUCKET` | S3 存储桶名称 | 否 (默认 `markdownbrain`) |
 | `S3_ACCESS_KEY` | RustFS 访问密钥 | 否 (默认 `rustfsadmin`) |
 | `S3_SECRET_KEY` | RustFS 密钥 | 否 (默认 `rustfsadmin`) |
@@ -57,6 +57,7 @@ make build           # 构建所有项目
 > **注意**: 
 > - `S3_PUBLIC_URL` 是浏览器可直接访问的 S3 地址。图片、PDF 等资源会直接从此 URL 加载，不经过应用服务器。
 > - `CADDY_ON_DEMAND_TLS_ENABLED=true` 时，Caddy 会自动为配置的域名获取 Let's Encrypt 证书。如果你使用 Cloudflare 或其他方式管理 SSL，保持默认值 `false` 即可。
+> - `SESSION_SECRET` 自动生成并保存到 `data/.secrets.edn`（与 `DB_PATH` 同目录）。
 
 ### 部署步骤
 
@@ -74,7 +75,6 @@ export S3_PUBLIC_URL=https://s3.your-domain.com  # 替换为你的 S3 公开访�
 
 # 可选：启用自动 SSL 证书 (如果不使用 Cloudflare 等外部 SSL)
 export CADDY_ON_DEMAND_TLS_ENABLED=true
-export INTERNAL_TOKEN=$(openssl rand -hex 32)
 ```
 
 3. 启动服务
@@ -91,7 +91,7 @@ docker compose logs -f
 
 ### 访问 Admin 面板
 
-Admin 端口 (9090) 仅绑定到 localhost，需要通过 SSH 隧道访问：
+Admin 端口 (9090) 仅绑定到 localhost，务必不要对公网开放。通过 SSH 隧道访问：
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server

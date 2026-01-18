@@ -1,0 +1,42 @@
+services:
+  markdownbrain:
+    build: .
+    ports:
+      - "127.0.0.1:9090:9090"
+    expose:
+      - "8080"
+    volumes:
+      - markdownbrain:/app/data
+    environment:
+      - STORAGE_TYPE=local
+      - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/admin/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ../caddy/caddy-entrypoint.sh:/entrypoint.sh:ro
+      - ../caddy/Caddyfile.on-demand-tls:/etc/caddy/Caddyfile.on-demand-tls:ro
+      - ../caddy/Caddyfile.simple:/etc/caddy/Caddyfile.simple:ro
+      - caddy:/data
+    environment:
+      - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      markdownbrain:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  markdownbrain:
+  caddy:

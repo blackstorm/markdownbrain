@@ -49,7 +49,7 @@
     (apply str (map #(format "%02x" %) bytes))))
 
 (defn- secrets-file []
-  (let [db-path (or (getenv "DB_PATH") "markdownbrain.db")
+  (let [db-path (or (getenv "DB_PATH") "data/markdownbrain.db")
         data-dir (.getParent (io/file db-path))]
     (if data-dir
       (io/file data-dir ".secrets.edn")
@@ -68,17 +68,11 @@
 (defn- get-or-generate-secrets []
   (let [existing (load-secrets)
         env-session-secret (getenv "SESSION_SECRET")
-        env-internal-token (getenv "INTERNAL_TOKEN")
         session-secret (or env-session-secret
                            (:session-secret existing)
                            (do (log/info "Generated new SESSION_SECRET (saved to .secrets.edn)")
                                (generate-random-hex 16)))
-        internal-token (or env-internal-token
-                           (:internal-token existing)
-                           (do (log/info "Generated new INTERNAL_TOKEN (saved to .secrets.edn)")
-                               (generate-random-hex 32)))
-        secrets {:session-secret session-secret
-                 :internal-token internal-token}]
+        secrets {:session-secret session-secret}]
     (when (not= secrets existing)
       (save-secrets secrets))
     secrets))
@@ -129,9 +123,6 @@
 (defn session-secret []
   (string->16-bytes (:session-secret @secrets)))
 
-(defn internal-token []
-  (:internal-token @secrets))
-
 (defn production? []
   (= :production (get-config :environment)))
 
@@ -174,13 +165,13 @@
         errors (case storage-type
                  :s3 (cond-> []
                        (nil? (:endpoint s3))
-                       (conj "S3_ENDPOINT is required when STORAGE_TYPE=s3")
+                       (conj "Missing S3_ENDPOINT: required when STORAGE_TYPE=s3")
                        
                        (nil? (:access-key s3))
-                       (conj "S3_ACCESS_KEY is required when STORAGE_TYPE=s3")
+                       (conj "Missing S3_ACCESS_KEY: required when STORAGE_TYPE=s3")
                        
                        (nil? (:secret-key s3))
-                       (conj "S3_SECRET_KEY is required when STORAGE_TYPE=s3"))
+                       (conj "Missing S3_SECRET_KEY: required when STORAGE_TYPE=s3"))
                  :local []
                  ;; Unknown storage type
                  [(str "Unknown STORAGE_TYPE: " storage-type ". Supported: s3, local")])]
