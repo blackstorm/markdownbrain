@@ -86,7 +86,7 @@ backend-build:
 frontend-build:
 	@echo "Building frontend CSS..."
 	@cd server && npm run build:css
-	@echo "Frontend CSS built: server/resources/public/css/app.css"
+	@echo "Frontend CSS built: server/resources/publics/frontend/css/frontend.css"
 
 plugin-build:
 	@echo "Building Obsidian plugin..."

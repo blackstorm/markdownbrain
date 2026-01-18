@@ -26,8 +26,6 @@ obsidian-plugin/node_modules/
 
 # Build artifacts
 target/
-server/resources/public/js/htmx.min.js
-server/resources/public/css/app.css
 
 # Shadow-cljs
 .shadow-cljs/
@@ -35,6 +33,6 @@ server/resources/public/css/app.css
 # System files
 .DS_Store
 
-./vault/test/.obsidian/
+vaults/**/.obsidian/
 
 .env

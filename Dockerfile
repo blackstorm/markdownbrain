@@ -4,7 +4,7 @@ COPY server/package*.json ./
 RUN npm ci
 COPY server/admin.css server/frontend.css ./
 COPY server/resources/templates ./resources/templates
-RUN mkdir -p resources/public/admin/css resources/public/frontend/css
+RUN mkdir -p resources/publics/admin/css resources/publics/frontend/css
 RUN npm run build
 
 FROM clojure:temurin-21-tools-deps-alpine AS backend-builder
@@ -13,8 +13,8 @@ COPY server/deps.edn server/build.clj ./
 RUN clojure -P -T:build
 COPY server/src ./src
 COPY server/resources ./resources
-COPY --from=frontend-builder /app/server/resources/public/admin/css/app.css ./resources/public/admin/css/app.css
-COPY --from=frontend-builder /app/server/resources/public/frontend/css/frontend.css ./resources/public/frontend/css/frontend.css
+COPY --from=frontend-builder /app/server/resources/publics/admin/css/app.css ./resources/publics/admin/css/app.css
+COPY --from=frontend-builder /app/server/resources/publics/frontend/css/frontend.css ./resources/publics/frontend/css/frontend.css
 RUN clojure -T:build uberjar
 
 # Stage 3: Runtime

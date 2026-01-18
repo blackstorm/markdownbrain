@@ -759,7 +759,7 @@ server/
 │                                    # - TailwindCSS + DaisyUI imports
 │                                    # - Custom theme tokens
 │                                    # - Design system components
-│                                    # - Compiled to resources/public/css/app.css
+│                                    # - Compiled to resources/publics/admin/css/app.css
 ├── resources/
 │   ├── templates/
 │   │   ├── base.html                # Base layout
@@ -779,7 +779,7 @@ server/
 │           └── admin.js             # Admin dashboard logic
 ```
 
-**Note:** All design system styles are defined in `server/app.css` and compiled to `server/resources/public/css/app.css`. When making style changes, edit `server/app.css` and run the CSS build process.
+**Note:** All design system styles are defined in `server/app.css` and compiled to `server/resources/publics/admin/css/app.css`. When making style changes, edit `server/app.css` and run the CSS build process.
 
 ## Contributing
 
