@@ -42,6 +42,7 @@ const context = await esbuild.context({
     ...builtins,
   ],
   format: "cjs",
+  platform: "node",
   target: "es2018",
   logLevel: "info",
   sourcemap: prod ? false : "inline",
@@ -58,7 +59,7 @@ const context = await esbuild.context({
               copyFileSync(resolve(__dirname, "manifest.json"), `${testVaultPath}/manifest.json`);
               console.log("✓ Copied manifest.json to test vault");
             } catch (_e) {
-              console.error("Failed to copy manifest.json:", e);
+              console.error("Failed to copy manifest.json:", _e);
             }
 
             try {

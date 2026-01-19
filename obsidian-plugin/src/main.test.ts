@@ -118,11 +118,19 @@ describe("MarkdownBrainPlugin.handleFileRename", () => {
     const plugin = createPlugin();
     const file = new TFile("notes/new.md");
     const rename = vi.fn();
-    const syncNoteFile = vi.fn().mockResolvedValue(true);
+    const syncNoteFile = vi.fn().mockResolvedValue({
+      success: true,
+      needUploadAssets: [],
+      assetsById: new Map<string, TFile>(),
+    });
 
     const pluginAccess = plugin as unknown as {
       clientIdCache: { rename: (oldPath: string, newPath: string) => void };
-      syncNoteFile: (file: TFile) => Promise<boolean>;
+      syncNoteFile: (file: TFile) => Promise<{
+        success: boolean;
+        needUploadAssets: Array<{ id: string; hash: string }>;
+        assetsById: Map<string, TFile>;
+      }>;
       settings: { autoSync: boolean };
     };
     pluginAccess.clientIdCache = { rename };
@@ -133,5 +141,57 @@ describe("MarkdownBrainPlugin.handleFileRename", () => {
 
     expect(rename).toHaveBeenCalledWith("notes/old.md", "notes/new.md");
     expect(syncNoteFile).toHaveBeenCalledWith(file);
+  });
+});
+
+describe("MarkdownBrainPlugin.handleFileChange", () => {
+  test("uploads referenced assets after note sync", async () => {
+    const plugin = createPlugin();
+    const note = new TFile("notes/a.md");
+    const assetA = new TFile("assets/a.png", "a", "png");
+    const assetB = new TFile("assets/b.png", "b", "png");
+
+    const assetMap = new Map<string, TFile>([
+      ["asset-a", assetA],
+      ["asset-b", assetB],
+    ]);
+    const syncNoteFile = vi.fn().mockResolvedValue({
+      success: true,
+      needUploadAssets: [
+        { id: "asset-a", hash: "md5-a" },
+        { id: "asset-b", hash: "md5-b" },
+      ],
+      assetsById: assetMap,
+    });
+    const syncAssetFile = vi.fn().mockResolvedValue(true);
+    let pending: Promise<void> | null = null;
+
+    const pluginAccess = plugin as unknown as {
+      debounceService: { debounce: (key: string, callback: () => void, delay: number) => void };
+      syncNoteFile: (file: TFile) => Promise<{
+        success: boolean;
+        needUploadAssets: Array<{ id: string; hash: string }>;
+        assetsById: Map<string, TFile>;
+      }>;
+      syncAssetFile: (file: TFile) => Promise<boolean>;
+      settings: { autoSync: boolean };
+    };
+    pluginAccess.debounceService = {
+      debounce: (_key, callback, _delay) => {
+        pending = callback() as Promise<void>;
+      },
+    };
+    pluginAccess.syncNoteFile = syncNoteFile;
+    pluginAccess.syncAssetFile = syncAssetFile;
+    pluginAccess.settings.autoSync = true;
+
+    await plugin.handleFileChange(note, "modify");
+    if (pending) {
+      await pending;
+    }
+
+    expect(syncNoteFile).toHaveBeenCalledWith(note);
+    expect(syncAssetFile).toHaveBeenCalledWith(assetA);
+    expect(syncAssetFile).toHaveBeenCalledWith(assetB);
   });
 });

@@ -33,7 +33,7 @@ export interface SyncNoteRequest {
   content: string;
   hash: string;
   metadata?: Record<string, unknown>;
-  assetIds?: string[];
+  assets?: Array<{ id: string; hash: string }>;
 }
 
 export interface SyncAssetRequest {
@@ -120,7 +120,7 @@ export class SyncApiClient {
   async syncNote(
     noteId: string,
     request: SyncNoteRequest,
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; need_upload_assets?: Array<{ id: string; hash: string }> }> {
     try {
       const response = await this.http.request({
         url: `${this.config.serverUrl}/sync/notes/${encodeURIComponent(noteId)}`,
@@ -133,7 +133,8 @@ export class SyncApiClient {
       });
 
       if (response.status === 200) {
-        return { success: true };
+        const data = response.json as { need_upload_assets?: Array<{ id: string; hash: string }> };
+        return { success: true, need_upload_assets: data.need_upload_assets };
       }
       return { success: false, error: `HTTP ${response.status}: ${response.text}` };
     } catch (error) {

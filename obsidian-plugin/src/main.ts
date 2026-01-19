@@ -106,9 +106,11 @@ export default class MarkdownBrainPlugin extends Plugin {
       file.path,
       async () => {
         const result = await this.syncNoteFile(file);
-        if (!result) {
+        if (!result.success) {
           new Notice("同步失败: 笔记上传失败");
+          return;
         }
+        await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
       },
       500,
     );
@@ -123,7 +125,7 @@ export default class MarkdownBrainPlugin extends Plugin {
     if (!this.settings.autoSync) return;
     this.clientIdCache.rename(oldPath, file.path);
     const result = await this.syncNoteFile(file);
-    if (!result) {
+    if (!result.success) {
       new Notice("同步失败: 笔记重命名同步失败");
     }
   }
@@ -144,12 +146,16 @@ export default class MarkdownBrainPlugin extends Plugin {
   // Sync Operations
   // =========================================================================
 
-  private async syncNoteFile(file: TFile): Promise<boolean> {
+  private async syncNoteFile(file: TFile): Promise<{
+    success: boolean;
+    needUploadAssets: Array<{ id: string; hash: string }>;
+    assetsById: Map<string, TFile>;
+  }> {
     const content = await this.app.vault.read(file);
     const hash = await hashString(content);
     const clientId = await getOrCreateClientId(file, content, this.app);
     const metadata = extractNoteMetadata(this.app.metadataCache.getFileCache(file));
-    const assetIds = await this.extractAssetIds(content, file.path);
+    const assets = await this.collectReferencedAssetEntriesForNote(file);
 
     this.clientIdCache.set(file.path, clientId);
 
@@ -158,10 +164,14 @@ export default class MarkdownBrainPlugin extends Plugin {
       content,
       hash,
       metadata: metadata as Record<string, unknown>,
-      assetIds,
+      assets: assets.entries,
     });
 
-    return result.success;
+    return {
+      success: result.success,
+      needUploadAssets: result.need_upload_assets ?? [],
+      assetsById: assets.byId,
+    };
   }
 
   private async syncAssetFile(file: TFile): Promise<boolean> {
@@ -219,7 +229,10 @@ export default class MarkdownBrainPlugin extends Plugin {
     for (const entry of entries) {
       const file = fileMap.get(entry.id);
       if (!file) continue;
-      await this.syncNoteFile(file);
+      const result = await this.syncNoteFile(file);
+      if (!result.success) {
+        new Notice("同步失败: 笔记上传失败");
+      }
     }
   }
 
@@ -306,15 +319,69 @@ export default class MarkdownBrainPlugin extends Plugin {
     return Array.from(referenced.values());
   }
 
-  private async extractAssetIds(content: string, sourcePath: string): Promise<string[]> {
+  private async collectReferencedAssetFilesForNote(note: TFile): Promise<TFile[]> {
+    const referenced = new Map<string, TFile>();
+    const content = await this.app.vault.read(note);
     const paths = extractAssetPaths(content);
-    const resolvedPaths = paths.map((path) => {
-      const resolved = this.app.metadataCache.getFirstLinkpathDest(path, sourcePath);
-      return resolved?.path ?? path;
-    });
-    const ids = await Promise.all(resolvedPaths.map((path) => hashString(path)));
-    return Array.from(new Set(ids));
+
+    for (const path of paths) {
+      const resolved = this.app.metadataCache.getFirstLinkpathDest(path, note.path);
+      if (resolved instanceof TFile && isAssetFile(resolved)) {
+        referenced.set(resolved.path, resolved);
+      }
+    }
+
+    return Array.from(referenced.values());
   }
+
+  private async collectReferencedAssetEntriesForNote(note: TFile): Promise<{
+    entries: Array<{ id: string; hash: string }>;
+    byId: Map<string, TFile>;
+  }> {
+    const files = await this.collectReferencedAssetFilesForNote(note);
+    const byId = new Map<string, TFile>();
+    const entries = await Promise.all(
+      files.map(async (file) => {
+        const buffer = await this.app.vault.readBinary(file);
+        const id = await hashString(file.path);
+        const hash = await md5Hash(buffer);
+        byId.set(id, file);
+        return { id, hash };
+      }),
+    );
+    return { entries, byId };
+  }
+
+  private async syncAssetsForNote(
+    note: TFile,
+    needUploadAssets?: Array<{ id: string }>,
+    assetsById?: Map<string, TFile>,
+  ): Promise<void> {
+    const lookup = assetsById ?? (await this.collectReferencedAssetEntriesForNote(note)).byId;
+    const assetsToUpload = needUploadAssets?.length
+      ? needUploadAssets
+      : Array.from(lookup.keys()).map((id) => ({ id }));
+
+    if (assetsToUpload.length === 0) {
+      return;
+    }
+
+    let failed = false;
+    for (const asset of assetsToUpload) {
+      const file = lookup.get(asset.id);
+      if (!file) continue;
+      const result = await this.syncAssetFile(file);
+      if (!result) {
+        failed = true;
+      }
+    }
+
+    if (failed) {
+      new Notice("同步失败: 资源上传失败");
+    }
+  }
+
+  // extractAssetIds removed; asset uploads now use per-note asset entries with hashes.
 
   // =========================================================================
   // Settings Persistence

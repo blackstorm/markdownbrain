@@ -44,6 +44,8 @@
 ;;; 1. 基础 Markdown 转换
 ;;; ============================================================
 
+(declare asset-embed?)
+
 (defn md->html
   "将 Markdown 转换为 HTML
    输入: Markdown 字符串
@@ -62,6 +64,67 @@
 ;;; ============================================================
 ;;; 2. Obsidian 链接解析
 ;;; ============================================================
+
+(def ^:private code-block-pattern
+  #"(?:```|~~~)[\s\S]*?(?:```|~~~)")
+
+(def ^:private inline-code-pattern
+  #"`[^`\n]*`")
+
+(defn- mask-code
+  "将代码块与行内代码替换为占位符，避免解析误伤"
+  [content]
+  (let [segments (atom [])
+        replace-segment (fn [match]
+                          (let [idx (count @segments)]
+                            (swap! segments conj match)
+                            (str "MB_CODE_SEGMENT_" idx "_MB")))]
+    {:content (-> content
+                  (str/replace code-block-pattern replace-segment)
+                  (str/replace inline-code-pattern replace-segment))
+     :segments @segments}))
+
+(defn- unmask-code
+  "将占位符还原为原始代码块/行内代码"
+  [content segments]
+  (reduce-kv (fn [acc idx segment]
+               (str/replace acc (str "MB_CODE_SEGMENT_" idx "_MB") segment))
+             content
+             (vec segments)))
+
+(defn- normalize-asset-path
+  "规范化资源路径，去除引号、URL 编码、查询参数、片段等"
+  [path]
+  (when (and path (not (str/blank? path)))
+    (let [trimmed (-> path
+                      str/trim
+                      (str/replace #"^['\"]|['\"]$" "")
+                      (str/replace #"^<|>$" "")
+                      (str/replace #"^\./" "")
+                      (str/replace #"\\" "/"))
+          decoded (try
+                    (java.net.URLDecoder/decode trimmed "UTF-8")
+                    (catch Exception _ trimmed))
+          cut-at (or (str/index-of decoded "?")
+                     (str/index-of decoded "#"))]
+      (if cut-at
+        (subs decoded 0 cut-at)
+        decoded))))
+
+(defn- asset-url
+  "根据资产路径生成可访问的 URL"
+  [vault-id path]
+  (let [normalized (normalize-asset-path path)
+        escaped-path (-> (or normalized path "")
+                         (str/replace #"^/+" "")
+                         (java.net.URLEncoder/encode "UTF-8")
+                         (str/replace "%2F" "/")
+                         (str/replace "+" "%20"))
+        asset (when normalized (db/find-asset vault-id normalized))]
+    (if asset
+      (or (object-store/public-asset-url vault-id (:object-key asset))
+          (str "/storage/" (:object-key asset)))
+      (str "/storage/" escaped-path))))
 
 (defn parse-obsidian-link
   "解析单个 Obsidian 链接
@@ -96,6 +159,98 @@
        :path (str/trim path)
        :display (str/trim display-text)
        :anchor (when anchor (str/trim anchor))})))
+
+(defn- split-link-destination
+  "拆分 Markdown 链接目标与 title 部分"
+  [raw]
+  (let [trimmed (str/trim raw)]
+    (if (str/starts-with? trimmed "<")
+      (let [end-idx (str/index-of trimmed ">")
+            dest (if (and end-idx (pos? end-idx))
+                   (subs trimmed 1 end-idx)
+                   "")
+            rest (if end-idx (subs trimmed (inc end-idx)) "")]
+        [dest rest])
+      (let [[dest rest] (str/split trimmed #"\s+" 2)]
+        [dest (when rest (str " " rest))]))))
+
+(defn- rewrite-inline-images
+  "重写 Markdown 图片链接中的资源路径"
+  [content vault-id]
+  (let [pattern #"!\[([^\]]*)\]\(([^)]+)\)"]
+    (str/replace content pattern
+                 (fn [[_ alt inner]]
+                   (let [[dest rest] (split-link-destination inner)
+                         normalized (normalize-asset-path dest)]
+                     (if (and normalized (asset-embed? normalized))
+                       (str "![" alt "](" (asset-url vault-id normalized) (or rest "") ")")
+                       (str "![" alt "](" inner ")")))))))
+
+(defn- rewrite-reference-definitions
+  "重写 reference-style 图片的定义 URL"
+  [content vault-id]
+  (let [pattern #"(?m)^\s*\[([^\]]+)\]:\s+(.+)$"]
+    (str/replace content pattern
+                 (fn [[line label rest]]
+                   (let [[dest tail] (split-link-destination rest)
+                         normalized (normalize-asset-path dest)]
+                     (if (and normalized (asset-embed? normalized))
+                       (str "[" label "]: " (asset-url vault-id normalized) (or tail ""))
+                       line))))))
+
+(defn- normalize-reference-label
+  [label]
+  (-> label str/trim str/lower-case (str/replace #"\s+" " ")))
+
+(defn- extract-reference-definitions
+  [content]
+  (let [pattern #"(?m)^\s*\[([^\]]+)\]:\s+(.+)$"]
+    (reduce (fn [acc [_ label rest]]
+              (let [[dest _] (split-link-destination rest)
+                    normalized (normalize-asset-path dest)]
+                (assoc acc (normalize-reference-label label) normalized)))
+            {}
+            (re-seq pattern content))))
+
+(defn- rewrite-reference-images
+  "将 reference-style 图片重写为 inline 形式，便于渲染"
+  [content vault-id]
+  (let [definitions (extract-reference-definitions content)
+        pattern #"!\[([^\]]*)\]\[([^\]]*)\]"]
+    (str/replace content pattern
+                 (fn [[original alt label]]
+                   (let [resolved-label (normalize-reference-label (if (str/blank? label) alt label))
+                         destination (get definitions resolved-label)
+                         normalized (normalize-asset-path destination)]
+                     (if (and normalized (asset-embed? normalized))
+                       (str "![" alt "](" (asset-url vault-id normalized) ")")
+                       original))))))
+
+(defn- rewrite-html-media-tags
+  "重写 HTML img/audio/video/source 标签中的 src"
+  [content vault-id]
+  (let [pattern #"<(img|audio|video|source)\b[^>]*>"]
+    (str/replace content pattern
+                 (fn [[tag]]
+                   (let [src-match (re-find #"src\s*=\s*(?:\"([^\"]+)\"|'([^']+)'|([^\s>]+))" tag)
+                         raw (or (nth src-match 1 nil) (nth src-match 2 nil) (nth src-match 3 nil))
+                         normalized (normalize-asset-path raw)]
+                     (if (and normalized (asset-embed? normalized))
+                       (str/replace tag
+                                    #"src\s*=\s*(?:\"([^\"]+)\"|'([^']+)'|([^\s>]+))"
+                                    (str "src=\"" (asset-url vault-id normalized) "\""))
+                       tag))))))
+
+(defn- rewrite-asset-links
+  "重写 Markdown 内容中的资源链接（图片/HTML）"
+  [content vault-id]
+  (let [{:keys [content segments]} (mask-code content)
+        updated (-> content
+                    (rewrite-inline-images vault-id)
+                    (rewrite-reference-images vault-id)
+                    (rewrite-reference-definitions vault-id)
+                    (rewrite-html-media-tags vault-id))]
+    (unmask-code updated segments)))
 
 ;;; ============================================================
 ;;; 3. 数学公式处理
@@ -331,34 +486,27 @@
    - 如果配置了 S3，使用 S3 直接访问 (public URL)
    - 否则使用相对路径 /storage/..."
   [vault-id path display-text]
-  (let [escaped-path (-> path
-                         (str/replace #"^/+" "")
-                         (java.net.URLEncoder/encode "UTF-8")
-                         (str/replace "%2F" "/"))
+  (let [normalized (normalize-asset-path path)
         escaped-display (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})
-        asset (db/find-asset vault-id path)
-        asset-url (if asset
-                    (or (object-store/public-asset-url vault-id (:object-key asset))
-                        (str "/storage/" (:object-key asset)))
-                    (str "/storage/" escaped-path))]
+        asset-url (asset-url vault-id normalized)]
     (cond
       ;; Image files
-      (re-matches #".*\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$" (str/lower-case path))
+      (re-matches #".*\.(png|jpg|jpeg|gif|webp|svg|bmp|ico)$" (str/lower-case (or normalized "")))
       (format "<img src=\"%s\" alt=\"%s\" class=\"asset-embed\">"
               asset-url escaped-display)
       
       ;; PDF files
-      (str/ends-with? (str/lower-case path) ".pdf")
+      (str/ends-with? (str/lower-case (or normalized "")) ".pdf")
       (format "<a href=\"%s\" class=\"asset-link pdf-link\">%s</a>"
               asset-url escaped-display)
       
       ;; Audio files
-      (re-matches #".*\.(mp3|ogg|wav)$" (str/lower-case path))
+      (re-matches #".*\.(mp3|ogg|wav)$" (str/lower-case (or normalized "")))
       (format "<audio src=\"%s\" controls class=\"asset-embed\">%s</audio>"
               asset-url escaped-display)
       
       ;; Video files
-      (re-matches #".*\.(mp4|webm)$" (str/lower-case path))
+      (re-matches #".*\.(mp4|webm)$" (str/lower-case (or normalized "")))
       (format "<video src=\"%s\" controls class=\"asset-embed\">%s</video>"
               asset-url escaped-display)
       
@@ -366,6 +514,15 @@
       :else
       (format "<a href=\"%s\" class=\"asset-link\">%s</a>"
               asset-url escaped-display))))
+
+(defn- render-asset-link
+  "渲染资源链接为 HTML"
+  [vault-id path display-text]
+  (let [normalized (normalize-asset-path path)
+        escaped-display (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})
+        asset-url (asset-url vault-id normalized)]
+    (format "<a href=\"%s\" class=\"asset-link\">%s</a>"
+            asset-url escaped-display)))
 
 (defn replace-obsidian-links
   "替换文本中的所有 Obsidian 链接为 HTML 链接
@@ -382,33 +539,39 @@
     注意: links 参数来自 note_links 表，只包含已解析的有效链接
          资源文件（图片、音视频等）不在 note_links 表中，直接渲染为资源链接"
   [content vault-id links]
-  (let [link-index (build-link-index links)
-        ;; 匹配 [[...]] 和 ![[...]]
-        pattern #"(!?)\[\[([^\]]+)\]\]"]
-    (str/replace content pattern
-                 (fn [[full-match is-embed link-text]]
-                   (let [original full-match
-                         parsed (parse-obsidian-link original)
-                         path (:path parsed)
-                         display (:display parsed)]
-                     (cond
-                       ;; 1. 嵌入且是资源文件（图片、音视频等）-> 直接渲染为资源链接
-                       (and (= is-embed "!") (asset-embed? path))
-                       (render-asset-embed vault-id path display)
-                       
-                       ;; 2. 链接存在于预存储的列表中（note_links 表）
-                       (find-link-by-original original link-index)
-                       (let [link-data (get link-index original)
-                             target-client-id (:target-client-id link-data)
-                             display-text (:display-text link-data)
-                             link-type (:link-type link-data)]
-                         (if (= link-type "embed")
-                           (render-image-embed target-client-id display-text)
-                           (render-internal-link target-client-id display-text (:anchor parsed))))
+  (let [{:keys [content segments]} (mask-code content)
+        link-index (build-link-index links)
+        pattern #"(!?)\[\[([^\]]+)\]\]"
+        replaced (str/replace content pattern
+                              (fn [[full-match is-embed _link-text]]
+                                (let [original full-match
+                                      parsed (parse-obsidian-link original)
+                                      path (:path parsed)
+                                      display (:display parsed)
+                                      normalized (normalize-asset-path path)]
+                                  (cond
+                                    ;; 1. 嵌入且是资源文件（图片、音视频等）
+                                    (and (= is-embed "!") (asset-embed? normalized))
+                                    (render-asset-embed vault-id normalized display)
 
-                       ;; 3. 链接不存在（broken link）
-                       :else
-                       (render-broken-link path display)))))))
+                                    ;; 2. 非嵌入但链接到资源文件 -> 渲染为资源链接
+                                    (and (not= is-embed "!") (asset-embed? normalized))
+                                    (render-asset-link vault-id normalized display)
+
+                                    ;; 3. 链接存在于预存储的列表中（note_links 表）
+                                    (find-link-by-original original link-index)
+                                    (let [link-data (get link-index original)
+                                          target-client-id (:target-client-id link-data)
+                                          display-text (:display-text link-data)
+                                          link-type (:link-type link-data)]
+                                      (if (= link-type "embed")
+                                        (render-image-embed target-client-id display-text)
+                                        (render-internal-link target-client-id display-text (:anchor parsed))))
+
+                                    ;; 4. 链接不存在（broken link）
+                                    :else
+                                    (render-broken-link path display)))))]
+    (unmask-code replaced segments)))
 
 ;;; ============================================================
 ;;; 6. 完整渲染流程
@@ -429,7 +592,8 @@
     (let [;; 1. 提取数学公式
           {:keys [content formulas]} (extract-math content)
           ;; 2. 替换 Obsidian 链接
-          content-with-links (replace-obsidian-links content vault-id links)
+          content-with-assets (rewrite-asset-links content vault-id)
+          content-with-links (replace-obsidian-links content-with-assets vault-id links)
           ;; 3. Markdown -> HTML
           html (md->html content-with-links)
           ;; 4. 还原数学公式

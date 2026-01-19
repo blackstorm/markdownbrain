@@ -163,7 +163,7 @@
       (let [vault-id (:id vault)
             tenant-id (:tenant-id vault)
             note-id (get-in request [:path-params :id])
-            {:keys [path content hash metadata assetIds]} (:body-params request)
+            {:keys [path content hash metadata assetIds assets]} (:body-params request)
             note-path (ensure-string path)
             note-hash (ensure-string hash)]
         (cond
@@ -187,9 +187,21 @@
               (resp/ok {:status "skipped" :noteId note-id})
               (do
                 (upsert-note-with-links! tenant-id vault-id note-id note-path content note-hash metadata)
-                (when (vector? assetIds)
-                  (update-note-asset-refs! vault-id note-id assetIds))
-                (resp/ok {:status "stored" :noteId note-id})))))))))
+                (let [asset-entries (if (vector? assets) assets [])
+                      asset-ids (if (seq asset-entries)
+                                  (mapv :id asset-entries)
+                                  (if (vector? assetIds) assetIds []))]
+                  (when (seq asset-ids)
+                    (update-note-asset-refs! vault-id note-id asset-ids))
+                  (let [need-upload (->> asset-entries
+                                         (filter (fn [{:keys [id hash]}]
+                                                   (let [existing (db/get-asset-by-client-id vault-id id)]
+                                                     (or (nil? existing)
+                                                         (not= (:md5 existing) hash)))))
+                                         (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))]
+                    (resp/ok {:status "stored"
+                              :noteId note-id
+                              :need_upload_assets need-upload})))))))))))
 
 (defn sync-asset
   "POST /sync/assets/{id}"
@@ -203,8 +215,7 @@
             {:keys [path contentType size hash content]} (:body-params request)
             asset-path (ensure-string path)
             asset-hash (ensure-string hash)
-            asset-content-type (ensure-string contentType)
-            content-bytes (decode-base64 content)]
+            asset-content-type (ensure-string contentType)]
         (cond
           (str/blank? asset-id)
           (resp/bad-request "Missing asset id")
@@ -218,18 +229,28 @@
           (str/blank? asset-content-type)
           (resp/bad-request "Missing asset contentType")
 
-          (nil? content-bytes)
-          (resp/bad-request "Missing asset content")
-
           :else
-          (let [extension (object-store/content-type->extension asset-content-type)
-                object-key (object-store/asset-object-key asset-id extension)
-                asset-size (or size (alength ^bytes content-bytes))]
-            (object-store/put-object! vault-id object-key content-bytes asset-content-type)
-            (db/upsert-asset! (utils/generate-uuid)
-                              tenant-id vault-id asset-id asset-path object-key
-                              asset-size asset-content-type asset-hash)
-            (resp/ok {:status "stored" :assetId asset-id})))))))
+          (let [existing (db/get-asset-by-client-id vault-id asset-id)
+                existing-hash (:md5 existing)
+                existing-path (:path existing)]
+            (if (and existing
+                     (= existing-hash asset-hash)
+                     (= existing-path asset-path))
+              (resp/ok {:status "skipped" :assetId asset-id})
+              (let [content-bytes (decode-base64 content)]
+                (cond
+                  (nil? content-bytes)
+                  (resp/bad-request "Missing asset content")
+
+                  :else
+                  (let [extension (object-store/content-type->extension asset-content-type)
+                        object-key (object-store/asset-object-key asset-id extension)
+                        asset-size (or size (alength ^bytes content-bytes))]
+                    (object-store/put-object! vault-id object-key content-bytes asset-content-type)
+                    (db/upsert-asset! (utils/generate-uuid)
+                                      tenant-id vault-id asset-id asset-path object-key
+                                      asset-size asset-content-type asset-hash)
+                    (resp/ok {:status "stored" :assetId asset-id})))))))))))
 
 (defn delete-note-asset
   "DELETE /sync/notes/{note_id}/assets/{asset_id}"

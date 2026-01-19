@@ -82,6 +82,7 @@ describe("SyncApiClient", () => {
         path: "test.md",
         content: "# Hello",
         hash: "hash-1",
+        assets: [{ id: "asset-1", hash: "md5-1" }],
       });
 
       expect(result.success).toBe(true);
@@ -96,6 +97,7 @@ describe("SyncApiClient", () => {
           path: "test.md",
           content: "# Hello",
           hash: "hash-1",
+          assets: [{ id: "asset-1", hash: "md5-1" }],
         }),
       });
     });

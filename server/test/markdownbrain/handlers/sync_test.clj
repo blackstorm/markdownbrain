@@ -56,13 +56,36 @@
                                     {:path "notes/a.md"
                                      :content "Hello"
                                      :hash "hash-note"
-                                     :assetIds [asset-id]})
+                                     :assets [{:id asset-id :hash "md5-a"}]})
                       (assoc :path-params {:id note-id}))
           response (sync/sync-note request)
           refs (db/get-asset-refs-by-note vault-id note-id)]
       (is (= 200 (:status response)))
       (is (= 1 (count refs)))
-      (is (= asset-id (:asset-client-id (first refs)))))))
+      (is (= asset-id (:asset-client-id (first refs))))
+      (is (empty? (get-in response [:body :need_upload_assets]))))))
+
+(deftest test-sync-note-need-upload-assets
+  (testing "returns missing assets when hashes differ or asset missing"
+    (let [tenant-id (support/create-test-tenant!)
+          {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-assets-missing.com")
+          note-id "note-asset-missing"
+          asset-id "asset-keep"
+          missing-id "asset-missing"
+          _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "img/a.png" "assets/a.png" 10 "image/png" "md5-a")
+          request (-> (auth-request :post (str "/sync/notes/" note-id) sync-key
+                                    {:path "notes/a.md"
+                                     :content "Hello"
+                                     :hash "hash-note"
+                                     :assets [{:id asset-id :hash "md5-changed"}
+                                              {:id missing-id :hash "md5-missing"}]})
+                      (assoc :path-params {:id note-id}))
+          response (sync/sync-note request)
+          missing (get-in response [:body :need_upload_assets])]
+      (is (= 200 (:status response)))
+      (is (= [{:id asset-id :hash "md5-changed"}
+              {:id missing-id :hash "md5-missing"}]
+             missing)))))
 
 (deftest test-delete-note-asset
   (testing "removes ref and deletes asset when no refs remain"
@@ -80,3 +103,46 @@
         (is (= 200 (:status response)))
         (is (empty? (db/get-asset-refs-by-note vault-id note-id)))
         (is (nil? (db/get-asset-by-client-id vault-id asset-id)))))))
+
+(deftest test-sync-asset-dedup
+  (testing "skips upload when asset hash matches"
+    (let [tenant-id (support/create-test-tenant!)
+          {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-dedup.com")
+          asset-id "asset-dup"
+          content "hello"
+          base64-content (.encodeToString (java.util.Base64/getEncoder) (.getBytes content "UTF-8"))
+          _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "assets/a.png" "assets/a.png" 10 "image/png" "md5-same")
+          stored (atom 0)
+          request (-> (auth-request :post (str "/sync/assets/" asset-id) sync-key
+                                    {:path "assets/a.png"
+                                     :contentType "image/png"
+                                     :size 10
+                                     :hash "md5-same"
+                                     :content base64-content})
+                      (assoc :path-params {:id asset-id}))]
+      (with-redefs [object-store/put-object! (fn [_ _ _ _] (swap! stored inc))]
+        (let [response (sync/sync-asset request)]
+          (is (= 200 (:status response)))
+          (is (= "skipped" (get-in response [:body :status])))
+          (is (= 0 @stored))))))
+
+  (testing "stores upload when asset hash changes"
+    (let [tenant-id (support/create-test-tenant!)
+          {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-dedup-2.com")
+          asset-id "asset-dup-2"
+          content "new"
+          base64-content (.encodeToString (java.util.Base64/getEncoder) (.getBytes content "UTF-8"))
+          _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "assets/a.png" "assets/a.png" 10 "image/png" "md5-old")
+          stored (atom 0)
+          request (-> (auth-request :post (str "/sync/assets/" asset-id) sync-key
+                                    {:path "assets/a.png"
+                                     :contentType "image/png"
+                                     :size 10
+                                     :hash "md5-new"
+                                     :content base64-content})
+                      (assoc :path-params {:id asset-id}))]
+      (with-redefs [object-store/put-object! (fn [_ _ _ _] (swap! stored inc))]
+        (let [response (sync/sync-asset request)]
+          (is (= 200 (:status response)))
+          (is (= "stored" (get-in response [:body :status])))
+          (is (= 1 @stored)))))))

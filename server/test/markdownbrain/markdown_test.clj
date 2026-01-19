@@ -260,6 +260,12 @@
         (is (str/includes? result "<img"))
         (is (str/includes? result "/storage/image.png"))
         (is (str/includes? result "asset-embed"))))
+
+    (testing "非嵌入资源链接 [[image.png]] 渲染为资源链接"
+      (let [result (md/replace-obsidian-links "[[image.png]]" vault-id [])]
+        (is (str/includes? result "<a"))
+        (is (str/includes? result "/storage/image.png"))
+        (is (str/includes? result "asset-link"))))
     
     (testing "嵌入 .md 文件 - 使用 client-id"
       (let [result (md/replace-obsidian-links "![[embedded-note.md]]" vault-id links)]
@@ -283,7 +289,17 @@
       ;; MP3
       (let [result (md/replace-obsidian-links "![[audio.mp3]]" vault-id [])]
         (is (str/includes? result "<audio"))
-        (is (str/includes? result "/storage/audio.mp3"))))))
+        (is (str/includes? result "/storage/audio.mp3"))))
+
+    (testing "代码块与行内代码中的 Obsidian 链接不被替换"
+      (let [content (str "Inline `[[Note A]]` should stay.\n\n"
+                         "```md\n[[Note A]]\n```\n\n"
+                         "Outside [[Note A]]")
+            result (md/replace-obsidian-links content vault-id links)]
+        (is (str/includes? result "`[[Note A]]`"))
+        (is (str/includes? result "```md\n[[Note A]]\n```"))
+        (is (str/includes? result "href=\"/client-1\"")))))
+  )
 
 ;;; 测试 7: 完整渲染流程
 (deftest test-render-markdown
@@ -306,3 +322,31 @@
         ;; 检查数学公式被标记
         (is (str/includes? result "math-inline"))
         (is (str/includes? result "math-block"))))))
+
+;;; 测试 8: 资源链接渲染扩展
+(deftest test-render-asset-links
+  (let [vault-id "test-vault-id"
+        links []
+        content (str "Inline image: ![Alt](assets/inline.png)\n\n"
+                     "Angle image: ![Alt](<assets/space image.png> \"Title\")\n\n"
+                     "Reference image: ![Alt][ref]\n\n"
+                     "[ref]: assets/ref.png \"Title\"\n\n"
+                     "<img src=\"assets/html.png\" />\n\n"
+                     "Fragment: ![Alt](assets/frag.png#section)\n\n"
+                     "Query: ![Alt](assets/query.png?raw=1)\n\n"
+                     "Inline code `![Alt](assets/code.png)`\n\n"
+                     "```md\n![Alt](assets/fenced.png)\n```\n")]
+
+    (testing "Markdown 图片、引用式图片、HTML 标签能正确重写路径"
+      (let [result (md/render-markdown content vault-id links)]
+        (is (str/includes? result "src=\"/storage/assets/inline.png\""))
+        (is (str/includes? result "src=\"/storage/assets/space%20image.png\""))
+        (is (str/includes? result "src=\"/storage/assets/ref.png\""))
+        (is (str/includes? result "src=\"/storage/assets/html.png\""))
+        (is (str/includes? result "src=\"/storage/assets/frag.png\""))
+        (is (str/includes? result "src=\"/storage/assets/query.png\""))))
+
+    (testing "代码块与行内代码中的 Markdown 图片不被重写"
+      (let [result (md/render-markdown content vault-id links)]
+        (is (str/includes? result "![Alt](assets/code.png)"))
+        (is (str/includes? result "![Alt](assets/fenced.png)"))))))
