@@ -87,6 +87,132 @@
               {:id missing-id :hash "md5-missing"}]
              missing)))))
 
+(deftest test-sync-note-link-diff-no-change
+  (testing "does not delete/insert links when only note content changes"
+    (let [tenant-id (support/create-test-tenant!)
+          {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-links-no-change.com")
+          note-a "note-a"
+          note-b "note-b"
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "Note B.md" note-b "B" "{}" "hash-b" nil)
+          request-1 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                      {:path "Note A.md"
+                                       :content "Link to [[Note B]]"
+                                       :hash "hash-a-1"
+                                       :assets []})
+                        (assoc :path-params {:id note-a}))
+          _ (sync/sync-note request-1)
+          delete-count (atom 0)
+          insert-count (atom 0)
+          original-delete db/delete-note-link-by-target!
+          original-insert db/insert-note-link!]
+      (with-redefs [db/delete-note-link-by-target! (fn [& args]
+                                                     (swap! delete-count inc)
+                                                     (apply original-delete args))
+                    db/insert-note-link! (fn [& args]
+                                           (swap! insert-count inc)
+                                           (apply original-insert args))]
+        (let [request-2 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                          {:path "Note A.md"
+                                           :content "Updated text [[Note B]]"
+                                           :hash "hash-a-2"
+                                           :assets []})
+                            (assoc :path-params {:id note-a}))
+              response (sync/sync-note request-2)]
+          (is (= 200 (:status response)))
+          (is (= 0 @delete-count))
+          (is (= 0 @insert-count)))))))
+
+(deftest test-sync-note-link-diff-add-remove-update
+  (testing "adds, removes, and updates links with minimal operations"
+    (let [tenant-id (support/create-test-tenant!)
+          {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-links-diff.com")
+          note-a "note-a"
+          note-b "note-b"
+          note-c "note-c"
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "Note B.md" note-b "B" "{}" "hash-b" nil)
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "Note C.md" note-c "C" "{}" "hash-c" nil)
+          request-1 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                      {:path "Note A.md"
+                                       :content "Link [[Note B]]"
+                                       :hash "hash-a-1"
+                                       :assets []})
+                        (assoc :path-params {:id note-a}))
+          _ (sync/sync-note request-1)
+          delete-count (atom 0)
+          insert-count (atom 0)
+          original-delete db/delete-note-link-by-target!
+          original-insert db/insert-note-link!]
+      (with-redefs [db/delete-note-link-by-target! (fn [& args]
+                                                     (swap! delete-count inc)
+                                                     (apply original-delete args))
+                    db/insert-note-link! (fn [& args]
+                                           (swap! insert-count inc)
+                                           (apply original-insert args))]
+        (let [request-2 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                          {:path "Note A.md"
+                                           :content "Now [[Note C]] only"
+                                           :hash "hash-a-2"
+                                           :assets []})
+                            (assoc :path-params {:id note-a}))
+              response-2 (sync/sync-note request-2)]
+          (is (= 200 (:status response-2)))
+          (is (= 1 @delete-count))
+          (is (= 1 @insert-count))
+          (reset! delete-count 0)
+          (reset! insert-count 0))
+        (let [request-3 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                          {:path "Note A.md"
+                                           :content "Alias [[Note C|My C]]"
+                                           :hash "hash-a-3"
+                                           :assets []})
+                            (assoc :path-params {:id note-a}))
+              response-3 (sync/sync-note request-3)]
+          (is (= 200 (:status response-3)))
+          (is (= 1 @delete-count))
+          (is (= 1 @insert-count)))))))
+
+(deftest test-sync-note-asset-ref-removal
+  (testing "removes asset ref when all notes drop the asset"
+    (with-redefs [object-store/delete-object! (fn [_ _] nil)]
+      (let [tenant-id (support/create-test-tenant!)
+            {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-asset-refs.com")
+            asset-id "asset-shared"
+            _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "assets/shared.png" "assets/shared.png" 10 "image/png" "md5-shared")
+            note-a "note-a"
+            note-b "note-b"
+            request-a (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                        {:path "A.md"
+                                         :content "A"
+                                         :hash "hash-a"
+                                         :assets [{:id asset-id :hash "md5-shared"}]})
+                          (assoc :path-params {:id note-a}))
+            request-b (-> (auth-request :post (str "/sync/notes/" note-b) sync-key
+                                        {:path "B.md"
+                                         :content "B"
+                                         :hash "hash-b"
+                                         :assets [{:id asset-id :hash "md5-shared"}]})
+                          (assoc :path-params {:id note-b}))]
+        (sync/sync-note request-a)
+        (sync/sync-note request-b)
+
+        (let [remove-a (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+                                         {:path "A.md"
+                                          :content "A no asset"
+                                          :hash "hash-a-2"
+                                          :assets []})
+                           (assoc :path-params {:id note-a}))]
+          (sync/sync-note remove-a)
+          (is (some? (db/get-asset-by-client-id vault-id asset-id))))
+
+        (let [remove-b (-> (auth-request :post (str "/sync/notes/" note-b) sync-key
+                                         {:path "B.md"
+                                          :content "B no asset"
+                                          :hash "hash-b-2"
+                                          :assets []})
+                           (assoc :path-params {:id note-b}))]
+          (sync/sync-note remove-b)
+          (is (nil? (db/get-asset-by-client-id vault-id asset-id))))))))
+
 (deftest test-delete-note-asset
   (testing "removes ref and deletes asset when no refs remain"
     (with-redefs [object-store/delete-object! (fn [_ _] nil)]

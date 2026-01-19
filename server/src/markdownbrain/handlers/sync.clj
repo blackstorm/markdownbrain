@@ -6,14 +6,16 @@
    - POST /sync/notes/{id}
    - POST /sync/assets/{id}
    - DELETE /sync/notes/{note_id}/assets/{asset_id}"
-  (:require [markdownbrain.db :as db]
+  (:require [markdownbrain.config :as config]
+            [markdownbrain.db :as db]
             [markdownbrain.object-store :as object-store]
             [markdownbrain.response :as resp]
             [markdownbrain.link-parser :as link-parser]
             [markdownbrain.utils :as utils]
             [clojure.data.json :as json]
             [clojure.string :as str]
-            [clojure.set :as set])
+            [clojure.set :as set]
+            [clojure.tools.logging :as log])
   (:import (java.util Base64)))
 
 ;; =============================================================================
@@ -62,15 +64,44 @@
             links (link-parser/extract-links content)
             resolved (link-parser/resolve-links links all-notes)
             valid-links (filter :target-client-id resolved)
-            deduped (link-parser/deduplicate-by-target valid-links)]
-        (db/delete-note-links-by-source! vault-id note-id)
-        (doseq [link deduped]
-          (db/insert-note-link! vault-id note-id
-                                (:target-client-id link)
-                                (:target-path link)
-                                (:link-type link)
-                                (:display-text link)
-                                (:original link)))))))
+            deduped (link-parser/deduplicate-by-target valid-links)
+            existing-links (db/get-note-links vault-id note-id)
+            normalize-link (fn [link]
+                             (select-keys link [:target-client-id :target-path :link-type :display-text :original]))
+            existing-map (into {}
+                               (map (fn [link]
+                                      [(:target-client-id link) (normalize-link link)]))
+                               existing-links)
+            new-map (into {}
+                          (map (fn [link]
+                                 [(:target-client-id link) (normalize-link link)]))
+                          deduped)
+            existing-keys (set (keys existing-map))
+            new-keys (set (keys new-map))
+            to-delete (set/difference existing-keys new-keys)
+            to-add (set/difference new-keys existing-keys)
+            to-keep (set/intersection existing-keys new-keys)
+            to-update (filter (fn [key]
+                                (not= (existing-map key) (new-map key)))
+                              to-keep)]
+        (when (config/development?)
+          (log/debug "sync-note link diff"
+                     {:note-id note-id
+                      :existing (count existing-keys)
+                      :new (count new-keys)
+                      :delete (count to-delete)
+                      :update (count to-update)
+                      :insert (count to-add)}))
+        (doseq [target-id (concat to-delete to-update)]
+          (db/delete-note-link-by-target! vault-id note-id target-id))
+        (doseq [target-id (concat to-add to-update)]
+          (let [link (new-map target-id)]
+            (db/insert-note-link! vault-id note-id
+                                  (:target-client-id link)
+                                  (:target-path link)
+                                  (:link-type link)
+                                  (:display-text link)
+                                  (:original link))))))))
 
 (declare delete-asset!)
 
@@ -95,6 +126,11 @@
 (defn- delete-asset!
   [vault-id asset-id]
   (when-let [asset (db/get-asset-by-client-id vault-id asset-id)]
+    (when (config/development?)
+      (log/debug "delete-asset"
+                 {:vault-id vault-id
+                  :asset-id asset-id
+                  :object-key (:object-key asset)}))
     (object-store/delete-object! vault-id (:object-key asset))
     (db/delete-note-asset-refs-by-asset! vault-id asset-id)
     (db/delete-asset-by-client-id! vault-id asset-id)))
@@ -163,7 +199,7 @@
       (let [vault-id (:id vault)
             tenant-id (:tenant-id vault)
             note-id (get-in request [:path-params :id])
-            {:keys [path content hash metadata assetIds assets]} (:body-params request)
+            {:keys [path content hash metadata assets]} (:body-params request)
             note-path (ensure-string path)
             note-hash (ensure-string hash)]
         (cond
@@ -179,6 +215,9 @@
           (nil? content)
           (resp/bad-request "Missing note content")
 
+          (not (vector? assets))
+          (resp/bad-request "Missing assets")
+
           :else
           (let [existing (db/get-note-by-client-id vault-id note-id)
                 existing-hash (:hash existing)
@@ -187,18 +226,20 @@
               (resp/ok {:status "skipped" :noteId note-id})
               (do
                 (upsert-note-with-links! tenant-id vault-id note-id note-path content note-hash metadata)
-                (let [asset-entries (if (vector? assets) assets [])
-                      asset-ids (if (seq asset-entries)
-                                  (mapv :id asset-entries)
-                                  (if (vector? assetIds) assetIds []))]
-                  (when (seq asset-ids)
-                    (update-note-asset-refs! vault-id note-id asset-ids))
+                (let [asset-entries assets
+                      asset-ids (mapv :id asset-entries)]
+                  (update-note-asset-refs! vault-id note-id asset-ids)
                   (let [need-upload (->> asset-entries
                                          (filter (fn [{:keys [id hash]}]
                                                    (let [existing (db/get-asset-by-client-id vault-id id)]
                                                      (or (nil? existing)
                                                          (not= (:md5 existing) hash)))))
                                          (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))]
+                    (when (config/development?)
+                      (log/debug "sync-note assets"
+                                 {:note-id note-id
+                                  :referenced (count asset-entries)
+                                  :need-upload (count need-upload)}))
                     (resp/ok {:status "stored"
                               :noteId note-id
                               :need_upload_assets need-upload})))))))))))
@@ -236,7 +277,14 @@
             (if (and existing
                      (= existing-hash asset-hash)
                      (= existing-path asset-path))
-              (resp/ok {:status "skipped" :assetId asset-id})
+              (do
+                (when (config/development?)
+                  (log/debug "sync-asset skipped"
+                             {:vault-id vault-id
+                              :asset-id asset-id
+                              :path asset-path
+                              :hash asset-hash}))
+                (resp/ok {:status "skipped" :assetId asset-id}))
               (let [content-bytes (decode-base64 content)]
                 (cond
                   (nil? content-bytes)
@@ -246,6 +294,14 @@
                   (let [extension (object-store/content-type->extension asset-content-type)
                         object-key (object-store/asset-object-key asset-id extension)
                         asset-size (or size (alength ^bytes content-bytes))]
+                    (when (config/development?)
+                      (log/debug "sync-asset stored"
+                                 {:vault-id vault-id
+                                  :asset-id asset-id
+                                  :path asset-path
+                                  :hash asset-hash
+                                  :object-key object-key
+                                  :size asset-size}))
                     (object-store/put-object! vault-id object-key content-bytes asset-content-type)
                     (db/upsert-asset! (utils/generate-uuid)
                                       tenant-id vault-id asset-id asset-path object-key
