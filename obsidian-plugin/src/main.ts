@@ -5,7 +5,7 @@
 import { App, Notice, Plugin, PluginManifest, TFile } from 'obsidian';
 import { CLIENT_ID_KEY, getOrCreateClientId } from './core/client-id';
 import { MarkdownBrainSettings, DEFAULT_SETTINGS } from './domain/types';
-import { hashString, md5Hash, isAssetFile } from './utils';
+import { hashString, md5Hash, isAssetFile, getContentType } from './utils';
 import { extractAssetPaths } from './utils/asset-links';
 import { ObsidianHttpClient } from './api';
 import { SyncApiClient, type SyncSnapshotEntry } from './api/sync-api';
@@ -17,11 +17,13 @@ export default class MarkdownBrainPlugin extends Plugin {
     syncClient!: SyncApiClient;
     private debounceService: DebounceService;
     private clientIdCache: ClientIdCache;
+    private pendingSyncs: Set<string>;
 
     constructor(app: App, manifest: PluginManifest) {
         super(app, manifest);
         this.debounceService = new DebounceService();
         this.clientIdCache = new ClientIdCache();
+        this.pendingSyncs = new Set();
     }
 
     async onload() {
@@ -45,7 +47,11 @@ export default class MarkdownBrainPlugin extends Plugin {
                 onAssetRename: () => this.fullSync(),
                 onMetadataResolved: () => {},
             },
-            { add: () => {}, clear: () => {}, forEach: () => {} },
+            {
+                add: (path) => this.pendingSyncs.add(path),
+                clear: () => this.pendingSyncs.clear(),
+                forEach: (callback) => this.pendingSyncs.forEach(callback),
+            },
             (event) => this.registerEvent(event)
         );
 
@@ -117,6 +123,10 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     async handleAssetChange(file: TFile) {
         if (!this.settings.autoSync) return;
+        const referencedAssets = await this.collectReferencedAssetFiles();
+        if (!referencedAssets.some((asset) => asset.path === file.path)) {
+            return;
+        }
         const result = await this.syncAssetFile(file);
         if (!result) {
             new Notice('同步失败: 资源上传失败');
@@ -155,7 +165,7 @@ export default class MarkdownBrainPlugin extends Plugin {
 
         const result = await this.syncClient.syncAsset(assetId, {
             path: file.path,
-            contentType: file.mime || 'application/octet-stream',
+            contentType: getContentType(file.extension),
             size: buffer.byteLength,
             hash,
             content: base64
@@ -166,7 +176,8 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     async fullSync(): Promise<void> {
         const notes = await this.buildNoteSnapshot();
-        const assets = await this.buildAssetSnapshot();
+        const referencedAssets = await this.collectReferencedAssetFiles();
+        const assets = await this.buildAssetSnapshot(referencedAssets);
 
         new Notice(`开始全量同步：${notes.length} 笔记 / ${assets.length} 资源`);
 
@@ -180,7 +191,7 @@ export default class MarkdownBrainPlugin extends Plugin {
         const needAssets = changes.need_upsert?.assets ?? [];
 
         if (needAssets.length > 0) {
-            await this.uploadAssets(needAssets);
+            await this.uploadAssets(needAssets, referencedAssets);
         }
 
         if (needNotes.length > 0) {
@@ -205,10 +216,10 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
     }
 
-    private async uploadAssets(entries: SyncSnapshotEntry[]): Promise<void> {
-        const assetFiles = this.app.vault.getFiles().filter(isAssetFile);
+    private async uploadAssets(entries: SyncSnapshotEntry[], assetFiles?: TFile[]): Promise<void> {
+        const targetAssets = assetFiles ?? this.app.vault.getFiles().filter(isAssetFile);
         const assetMap = new Map<string, TFile>();
-        for (const file of assetFiles) {
+        for (const file of targetAssets) {
             const assetId = await hashString(file.path);
             assetMap.set(assetId, file);
         }
@@ -253,8 +264,8 @@ export default class MarkdownBrainPlugin extends Plugin {
         return snapshot;
     }
 
-    private async buildAssetSnapshot(): Promise<SyncSnapshotEntry[]> {
-        const assets = this.app.vault.getFiles().filter(isAssetFile);
+    private async buildAssetSnapshot(assetFiles?: TFile[]): Promise<SyncSnapshotEntry[]> {
+        const assets = assetFiles ?? this.app.vault.getFiles().filter(isAssetFile);
         const snapshot: SyncSnapshotEntry[] = [];
 
         for (const file of assets) {
@@ -265,6 +276,24 @@ export default class MarkdownBrainPlugin extends Plugin {
         }
 
         return snapshot;
+    }
+
+    private async collectReferencedAssetFiles(): Promise<TFile[]> {
+        const referenced = new Map<string, TFile>();
+        const notes = this.app.vault.getMarkdownFiles();
+
+        for (const note of notes) {
+            const content = await this.app.vault.read(note);
+            const paths = extractAssetPaths(content);
+            for (const path of paths) {
+                const resolved = this.app.metadataCache.getFirstLinkpathDest(path, note.path);
+                if (resolved instanceof TFile && isAssetFile(resolved)) {
+                    referenced.set(resolved.path, resolved);
+                }
+            }
+        }
+
+        return Array.from(referenced.values());
     }
 
     private async extractAssetIds(content: string, sourcePath: string): Promise<string[]> {
@@ -299,5 +328,6 @@ export default class MarkdownBrainPlugin extends Plugin {
     onunload() {
         console.log('[MarkdownBrain] Plugin unloading');
         this.debounceService.clearAll();
+        this.pendingSyncs.clear();
     }
 }

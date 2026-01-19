@@ -12,7 +12,8 @@
             [markdownbrain.link-parser :as link-parser]
             [markdownbrain.utils :as utils]
             [clojure.data.json :as json]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [clojure.set :as set])
   (:import (java.util Base64)))
 
 ;; =============================================================================
@@ -71,9 +72,18 @@
                                 (:display-text link)
                                 (:original link)))))))
 
+(declare delete-asset!)
+
 (defn- update-note-asset-refs!
   [vault-id note-id asset-ids]
-  (db/update-note-asset-refs! vault-id note-id (distinct asset-ids)))
+  (let [existing-refs (db/get-asset-refs-by-note vault-id note-id)
+        existing-ids (set (map :asset-client-id existing-refs))
+        new-ids (set (distinct asset-ids))
+        removed-ids (set/difference existing-ids new-ids)]
+    (db/update-note-asset-refs! vault-id note-id (vec new-ids))
+    (doseq [asset-id removed-ids]
+      (when (zero? (db/count-asset-refs vault-id asset-id))
+        (delete-asset! vault-id asset-id)))))
 
 (defn- delete-note!
   [vault-id note-id]

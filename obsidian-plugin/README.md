@@ -20,7 +20,7 @@ npm run package
 
 ## 构建说明
 
-- **开发模式**: `npm run dev` 会在当前目录生成 `main.js` 并启用 source map，方便调试
+- **开发模式**: `npm run dev` 会输出到 `../vaults/test/.obsidian/plugins/markdownbrain/` 并启用 source map，方便调试
 - **生产构建**: `npm run build` 会：
   1. 运行 TypeScript 类型检查
   2. 使用 esbuild 打包到 `dist/main.js`（不含 source map）

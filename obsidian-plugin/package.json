@@ -26,7 +26,7 @@
     "typescript": "^5.9.3"
   },
   "scripts-description": {
-    "dev": "Build and watch to ../vault/test/.obsidian/plugins/markdownbrain for integration testing",
+    "dev": "Build and watch to ../vaults/test/.obsidian/plugins/markdownbrain for integration testing",
     "build": "Build production version to dist/",
     "package": "Create distribution zip file"
   }
