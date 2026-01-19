@@ -10,6 +10,14 @@
 - 内部链接自动解析
 - 反向链接展示
 
+## 第三方字体与前端资源
+
+本项目在前端静态资源中使用了第三方字体与 JS 库。这些第三方资源各自遵循其原始授权协议，**不**包含在本项目的许可证范围内。
+
+- Fonts: Inter, Geist, JetBrains Mono, Merriweather（见 `server/resources/publics/shared/fonts/<font>/license.txt`）
+- JS: htmx, highlight.js, KaTeX, lucide（见 `server/resources/publics/shared/licenses/*.txt`）
+- 详细清单与版本信息见 `THIRD_PARTY_NOTICES.md`
+
 ## 快速开始
 
 ### 开发环境
