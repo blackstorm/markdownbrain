@@ -113,8 +113,8 @@ CREATE TABLE IF NOT EXISTS assets (
   content_type TEXT NOT NULL,
   md5 TEXT NOT NULL,
   deleted_at INTEGER,
-  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(vault_id, client_id),
   FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS note_asset_refs (
   vault_id TEXT NOT NULL,
   note_client_id TEXT NOT NULL,
   asset_client_id TEXT NOT NULL,
-  created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(vault_id, note_client_id, asset_client_id),
   FOREIGN KEY (vault_id) REFERENCES vaults(id) ON DELETE CASCADE
 );
