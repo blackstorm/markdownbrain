@@ -213,23 +213,6 @@
           (sync/sync-note remove-b)
           (is (nil? (db/get-asset-by-client-id vault-id asset-id))))))))
 
-(deftest test-delete-note-asset
-  (testing "removes ref and deletes asset when no refs remain"
-    (with-redefs [object-store/delete-object! (fn [_ _] nil)]
-      (let [tenant-id (support/create-test-tenant!)
-            {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-delete.com")
-            note-id "note-x"
-            asset-id "asset-x"
-            _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "img/x.png" "assets/x.png" 10 "image/png" "md5-x")
-            _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "x.md" note-id "X" "{}" "hash-x" nil)
-            _ (db/upsert-note-asset-ref! vault-id note-id asset-id)
-            request (-> (auth-request :delete (str "/sync/notes/" note-id "/assets/" asset-id) sync-key nil)
-                        (assoc :path-params {:note_id note-id :asset_id asset-id}))
-            response (sync/delete-note-asset request)]
-        (is (= 200 (:status response)))
-        (is (empty? (db/get-asset-refs-by-note vault-id note-id)))
-        (is (nil? (db/get-asset-by-client-id vault-id asset-id)))))))
-
 (deftest test-sync-asset-dedup
   (testing "skips upload when asset hash matches"
     (let [tenant-id (support/create-test-tenant!)

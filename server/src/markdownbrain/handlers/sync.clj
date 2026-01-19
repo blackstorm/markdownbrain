@@ -4,8 +4,7 @@
    Endpoints:
    - POST /sync/changes
    - POST /sync/notes/{id}
-   - POST /sync/assets/{id}
-   - DELETE /sync/notes/{note_id}/assets/{asset_id}"
+   - POST /sync/assets/{id}"
   (:require [markdownbrain.config :as config]
             [markdownbrain.db :as db]
             [markdownbrain.object-store :as object-store]
@@ -307,29 +306,6 @@
                                       tenant-id vault-id asset-id asset-path object-key
                                       asset-size asset-content-type asset-hash)
                     (resp/ok {:status "stored" :assetId asset-id})))))))))))
-
-(defn delete-note-asset
-  "DELETE /sync/notes/{note_id}/assets/{asset_id}"
-  [request]
-  (let [{:keys [ok vault response]} (require-auth request)]
-    (if-not ok
-      response
-      (let [vault-id (:id vault)
-            note-id (get-in request [:path-params :note_id])
-            asset-id (get-in request [:path-params :asset_id])]
-        (cond
-          (str/blank? note-id)
-          (resp/bad-request "Missing note id")
-
-          (str/blank? asset-id)
-          (resp/bad-request "Missing asset id")
-
-          :else
-          (do
-            (db/delete-note-asset-ref! vault-id note-id asset-id)
-            (when (zero? (db/count-asset-refs vault-id asset-id))
-              (delete-asset! vault-id asset-id))
-            (resp/ok {:status "deleted" :noteId note-id :assetId asset-id})))))))
 
 (defn vault-info [request]
   (let [{:keys [ok vault response]} (require-auth request)]

@@ -29,10 +29,9 @@
   (let [base-routes
         [["/" {:get (fn [_] (response/redirect "/admin"))}]
          ["/sync"
-          ["/changes" {:post sync/sync-changes}]
-          ["/notes/:id" {:post sync/sync-note}]
-          ["/assets/:id" {:post sync/sync-asset}]
-          ["/notes/:note_id/assets/:asset_id" {:delete sync/delete-note-asset}]]
+         ["/changes" {:post sync/sync-changes}]
+         ["/notes/:id" {:post sync/sync-note}]
+         ["/assets/:id" {:post sync/sync-asset}]]
          
          ["/obsidian"
           ["/vault/info" {:get sync/vault-info}]]

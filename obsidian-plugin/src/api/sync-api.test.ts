@@ -132,21 +132,6 @@ describe("SyncApiClient", () => {
     });
   });
 
-  describe("deleteNoteAsset", () => {
-    test("returns success on 200", async () => {
-      const result = await api.deleteNoteAsset("note-1", "asset-1");
-
-      expect(result.success).toBe(true);
-      expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: "https://api.example.com/sync/notes/note-1/assets/asset-1",
-        method: "DELETE",
-        headers: {
-          Authorization: "Bearer test-sync-key-123",
-        },
-      });
-    });
-  });
-
   describe("updateConfig", () => {
     test("updates config and uses new values", async () => {
       requestMock.mockResolvedValue({

@@ -172,28 +172,4 @@ export class SyncApiClient {
     }
   }
 
-  async deleteNoteAsset(
-    noteId: string,
-    assetId: string,
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const response = await this.http.request({
-        url: `${this.config.serverUrl}/sync/notes/${encodeURIComponent(noteId)}/assets/${encodeURIComponent(assetId)}`,
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${this.config.syncKey}`,
-        },
-      });
-
-      if (response.status === 200) {
-        return { success: true };
-      }
-      return { success: false, error: `HTTP ${response.status}: ${response.text}` };
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
-  }
 }
