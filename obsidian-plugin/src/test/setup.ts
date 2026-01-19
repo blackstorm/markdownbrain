@@ -1,7 +1,7 @@
-import { mock } from 'bun:test';
+import { vi } from "vitest";
 
-// Import mocks from __mocks__ directory
-import * as obsidianMock from '../../__mocks__/obsidian';
+// Import mocks from test/mocks directory
+import * as obsidianMock from "./mocks/obsidian";
 
 // Re-export mock classes for test convenience
 export const MockTFile = obsidianMock.TFile;
@@ -13,4 +13,4 @@ export const mockParseYaml = obsidianMock.parseYaml;
 export const mockStringifyYaml = obsidianMock.stringifyYaml;
 
 // Mock the obsidian module
-mock.module('obsidian', () => obsidianMock);
+vi.mock("obsidian", async () => await import("./mocks/obsidian"));

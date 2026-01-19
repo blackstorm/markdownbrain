@@ -1,9 +1,9 @@
-import esbuild from "esbuild";
-import process from "process";
+import { copyFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import process from "node:process";
+import { fileURLToPath } from "node:url";
 import builtins from "builtin-modules";
-import { copyFileSync } from "fs";
-import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import esbuild from "esbuild";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -20,71 +20,65 @@ const testVaultPath = resolve(__dirname, "../vaults/test/.obsidian/plugins/markd
 const outfile = prod ? "dist/main.js" : `${testVaultPath}/main.js`;
 
 const context = await esbuild.context({
-	banner: {
-		js: banner,
-	},
-	entryPoints: ["src/main.ts"],
-	bundle: true,
-	external: [
-		"obsidian",
-		"electron",
-		"@codemirror/autocomplete",
-		"@codemirror/collab",
-		"@codemirror/commands",
-		"@codemirror/language",
-		"@codemirror/lint",
-		"@codemirror/search",
-		"@codemirror/state",
-		"@codemirror/view",
-		"@lezer/common",
-		"@lezer/highlight",
-		"@lezer/lr",
-		...builtins
-	],
-	format: "cjs",
-	target: "es2018",
-	logLevel: "info",
-	sourcemap: prod ? false : "inline",
-	treeShaking: true,
-	outfile: outfile,
-	plugins: [
-		{
-			name: "copy-manifest",
-			setup(build) {
-				build.onEnd(() => {
-					if (!prod) {
-						// Copy manifest.json and styles.css to test vault in dev mode
-						try {
-							copyFileSync(
-								resolve(__dirname, "manifest.json"),
-								`${testVaultPath}/manifest.json`
-							);
-							console.log("✓ Copied manifest.json to test vault");
-						} catch (e) {
-							console.error("Failed to copy manifest.json:", e);
-						}
+  banner: {
+    js: banner,
+  },
+  entryPoints: ["src/main.ts"],
+  bundle: true,
+  external: [
+    "obsidian",
+    "electron",
+    "@codemirror/autocomplete",
+    "@codemirror/collab",
+    "@codemirror/commands",
+    "@codemirror/language",
+    "@codemirror/lint",
+    "@codemirror/search",
+    "@codemirror/state",
+    "@codemirror/view",
+    "@lezer/common",
+    "@lezer/highlight",
+    "@lezer/lr",
+    ...builtins,
+  ],
+  format: "cjs",
+  target: "es2018",
+  logLevel: "info",
+  sourcemap: prod ? false : "inline",
+  treeShaking: true,
+  outfile: outfile,
+  plugins: [
+    {
+      name: "copy-manifest",
+      setup(build) {
+        build.onEnd(() => {
+          if (!prod) {
+            // Copy manifest.json and styles.css to test vault in dev mode
+            try {
+              copyFileSync(resolve(__dirname, "manifest.json"), `${testVaultPath}/manifest.json`);
+              console.log("✓ Copied manifest.json to test vault");
+            } catch (_e) {
+              console.error("Failed to copy manifest.json:", e);
+            }
 
-						try {
-							copyFileSync(
-								resolve(__dirname, "styles.css"),
-								`${testVaultPath}/styles.css`
-							);
-							console.log("✓ Copied styles.css to test vault");
-						} catch (e) {
-							// styles.css is optional
-						}
-					}
-				});
-			}
-		}
-	]
+            try {
+              copyFileSync(resolve(__dirname, "styles.css"), `${testVaultPath}/styles.css`);
+              console.log("✓ Copied styles.css to test vault");
+            } catch (_e) {
+              // styles.css is optional
+            }
+          }
+        });
+      },
+    },
+  ],
 });
 
 if (prod) {
-	await context.rebuild();
-	process.exit(0);
+  await context.rebuild();
+  process.exit(0);
 } else {
-	await context.watch();
-	console.log(`\n🔧 Development mode: Building to ${testVaultPath}`);
-	console.log("👀 Watching for changes...\n");
+  await context.watch();
+  console.log(`\n🔧 Development mode: Building to ${testVaultPath}`);
+  console.log("👀 Watching for changes...\n");
 }

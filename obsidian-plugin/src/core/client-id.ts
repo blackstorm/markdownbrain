@@ -1,12 +1,8 @@
-import { TFile, App, parseYaml } from 'obsidian';
+import { type App, parseYaml, type TFile } from "obsidian";
 
-export const CLIENT_ID_KEY = 'markdownbrain-id';
+export const CLIENT_ID_KEY = "markdownbrain-id";
 
-export async function getOrCreateClientId(
-  file: TFile,
-  content: string,
-  app: App
-): Promise<string> {
+export async function getOrCreateClientId(file: TFile, content: string, app: App): Promise<string> {
   const cache = app.metadataCache.getFileCache(file);
   if (cache?.frontmatter?.[CLIENT_ID_KEY]) {
     return String(cache.frontmatter[CLIENT_ID_KEY]).trim();

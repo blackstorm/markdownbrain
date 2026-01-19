@@ -1,16 +1,16 @@
-import { isAssetFile } from './asset';
+import { isAssetFile } from "./asset";
 
 function sanitizePath(raw: string): string {
-  return raw.trim().replace(/^['"]|['"]$/g, '');
+  return raw.trim().replace(/^['"]|['"]$/g, "");
 }
 
 function extractEmbedPaths(content: string): string[] {
   const matches = content.matchAll(/!\[\[([^\]]+)\]\]/g);
   const results: string[] = [];
   for (const match of matches) {
-    const inner = match[1] ?? '';
-    const [pathPart] = inner.split('|');
-    const [path] = pathPart.split('#');
+    const inner = match[1] ?? "";
+    const [pathPart] = inner.split("|");
+    const [path] = pathPart.split("#");
     const cleaned = sanitizePath(path);
     if (cleaned) {
       results.push(cleaned);
@@ -20,10 +20,10 @@ function extractEmbedPaths(content: string): string[] {
 }
 
 function extractMarkdownImagePaths(content: string): string[] {
-  const matches = content.matchAll(/!\[[^\]]*\]\(([^\)]+)\)/g);
+  const matches = content.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g);
   const results: string[] = [];
   for (const match of matches) {
-    const inner = match[1] ?? '';
+    const inner = match[1] ?? "";
     const [path] = inner.split(/\s+/);
     const cleaned = sanitizePath(path);
     if (cleaned) {
@@ -34,9 +34,9 @@ function extractMarkdownImagePaths(content: string): string[] {
 }
 
 function looksLikeAsset(path: string): boolean {
-  const parts = path.split('/');
-  const filename = parts[parts.length - 1] ?? '';
-  const ext = filename.includes('.') ? filename.split('.').pop() ?? '' : '';
+  const parts = path.split("/");
+  const filename = parts[parts.length - 1] ?? "";
+  const ext = filename.includes(".") ? (filename.split(".").pop() ?? "") : "";
   return isAssetFile({ extension: ext });
 }
 

@@ -2,8 +2,8 @@
  * Snapshot-based sync API client.
  */
 
-import type { HttpClient } from './http-client';
-import type { SyncConfig } from '../domain/types';
+import type { SyncConfig } from "../domain/types";
+import type { HttpClient } from "./http-client";
 
 export interface SyncSnapshotEntry {
   id: string;
@@ -72,21 +72,21 @@ export class SyncApiClient {
     try {
       const response = await this.http.request({
         url: `${this.config.serverUrl}/obsidian/vault/info`,
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${this.config.syncKey}`
-        }
+          Authorization: `Bearer ${this.config.syncKey}`,
+        },
       });
 
       if (response.status === 200) {
-        const data = response.json as { vault: VaultInfoResponse['vault'] };
+        const data = response.json as { vault: VaultInfoResponse["vault"] };
         return { success: true, vault: data.vault };
       }
       return { success: false, error: `HTTP ${response.status}: ${response.text}` };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -95,16 +95,16 @@ export class SyncApiClient {
     try {
       const response = await this.http.request({
         url: `${this.config.serverUrl}/sync/changes`,
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.syncKey}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.syncKey}`,
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       if (response.status === 200) {
-        const data = response.json as Omit<SyncChangesResponse, 'success'>;
+        const data = response.json as Omit<SyncChangesResponse, "success">;
         return { success: true, ...data };
       }
 
@@ -112,21 +112,24 @@ export class SyncApiClient {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
 
-  async syncNote(noteId: string, request: SyncNoteRequest): Promise<{ success: boolean; error?: string }> {
+  async syncNote(
+    noteId: string,
+    request: SyncNoteRequest,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await this.http.request({
         url: `${this.config.serverUrl}/sync/notes/${encodeURIComponent(noteId)}`,
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.syncKey}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.syncKey}`,
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       if (response.status === 200) {
@@ -136,21 +139,24 @@ export class SyncApiClient {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
 
-  async syncAsset(assetId: string, request: SyncAssetRequest): Promise<{ success: boolean; error?: string }> {
+  async syncAsset(
+    assetId: string,
+    request: SyncAssetRequest,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await this.http.request({
         url: `${this.config.serverUrl}/sync/assets/${encodeURIComponent(assetId)}`,
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.syncKey}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.config.syncKey}`,
         },
-        body: JSON.stringify(request)
+        body: JSON.stringify(request),
       });
 
       if (response.status === 200) {
@@ -160,19 +166,22 @@ export class SyncApiClient {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
 
-  async deleteNoteAsset(noteId: string, assetId: string): Promise<{ success: boolean; error?: string }> {
+  async deleteNoteAsset(
+    noteId: string,
+    assetId: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await this.http.request({
         url: `${this.config.serverUrl}/sync/notes/${encodeURIComponent(noteId)}/assets/${encodeURIComponent(assetId)}`,
-        method: 'DELETE',
+        method: "DELETE",
         headers: {
-          'Authorization': `Bearer ${this.config.syncKey}`
-        }
+          Authorization: `Bearer ${this.config.syncKey}`,
+        },
       });
 
       if (response.status === 200) {
@@ -182,7 +191,7 @@ export class SyncApiClient {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }

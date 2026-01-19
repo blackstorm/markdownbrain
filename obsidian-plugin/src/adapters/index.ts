@@ -1,3 +1,3 @@
-export { ObsidianVaultAdapter, ObsidianMetadataAdapter } from './obsidian-vault';
-export { ObsidianNoticeAdapter } from './obsidian-notice';
-export { ConsoleLoggerAdapter } from './console-logger';
+export { ConsoleLoggerAdapter } from "./console-logger";
+export { ObsidianNoticeAdapter } from "./obsidian-notice";
+export { ObsidianMetadataAdapter, ObsidianVaultAdapter } from "./obsidian-vault";

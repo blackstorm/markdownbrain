@@ -1,6 +1,6 @@
 /**
  * MIME type utilities
- * 
+ *
  * Pure functions for determining MIME types from file extensions.
  * No Obsidian dependencies - fully unit-testable.
  */
@@ -10,23 +10,23 @@
  */
 export const MIME_TYPES: Record<string, string> = {
   // Images
-  'png': 'image/png',
-  'jpg': 'image/jpeg',
-  'jpeg': 'image/jpeg',
-  'gif': 'image/gif',
-  'webp': 'image/webp',
-  'svg': 'image/svg+xml',
-  'bmp': 'image/bmp',
-  'ico': 'image/x-icon',
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  bmp: "image/bmp",
+  ico: "image/x-icon",
   // Documents
-  'pdf': 'application/pdf',
+  pdf: "application/pdf",
   // Audio
-  'mp3': 'audio/mpeg',
-  'ogg': 'audio/ogg',
-  'wav': 'audio/wav',
+  mp3: "audio/mpeg",
+  ogg: "audio/ogg",
+  wav: "audio/wav",
   // Video
-  'mp4': 'video/mp4',
-  'webm': 'video/webm'
+  mp4: "video/mp4",
+  webm: "video/webm",
 };
 
 /**
@@ -36,5 +36,5 @@ export const MIME_TYPES: Record<string, string> = {
  */
 export function getContentType(extension: string): string {
   const ext = extension.toLowerCase();
-  return MIME_TYPES[ext] || 'application/octet-stream';
+  return MIME_TYPES[ext] || "application/octet-stream";
 }

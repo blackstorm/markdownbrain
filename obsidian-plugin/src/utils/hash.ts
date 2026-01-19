@@ -1,11 +1,11 @@
 /**
  * Hash utilities
- * 
+ *
  * Pure functions for hashing data using Node crypto.
  * No Obsidian dependencies - fully unit-testable.
  */
 
-import { createHash } from 'crypto';
+import { createHash } from "node:crypto";
 
 /**
  * Compute MD5 hash of an ArrayBuffer
@@ -13,9 +13,9 @@ import { createHash } from 'crypto';
  * @returns Hex-encoded MD5 hash (32 characters)
  */
 export async function md5Hash(buffer: ArrayBuffer): Promise<string> {
-  const hash = createHash('md5');
+  const hash = createHash("md5");
   hash.update(new Uint8Array(buffer));
-  return hash.digest('hex');
+  return hash.digest("hex");
 }
 
 /**

@@ -1,8 +1,18 @@
 export const ASSET_EXTENSIONS = new Set([
-  'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'bmp', 'ico',
-  'pdf',
-  'mp3', 'ogg', 'wav',
-  'mp4', 'webm'
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "ico",
+  "pdf",
+  "mp3",
+  "ogg",
+  "wav",
+  "mp4",
+  "webm",
 ]);
 
 export const RESOURCE_EXTENSIONS = ASSET_EXTENSIONS;

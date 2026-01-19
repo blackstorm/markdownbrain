@@ -1,2 +1,2 @@
-export { MarkdownBrainSettingTab } from './settings-tab';
-export { registerFileEvents, type EventHandlers, type PendingSyncsManager } from './events';
+export { type EventHandlers, type PendingSyncsManager, registerFileEvents } from "./events";
+export { MarkdownBrainSettingTab } from "./settings-tab";

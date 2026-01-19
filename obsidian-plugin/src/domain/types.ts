@@ -1,6 +1,6 @@
 /**
  * Domain types for MarkdownBrain Obsidian Plugin
- * 
+ *
  * All interfaces and types extracted from main.ts for better modularity.
  * No runtime dependencies - pure type definitions.
  */
@@ -16,9 +16,9 @@ export interface MarkdownBrainSettings {
 }
 
 export const DEFAULT_SETTINGS: MarkdownBrainSettings = {
-  serverUrl: 'https://api.markdownbrain.com',
-  syncKey: '',
-  autoSync: true
+  serverUrl: "https://api.markdownbrain.com",
+  syncKey: "",
+  autoSync: true,
 };
 
 // =============================================================================

@@ -1,8 +1,8 @@
-import { Notice } from 'obsidian';
-import { NoticePort } from '../domain/types';
+import { Notice } from "obsidian";
+import type { NoticePort } from "../domain/types";
 
 export class ObsidianNoticeAdapter implements NoticePort {
-    show(message: string, timeoutMs?: number): void {
-        new Notice(message, timeoutMs);
-    }
+  show(message: string, timeoutMs?: number): void {
+    new Notice(message, timeoutMs);
+  }
 }
