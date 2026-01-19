@@ -83,6 +83,7 @@ describe("SyncApiClient", () => {
         content: "# Hello",
         hash: "hash-1",
         assets: [{ id: "asset-1", hash: "md5-1" }],
+        linked_notes: [{ id: "note-2", hash: "hash-2" }],
       });
 
       expect(result.success).toBe(true);
@@ -98,6 +99,7 @@ describe("SyncApiClient", () => {
           content: "# Hello",
           hash: "hash-1",
           assets: [{ id: "asset-1", hash: "md5-1" }],
+          linked_notes: [{ id: "note-2", hash: "hash-2" }],
         }),
       });
     });

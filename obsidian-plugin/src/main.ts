@@ -9,7 +9,7 @@ import { CLIENT_ID_KEY, getOrCreateClientId } from "./core/client-id";
 import { DEFAULT_SETTINGS, type MarkdownBrainSettings } from "./domain/types";
 import { MarkdownBrainSettingTab, registerFileEvents } from "./plugin";
 import { ClientIdCache, DebounceService, extractNoteMetadata } from "./services";
-import { getContentType, hashString, isAssetFile, md5Hash } from "./utils";
+import { extractNotePaths, getContentType, hashString, isAssetFile, md5Hash } from "./utils";
 import { extractAssetPaths } from "./utils/asset-links";
 
 export default class MarkdownBrainPlugin extends Plugin {
@@ -111,6 +111,7 @@ export default class MarkdownBrainPlugin extends Plugin {
           return;
         }
         await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
+        await this.syncLinkedNotesForNote(file, result.needUploadNotes, result.linkedNotesById);
       },
       500,
     );
@@ -127,7 +128,10 @@ export default class MarkdownBrainPlugin extends Plugin {
     const result = await this.syncNoteFile(file);
     if (!result.success) {
       new Notice("同步失败: 笔记重命名同步失败");
+      return;
     }
+    await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
+    await this.syncLinkedNotesForNote(file, result.needUploadNotes, result.linkedNotesById);
   }
 
   async handleAssetChange(file: TFile) {
@@ -150,12 +154,15 @@ export default class MarkdownBrainPlugin extends Plugin {
     success: boolean;
     needUploadAssets: Array<{ id: string; hash: string }>;
     assetsById: Map<string, TFile>;
+    needUploadNotes: Array<{ id: string; hash: string }>;
+    linkedNotesById: Map<string, TFile>;
   }> {
     const content = await this.app.vault.read(file);
     const hash = await hashString(content);
     const clientId = await getOrCreateClientId(file, content, this.app);
     const metadata = extractNoteMetadata(this.app.metadataCache.getFileCache(file));
     const assets = await this.collectReferencedAssetEntriesForNote(file);
+    const linkedNotes = await this.collectLinkedNoteEntriesForNote(file);
 
     this.clientIdCache.set(file.path, clientId);
 
@@ -165,12 +172,15 @@ export default class MarkdownBrainPlugin extends Plugin {
       hash,
       metadata: metadata as Record<string, unknown>,
       assets: assets.entries,
+      linked_notes: linkedNotes.entries,
     });
 
     return {
       success: result.success,
       needUploadAssets: result.need_upload_assets ?? [],
       assetsById: assets.byId,
+      needUploadNotes: result.need_upload_notes ?? [],
+      linkedNotesById: linkedNotes.byId,
     };
   }
 
@@ -352,6 +362,36 @@ export default class MarkdownBrainPlugin extends Plugin {
     return { entries, byId };
   }
 
+  private async collectLinkedNoteEntriesForNote(note: TFile): Promise<{
+    entries: Array<{ id: string; hash: string }>;
+    byId: Map<string, TFile>;
+  }> {
+    const content = await this.app.vault.read(note);
+    const paths = extractNotePaths(content);
+    const linkedFiles = new Map<string, TFile>();
+
+    for (const path of paths) {
+      const resolved = this.app.metadataCache.getFirstLinkpathDest(path, note.path);
+      if (resolved instanceof TFile && resolved.extension === "md") {
+        linkedFiles.set(resolved.path, resolved);
+      }
+    }
+
+    const byId = new Map<string, TFile>();
+    const entries = await Promise.all(
+      Array.from(linkedFiles.values()).map(async (file) => {
+        const linkedContent = await this.app.vault.read(file);
+        const id = await getOrCreateClientId(file, linkedContent, this.app);
+        const hash = await hashString(linkedContent);
+        this.clientIdCache.set(file.path, id);
+        byId.set(id, file);
+        return { id, hash };
+      }),
+    );
+
+    return { entries, byId };
+  }
+
   private async syncAssetsForNote(
     note: TFile,
     needUploadAssets?: Array<{ id: string }>,
@@ -378,6 +418,32 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     if (failed) {
       new Notice("同步失败: 资源上传失败");
+    }
+  }
+
+  private async syncLinkedNotesForNote(
+    note: TFile,
+    needUploadNotes: Array<{ id: string; hash: string }>,
+    linkedNotesById: Map<string, TFile>,
+  ): Promise<void> {
+    if (needUploadNotes.length === 0) {
+      return;
+    }
+
+    let failed = false;
+    for (const entry of needUploadNotes) {
+      const file = linkedNotesById.get(entry.id);
+      if (!file || file.path === note.path) continue;
+      const result = await this.syncNoteFile(file);
+      if (!result.success) {
+        failed = true;
+        continue;
+      }
+      await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
+    }
+
+    if (failed) {
+      new Notice("同步失败: 关联笔记上传失败");
     }
   }
 

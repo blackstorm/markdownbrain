@@ -124,6 +124,25 @@ const extractHtmlMediaPaths = (content: string): string[] => {
   return results;
 };
 
+const isExternalLink = (path: string): boolean => /^[a-z][a-z0-9+.-]*:/i.test(path);
+
+const extractMarkdownLinkPaths = (content: string): string[] => {
+  const matches = content.matchAll(/\[[^\]]*\]\(([^)]+)\)/g);
+  const results: string[] = [];
+  for (const match of matches) {
+    const start = match.index ?? 0;
+    if (start > 0 && content[start - 1] === "!") {
+      continue;
+    }
+    const raw = match[1] ?? "";
+    const destination = parseLinkDestination(raw);
+    if (destination && !isExternalLink(destination)) {
+      results.push(destination);
+    }
+  }
+  return results;
+};
+
 export function extractAssetPaths(content: string): string[] {
   const sanitizedContent = stripCodeBlocks(content);
   const wikiPaths = extractWikiPaths(sanitizedContent);
@@ -131,4 +150,11 @@ export function extractAssetPaths(content: string): string[] {
   const referenceImages = extractReferenceImagePaths(sanitizedContent);
   const htmlMedia = extractHtmlMediaPaths(sanitizedContent);
   return [...wikiPaths, ...inlineImages, ...referenceImages, ...htmlMedia].filter(looksLikeAsset);
+}
+
+export function extractNotePaths(content: string): string[] {
+  const sanitizedContent = stripCodeBlocks(content);
+  const wikiPaths = extractWikiPaths(sanitizedContent);
+  const markdownLinks = extractMarkdownLinkPaths(sanitizedContent);
+  return [...wikiPaths, ...markdownLinks];
 }

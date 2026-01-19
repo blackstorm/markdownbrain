@@ -56,7 +56,8 @@
                                     {:path "notes/a.md"
                                      :content "Hello"
                                      :hash "hash-note"
-                                     :assets [{:id asset-id :hash "md5-a"}]})
+                                     :assets [{:id asset-id :hash "md5-a"}]
+                                     :linked_notes []})
                       (assoc :path-params {:id note-id}))
           response (sync/sync-note request)
           refs (db/get-asset-refs-by-note vault-id note-id)]
@@ -78,13 +79,37 @@
                                      :content "Hello"
                                      :hash "hash-note"
                                      :assets [{:id asset-id :hash "md5-changed"}
-                                              {:id missing-id :hash "md5-missing"}]})
+                                              {:id missing-id :hash "md5-missing"}]
+                                     :linked_notes []})
                       (assoc :path-params {:id note-id}))
           response (sync/sync-note request)
           missing (get-in response [:body :need_upload_assets])]
       (is (= 200 (:status response)))
       (is (= [{:id asset-id :hash "md5-changed"}
               {:id missing-id :hash "md5-missing"}]
+             missing)))))
+
+(deftest test-sync-note-need-upload-notes
+  (testing "returns missing linked notes and stale hashes"
+    (let [tenant-id (support/create-test-tenant!)
+          {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "sync-linked-notes.com")
+          note-id "note-a"
+          linked-id "note-linked"
+          missing-id "note-missing"
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "linked.md" linked-id "Linked" "{}" "hash-old" nil)
+          request (-> (auth-request :post (str "/sync/notes/" note-id) sync-key
+                                    {:path "Note A.md"
+                                     :content "Links"
+                                     :hash "hash-a"
+                                     :assets []
+                                     :linked_notes [{:id linked-id :hash "hash-new"}
+                                                    {:id missing-id :hash "hash-missing"}]})
+                      (assoc :path-params {:id note-id}))
+          response (sync/sync-note request)
+          missing (get-in response [:body :need_upload_notes])]
+      (is (= 200 (:status response)))
+      (is (= [{:id linked-id :hash "hash-new"}
+              {:id missing-id :hash "hash-missing"}]
              missing)))))
 
 (deftest test-sync-note-link-diff-no-change
@@ -98,7 +123,8 @@
                                       {:path "Note A.md"
                                        :content "Link to [[Note B]]"
                                        :hash "hash-a-1"
-                                       :assets []})
+                                       :assets []
+                                       :linked_notes []})
                         (assoc :path-params {:id note-a}))
           _ (sync/sync-note request-1)
           delete-count (atom 0)
@@ -115,7 +141,8 @@
                                           {:path "Note A.md"
                                            :content "Updated text [[Note B]]"
                                            :hash "hash-a-2"
-                                           :assets []})
+                                           :assets []
+                                           :linked_notes []})
                             (assoc :path-params {:id note-a}))
               response (sync/sync-note request-2)]
           (is (= 200 (:status response)))
@@ -135,7 +162,8 @@
                                       {:path "Note A.md"
                                        :content "Link [[Note B]]"
                                        :hash "hash-a-1"
-                                       :assets []})
+                                       :assets []
+                                       :linked_notes []})
                         (assoc :path-params {:id note-a}))
           _ (sync/sync-note request-1)
           delete-count (atom 0)
@@ -152,7 +180,8 @@
                                           {:path "Note A.md"
                                            :content "Now [[Note C]] only"
                                            :hash "hash-a-2"
-                                           :assets []})
+                                           :assets []
+                                           :linked_notes []})
                             (assoc :path-params {:id note-a}))
               response-2 (sync/sync-note request-2)]
           (is (= 200 (:status response-2)))
@@ -164,7 +193,8 @@
                                           {:path "Note A.md"
                                            :content "Alias [[Note C|My C]]"
                                            :hash "hash-a-3"
-                                           :assets []})
+                                           :assets []
+                                           :linked_notes []})
                             (assoc :path-params {:id note-a}))
               response-3 (sync/sync-note request-3)]
           (is (= 200 (:status response-3)))
@@ -184,13 +214,15 @@
                                         {:path "A.md"
                                          :content "A"
                                          :hash "hash-a"
-                                         :assets [{:id asset-id :hash "md5-shared"}]})
+                                         :assets [{:id asset-id :hash "md5-shared"}]
+                                         :linked_notes []})
                           (assoc :path-params {:id note-a}))
             request-b (-> (auth-request :post (str "/sync/notes/" note-b) sync-key
                                         {:path "B.md"
                                          :content "B"
                                          :hash "hash-b"
-                                         :assets [{:id asset-id :hash "md5-shared"}]})
+                                         :assets [{:id asset-id :hash "md5-shared"}]
+                                         :linked_notes []})
                           (assoc :path-params {:id note-b}))]
         (sync/sync-note request-a)
         (sync/sync-note request-b)
@@ -199,7 +231,8 @@
                                          {:path "A.md"
                                           :content "A no asset"
                                           :hash "hash-a-2"
-                                          :assets []})
+                                          :assets []
+                                          :linked_notes []})
                            (assoc :path-params {:id note-a}))]
           (sync/sync-note remove-a)
           (is (some? (db/get-asset-by-client-id vault-id asset-id))))
@@ -208,7 +241,8 @@
                                          {:path "B.md"
                                           :content "B no asset"
                                           :hash "hash-b-2"
-                                          :assets []})
+                                          :assets []
+                                          :linked_notes []})
                            (assoc :path-params {:id note-b}))]
           (sync/sync-note remove-b)
           (is (nil? (db/get-asset-by-client-id vault-id asset-id))))))))

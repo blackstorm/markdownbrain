@@ -190,7 +190,30 @@
                                       :assets (vec assets-to-delete)}})))))
 
 (defn sync-note
-  "POST /sync/notes/{id}"
+  "POST /sync/notes/{id}
+
+   Request body:
+   {
+     path: \"...\",
+     content: \"...\",
+     hash: \"...\",
+     metadata: {...},
+     assets: [{id: \"...\", hash: \"...\"}],
+     linked_notes: [{id: \"...\", hash: \"...\"}]
+   }
+
+   Behavior:
+   - Upserts the note + parsed note links
+   - Syncs note_asset_refs (and removes orphan assets)
+   - Returns missing assets/linked notes based on server state
+
+   Response body:
+   {
+     status: \"stored\",
+     noteId: \"...\",
+     need_upload_assets: [...],
+     need_upload_notes: [...]
+   }"
   [request]
   (let [{:keys [ok vault response]} (require-auth request)]
     (if-not ok
@@ -198,7 +221,7 @@
       (let [vault-id (:id vault)
             tenant-id (:tenant-id vault)
             note-id (get-in request [:path-params :id])
-            {:keys [path content hash metadata assets]} (:body-params request)
+            {:keys [path content hash metadata assets linked_notes]} (:body-params request)
             note-path (ensure-string path)
             note-hash (ensure-string hash)]
         (cond
@@ -217,6 +240,9 @@
           (not (vector? assets))
           (resp/bad-request "Missing assets")
 
+          (not (vector? linked_notes))
+          (resp/bad-request "Missing linked notes")
+
           :else
           (let [existing (db/get-note-by-client-id vault-id note-id)
                 existing-hash (:hash existing)
@@ -224,24 +250,38 @@
             (if (and existing (= existing-hash note-hash) (= existing-path note-path))
               (resp/ok {:status "skipped" :noteId note-id})
               (do
+                ;; Sync note content + links, then update asset refs and compute missing uploads.
                 (upsert-note-with-links! tenant-id vault-id note-id note-path content note-hash metadata)
                 (let [asset-entries assets
-                      asset-ids (mapv :id asset-entries)]
+                      asset-ids (mapv :id asset-entries)
+                      linked-entries (mapv normalize-hash-entry linked_notes)]
                   (update-note-asset-refs! vault-id note-id asset-ids)
                   (let [need-upload (->> asset-entries
                                          (filter (fn [{:keys [id hash]}]
                                                    (let [existing (db/get-asset-by-client-id vault-id id)]
                                                      (or (nil? existing)
                                                          (not= (:md5 existing) hash)))))
-                                         (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))]
+                                         (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))
+                        need-upload-notes (->> linked-entries
+                                               (filter (fn [{:keys [id hash]}]
+                                                         (let [existing (db/get-note-by-client-id vault-id id)]
+                                                           (or (nil? existing)
+                                                               (not= (:hash existing) hash)))))
+                                               (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))]
                     (when (config/development?)
                       (log/debug "sync-note assets"
                                  {:note-id note-id
                                   :referenced (count asset-entries)
                                   :need-upload (count need-upload)}))
+                    (when (config/development?)
+                      (log/debug "sync-note linked-notes"
+                                 {:note-id note-id
+                                  :referenced (count linked-entries)
+                                  :need-upload (count need-upload-notes)}))
                     (resp/ok {:status "stored"
                               :noteId note-id
-                              :need_upload_assets need-upload})))))))))))
+                              :need_upload_assets need-upload
+                              :need_upload_notes need-upload-notes})))))))))))
 
 (defn sync-asset
   "POST /sync/assets/{id}"
