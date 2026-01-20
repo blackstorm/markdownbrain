@@ -83,7 +83,10 @@ export class SyncApiClient {
         const data = response.json as { vault: VaultInfoResponse["vault"] };
         return { success: true, vault: data.vault };
       }
-      return { success: false, error: `HTTP ${response.status}: ${response.text}` };
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${response.text}`,
+      };
     } catch (error) {
       return {
         success: false,
@@ -95,7 +98,7 @@ export class SyncApiClient {
   async syncChanges(request: SyncChangesRequest): Promise<SyncChangesResponse> {
     try {
       const response = await this.http.request({
-        url: `${this.config.serverUrl}/sync/changes`,
+        url: `${this.config.serverUrl}/obsidian/sync/changes`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,7 +112,10 @@ export class SyncApiClient {
         return { success: true, ...data };
       }
 
-      return { success: false, error: `HTTP ${response.status}: ${response.text}` };
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${response.text}`,
+      };
     } catch (error) {
       return {
         success: false,
@@ -129,7 +135,7 @@ export class SyncApiClient {
   }> {
     try {
       const response = await this.http.request({
-        url: `${this.config.serverUrl}/sync/notes/${encodeURIComponent(noteId)}`,
+        url: `${this.config.serverUrl}/obsidian/sync/notes/${encodeURIComponent(noteId)}`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -149,7 +155,10 @@ export class SyncApiClient {
           need_upload_notes: data.need_upload_notes,
         };
       }
-      return { success: false, error: `HTTP ${response.status}: ${response.text}` };
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${response.text}`,
+      };
     } catch (error) {
       return {
         success: false,
@@ -164,7 +173,7 @@ export class SyncApiClient {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       const response = await this.http.request({
-        url: `${this.config.serverUrl}/sync/assets/${encodeURIComponent(assetId)}`,
+        url: `${this.config.serverUrl}/obsidian/sync/assets/${encodeURIComponent(assetId)}`,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -176,7 +185,10 @@ export class SyncApiClient {
       if (response.status === 200) {
         return { success: true };
       }
-      return { success: false, error: `HTTP ${response.status}: ${response.text}` };
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${response.text}`,
+      };
     } catch (error) {
       return {
         success: false,
@@ -184,5 +196,4 @@ export class SyncApiClient {
       };
     }
   }
-
 }

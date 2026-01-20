@@ -13,9 +13,10 @@ describe("SyncApiClient", () => {
   };
 
   beforeEach(() => {
-    requestMock = vi.fn<ReturnType<HttpClient["request"]>, Parameters<HttpClient["request"]>>(() =>
-      Promise.resolve({ status: 200, json: {}, text: "" }),
-    );
+    requestMock = vi.fn<
+      ReturnType<HttpClient["request"]>,
+      Parameters<HttpClient["request"]>
+    >(() => Promise.resolve({ status: 200, json: {}, text: "" }));
     mockHttpClient = {
       request: requestMock,
     };
@@ -65,7 +66,7 @@ describe("SyncApiClient", () => {
       expect(result.success).toBe(true);
       expect(result.need_upsert).toEqual(responseData.need_upsert);
       expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: "https://api.example.com/sync/changes",
+        url: "https://api.example.com/obsidian/sync/changes",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -88,7 +89,7 @@ describe("SyncApiClient", () => {
 
       expect(result.success).toBe(true);
       expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: "https://api.example.com/sync/notes/note-1",
+        url: "https://api.example.com/obsidian/sync/notes/note-1",
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -117,7 +118,7 @@ describe("SyncApiClient", () => {
 
       expect(result.success).toBe(true);
       expect(mockHttpClient.request).toHaveBeenCalledWith({
-        url: "https://api.example.com/sync/assets/asset-1",
+        url: "https://api.example.com/obsidian/sync/assets/asset-1",
         method: "POST",
         headers: {
           "Content-Type": "application/json",

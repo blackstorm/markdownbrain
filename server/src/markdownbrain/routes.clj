@@ -28,12 +28,12 @@
 (def admin-routes
   (let [base-routes
         [["/" {:get (fn [_] (response/redirect "/admin"))}]
-         ["/sync"
-         ["/changes" {:post sync/sync-changes}]
-         ["/notes/:id" {:post sync/sync-note}]
-         ["/assets/:id" {:post sync/sync-asset}]]
-         
+
          ["/obsidian"
+          ["/sync"
+           ["/changes" {:post sync/sync-changes}]
+           ["/notes/:id" {:post sync/sync-note}]
+           ["/assets/:id" {:post sync/sync-asset}]]
           ["/vault/info" {:get sync/vault-info}]]
 
          ["/admin"
@@ -58,11 +58,11 @@
           ["/vaults/:id/root-note" {:middleware [middleware/wrap-auth]
                                     :put admin/update-vault-root-note}]
           ["/vaults/:id/root-note-selector" {:middleware [middleware/wrap-auth]
-                                              :get admin/get-root-note-selector}]
+                                             :get admin/get-root-note-selector}]
           ["/vaults/:id/renew-sync-key" {:middleware [middleware/wrap-auth]
                                          :post admin/renew-vault-sync-key}]
           ["/vaults/:id/logo" {:get {:middleware [middleware/wrap-auth]
-                                      :handler admin/serve-vault-logo}
+                                     :handler admin/serve-vault-logo}
                                :post {:middleware [middleware/wrap-auth]
                                       :handler admin/upload-vault-logo}
                                :delete {:middleware [middleware/wrap-auth]

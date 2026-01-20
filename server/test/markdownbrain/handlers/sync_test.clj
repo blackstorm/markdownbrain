@@ -1,11 +1,12 @@
 (ns markdownbrain.handlers.sync-test
-  (:require [clojure.test :refer [deftest is testing use-fixtures]]
-            [markdownbrain.handlers.sync :as sync]
-            [markdownbrain.db :as db]
-            [markdownbrain.test-support :as support]
-            [markdownbrain.object-store :as object-store]
-            [markdownbrain.utils :as utils]
-            [ring.mock.request :as mock]))
+  (:require
+   [clojure.test :refer [deftest is testing use-fixtures]]
+   [markdownbrain.db :as db]
+   [markdownbrain.handlers.sync :as sync]
+   [markdownbrain.object-store :as object-store]
+   [markdownbrain.test-support :as support]
+   [markdownbrain.utils :as utils]
+   [ring.mock.request :as mock]))
 
 (use-fixtures :each (support/create-temp-db-fixture))
 
@@ -30,7 +31,7 @@
             _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "c.md" note-id-3 "C" "{}" "hash-c" nil)
             _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id-1 "img/a.png" "assets/a.png" 10 "image/png" "md5-a")
             _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id-2 "img/b.png" "assets/b.png" 20 "image/png" "md5-b")
-            request (auth-request :post "/sync/changes" sync-key
+            request (auth-request :post "/obsidian/sync/changes" sync-key
                                   {:notes [{:id note-id-1 :hash "hash-a"}
                                            {:id note-id-2 :hash "hash-b-new"}]
                                    :assets [{:id asset-id-1 :hash "md5-a"}
@@ -52,7 +53,7 @@
           note-id "note-asset"
           asset-id "asset-123"
           _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "img/a.png" "assets/a.png" 10 "image/png" "md5-a")
-          request (-> (auth-request :post (str "/sync/notes/" note-id) sync-key
+          request (-> (auth-request :post (str "/obsidian/sync/notes/" note-id) sync-key
                                     {:path "notes/a.md"
                                      :content "Hello"
                                      :hash "hash-note"
@@ -74,7 +75,7 @@
           asset-id "asset-keep"
           missing-id "asset-missing"
           _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "img/a.png" "assets/a.png" 10 "image/png" "md5-a")
-          request (-> (auth-request :post (str "/sync/notes/" note-id) sync-key
+          request (-> (auth-request :post (str "/obsidian/sync/notes/" note-id) sync-key
                                     {:path "notes/a.md"
                                      :content "Hello"
                                      :hash "hash-note"
@@ -97,7 +98,7 @@
           linked-id "note-linked"
           missing-id "note-missing"
           _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "linked.md" linked-id "Linked" "{}" "hash-old" nil)
-          request (-> (auth-request :post (str "/sync/notes/" note-id) sync-key
+          request (-> (auth-request :post (str "/obsidian/sync/notes/" note-id) sync-key
                                     {:path "Note A.md"
                                      :content "Links"
                                      :hash "hash-a"
@@ -119,7 +120,7 @@
           note-a "note-a"
           note-b "note-b"
           _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "Note B.md" note-b "B" "{}" "hash-b" nil)
-          request-1 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+          request-1 (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                       {:path "Note A.md"
                                        :content "Link to [[Note B]]"
                                        :hash "hash-a-1"
@@ -137,7 +138,7 @@
                     db/insert-note-link! (fn [& args]
                                            (swap! insert-count inc)
                                            (apply original-insert args))]
-        (let [request-2 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+        (let [request-2 (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                           {:path "Note A.md"
                                            :content "Updated text [[Note B]]"
                                            :hash "hash-a-2"
@@ -158,7 +159,7 @@
           note-c "note-c"
           _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "Note B.md" note-b "B" "{}" "hash-b" nil)
           _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "Note C.md" note-c "C" "{}" "hash-c" nil)
-          request-1 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+          request-1 (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                       {:path "Note A.md"
                                        :content "Link [[Note B]]"
                                        :hash "hash-a-1"
@@ -176,7 +177,7 @@
                     db/insert-note-link! (fn [& args]
                                            (swap! insert-count inc)
                                            (apply original-insert args))]
-        (let [request-2 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+        (let [request-2 (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                           {:path "Note A.md"
                                            :content "Now [[Note C]] only"
                                            :hash "hash-a-2"
@@ -189,7 +190,7 @@
           (is (= 1 @insert-count))
           (reset! delete-count 0)
           (reset! insert-count 0))
-        (let [request-3 (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+        (let [request-3 (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                           {:path "Note A.md"
                                            :content "Alias [[Note C|My C]]"
                                            :hash "hash-a-3"
@@ -210,14 +211,14 @@
             _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "assets/shared.png" "assets/shared.png" 10 "image/png" "md5-shared")
             note-a "note-a"
             note-b "note-b"
-            request-a (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+            request-a (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                         {:path "A.md"
                                          :content "A"
                                          :hash "hash-a"
                                          :assets [{:id asset-id :hash "md5-shared"}]
                                          :linked_notes []})
                           (assoc :path-params {:id note-a}))
-            request-b (-> (auth-request :post (str "/sync/notes/" note-b) sync-key
+            request-b (-> (auth-request :post (str "/obsidian/sync/notes/" note-b) sync-key
                                         {:path "B.md"
                                          :content "B"
                                          :hash "hash-b"
@@ -227,7 +228,7 @@
         (sync/sync-note request-a)
         (sync/sync-note request-b)
 
-        (let [remove-a (-> (auth-request :post (str "/sync/notes/" note-a) sync-key
+        (let [remove-a (-> (auth-request :post (str "/obsidian/sync/notes/" note-a) sync-key
                                          {:path "A.md"
                                           :content "A no asset"
                                           :hash "hash-a-2"
@@ -237,7 +238,7 @@
           (sync/sync-note remove-a)
           (is (some? (db/get-asset-by-client-id vault-id asset-id))))
 
-        (let [remove-b (-> (auth-request :post (str "/sync/notes/" note-b) sync-key
+        (let [remove-b (-> (auth-request :post (str "/obsidian/sync/notes/" note-b) sync-key
                                          {:path "B.md"
                                           :content "B no asset"
                                           :hash "hash-b-2"
@@ -256,7 +257,7 @@
           base64-content (.encodeToString (java.util.Base64/getEncoder) (.getBytes content "UTF-8"))
           _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "assets/a.png" "assets/a.png" 10 "image/png" "md5-same")
           stored (atom 0)
-          request (-> (auth-request :post (str "/sync/assets/" asset-id) sync-key
+          request (-> (auth-request :post (str "/obsidian/sync/assets/" asset-id) sync-key
                                     {:path "assets/a.png"
                                      :contentType "image/png"
                                      :size 10
@@ -277,7 +278,7 @@
           base64-content (.encodeToString (java.util.Base64/getEncoder) (.getBytes content "UTF-8"))
           _ (db/upsert-asset! (utils/generate-uuid) tenant-id vault-id asset-id "assets/a.png" "assets/a.png" 10 "image/png" "md5-old")
           stored (atom 0)
-          request (-> (auth-request :post (str "/sync/assets/" asset-id) sync-key
+          request (-> (auth-request :post (str "/obsidian/sync/assets/" asset-id) sync-key
                                     {:path "assets/a.png"
                                      :contentType "image/png"
                                      :size 10

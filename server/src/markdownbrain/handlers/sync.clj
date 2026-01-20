@@ -2,9 +2,9 @@
   "Sync protocol (snapshot + incremental uploads).
 
    Endpoints:
-   - POST /sync/changes
-   - POST /sync/notes/{id}
-   - POST /sync/assets/{id}"
+   - POST /obsidian/sync/changes
+   - POST /obsidian/sync/notes/{id}
+   - POST /obsidian/sync/assets/{id}"
   (:require [markdownbrain.config :as config]
             [markdownbrain.db :as db]
             [markdownbrain.object-store :as object-store]
@@ -139,7 +139,7 @@
 ;; =============================================================================
 
 (defn sync-changes
-  "POST /sync/changes
+  "POST /obsidian/sync/changes
 
    Request body:
    {
@@ -190,7 +190,7 @@
                                       :assets (vec assets-to-delete)}})))))
 
 (defn sync-note
-  "POST /sync/notes/{id}
+  "POST /obsidian/sync/notes/{id}
 
    Request body:
    {
@@ -284,7 +284,7 @@
                               :need_upload_notes need-upload-notes})))))))))))
 
 (defn sync-asset
-  "POST /sync/assets/{id}"
+  "POST /obsidian/sync/assets/{id}"
   [request]
   (let [{:keys [ok vault response]} (require-auth request)]
     (if-not ok
