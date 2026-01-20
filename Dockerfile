@@ -13,7 +13,7 @@ COPY server/deps.edn server/build.clj ./
 RUN clojure -P -T:build
 COPY server/src ./src
 COPY server/resources ./resources
-COPY --from=frontend-builder /app/server/resources/publics/admin/css/app.css ./resources/publics/admin/css/app.css
+COPY --from=frontend-builder /app/server/resources/publics/admin/css/admin.css ./resources/publics/admin/css/admin.css
 COPY --from=frontend-builder /app/server/resources/publics/frontend/css/frontend.css ./resources/publics/frontend/css/frontend.css
 RUN clojure -T:build uberjar
 
