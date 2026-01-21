@@ -1,7 +1,7 @@
 (ns markdownbrain.routes
   (:require
    [markdownbrain.config :as config]
-   [markdownbrain.handlers.admin :as admin]
+   [markdownbrain.handlers.console :as admin]
    [markdownbrain.handlers.frontend :as frontend]
    [markdownbrain.handlers.internal :as internal]
    [markdownbrain.handlers.sync :as sync]

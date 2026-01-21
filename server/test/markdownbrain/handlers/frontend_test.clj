@@ -8,7 +8,7 @@
             [markdownbrain.object-store.local :as local-store]
             [markdownbrain.utils :as utils]
             [markdownbrain.handlers.frontend :as frontend]
-            [markdownbrain.handlers.admin :as admin]
+            [markdownbrain.handlers.console :as admin]
             [next.jdbc :as jdbc]
             [ring.mock.request :as mock]
             [selmer.parser :as selmer]))
@@ -35,7 +35,7 @@
           domain "myblog.com"
           _ (db/create-vault! vault-id tenant-id "My Blog" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" domain}))
+                      (assoc :headers {"host" domain}))
           response (frontend/get-note request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))
@@ -48,14 +48,14 @@
           domain "localhost"
           _ (db/create-vault! vault-id tenant-id "Local Blog" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" "localhost:3000"}))
+                      (assoc :headers {"host" "localhost:3000"}))
           response (frontend/get-note request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))))
 
   (testing "Non-existent domain returns 404"
     (let [request (-> (mock/request :get "/")
-                     (assoc :headers {"host" "nonexistent.com"}))
+                      (assoc :headers {"host" "nonexistent.com"}))
           response (frontend/get-note request)]
       (is (= 404 (:status response)))
       (is (string? (:body response)))
@@ -91,7 +91,7 @@
           domain "example.com"
           _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" "example.com"}))
+                      (assoc :headers {"host" "example.com"}))
           response (frontend/get-note request)]
       (is (= 200 (:status response)))))
 
@@ -102,7 +102,7 @@
           domain "exampleport.com"
           _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" "exampleport.com:8080"}))
+                      (assoc :headers {"host" "exampleport.com:8080"}))
           response (frontend/get-note request)]
       (is (= 200 (:status response)))))
 
@@ -113,7 +113,7 @@
           domain "192.168.1.1"
           _ (db/create-vault! vault-id tenant-id "Site" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" "192.168.1.1:3000"}))
+                      (assoc :headers {"host" "192.168.1.1:3000"}))
           response (frontend/get-note request)]
       (is (= 200 (:status response)))))
 
@@ -124,7 +124,7 @@
           domain "localhost"
           _ (db/create-vault! vault-id tenant-id "Local" domain (utils/generate-uuid))
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" "localhost:3000"}))
+                      (assoc :headers {"host" "localhost:3000"}))
           response (frontend/get-note request)]
       (is (= 200 (:status response))))))
 
@@ -140,25 +140,25 @@
           vault-id (utils/generate-uuid)
           domain "clientid-test.com"
           _ (db/create-vault! vault-id tenant-id "Client ID Test" domain (utils/generate-uuid))
-          
+
           ;; 创建文档 - 注意 id 和 client_id 是不同的
           internal-id (utils/generate-uuid)
           client-id "user-generated-client-id-12345"
-          _ (db/upsert-note! internal-id tenant-id vault-id "test.md" client-id 
-                                 "# Test Content" nil "hash123" "2024-01-01T00:00:00Z")
-          
+          _ (db/upsert-note! internal-id tenant-id vault-id "test.md" client-id
+                             "# Test Content" nil "hash123" "2024-01-01T00:00:00Z")
+
           ;; 通过 client_id 访问文档（应该成功）
           request (-> (mock/request :get (str "/" client-id))
-                     (assoc :headers {"host" domain})
-                     (assoc :path-params {:path client-id}))
+                      (assoc :headers {"host" domain})
+                      (assoc :path-params {:path client-id}))
           response (frontend/get-note request)]
-      
+
       ;; 验证能通过 client_id 访问
       (is (= 200 (:status response)))
       ;; 验证模板数据包含 client-id（因为模板被 mock 了，检查数据而非渲染结果）
       (is (str/includes? (:body response) ":client-id"))
       (is (str/includes? (:body response) client-id))))
-  
+
   (testing "通过内部 id 访问应该返回 404（不暴露内部 id）"
     (let [;; 创建测试数据
           tenant-id (utils/generate-uuid)
@@ -166,22 +166,22 @@
           vault-id (utils/generate-uuid)
           domain "internal-id-test.com"
           _ (db/create-vault! vault-id tenant-id "Internal ID Test" domain (utils/generate-uuid))
-          
+
           ;; 创建文档
           internal-id (utils/generate-uuid)
           client-id "my-client-id-67890"
-          _ (db/upsert-note! internal-id tenant-id vault-id "test2.md" client-id 
-                                 "# Private Content" nil "hash456" "2024-01-01T00:00:00Z")
-          
+          _ (db/upsert-note! internal-id tenant-id vault-id "test2.md" client-id
+                             "# Private Content" nil "hash456" "2024-01-01T00:00:00Z")
+
           ;; 尝试通过内部 id 访问（应该失败）
           request (-> (mock/request :get (str "/" internal-id))
-                     (assoc :headers {"host" domain})
-                     (assoc :path-params {:path internal-id}))
+                      (assoc :headers {"host" domain})
+                      (assoc :path-params {:path internal-id}))
           response (frontend/get-note request)]
-      
+
       ;; 验证不能通过内部 id 访问
       (is (= 404 (:status response)))))
-  
+
   (testing "home 页面文档列表应该使用 client_id"
     (let [;; 创建测试数据
           tenant-id (utils/generate-uuid)
@@ -189,26 +189,26 @@
           vault-id (utils/generate-uuid)
           domain "home-test.com"
           _ (db/create-vault! vault-id tenant-id "Home Test" domain (utils/generate-uuid))
-          
+
           ;; 创建多个文档
-          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
-                                 "client-id-aaa" "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
-          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
-                                 "client-id-bbb" "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
-          
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc1.md"
+                             "client-id-aaa" "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc2.md"
+                             "client-id-bbb" "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
+
           ;; 访问根路径（没有 root_doc_id，显示文档列表）
           ;; 根路径 path 为 "/" 或空
           request (-> (mock/request :get "/")
-                     (assoc :headers {"host" domain})
-                     (assoc :path-params {:path "/"}))
+                      (assoc :headers {"host" domain})
+                      (assoc :path-params {:path "/"}))
           response (frontend/get-note request)]
-      
+
       ;; 验证返回成功
       (is (= 200 (:status response)))
       ;; 验证链接使用 client_id 而非内部 id
       (is (str/includes? (:body response) "client-id-aaa"))
       (is (str/includes? (:body response) "client-id-bbb"))))
-  
+
   (testing "backlinks 应该使用 client_id"
     (let [;; 创建测试数据
           tenant-id (utils/generate-uuid)
@@ -216,32 +216,32 @@
           vault-id (utils/generate-uuid)
           domain "backlinks-test.com"
           _ (db/create-vault! vault-id tenant-id "Backlinks Test" domain (utils/generate-uuid))
-          
+
           ;; 创建目标文档
           target-client-id "target-doc-client-id"
-          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "target.md" 
-                                 target-client-id "# Target Doc" nil "hash-t" "2024-01-01T00:00:00Z")
-          
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "target.md"
+                             target-client-id "# Target Doc" nil "hash-t" "2024-01-01T00:00:00Z")
+
           ;; 创建源文档（包含链接到目标）
           source-client-id "source-doc-client-id"
-          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "source.md" 
-                                 source-client-id "# Source Doc" nil "hash-s" "2024-01-01T00:00:00Z")
-          
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "source.md"
+                             source-client-id "# Source Doc" nil "hash-s" "2024-01-01T00:00:00Z")
+
           ;; 创建链接关系
-          _ (db/insert-note-link! vault-id source-client-id target-client-id 
-                                      "target.md" "link" "Target Doc" "[[target]]")
-          
+          _ (db/insert-note-link! vault-id source-client-id target-client-id
+                                  "target.md" "link" "Target Doc" "[[target]]")
+
           ;; 访问目标文档，查看 backlinks
           request (-> (mock/request :get (str "/" target-client-id))
-                     (assoc :headers {"host" domain})
-                     (assoc :path-params {:path target-client-id}))
+                      (assoc :headers {"host" domain})
+                      (assoc :path-params {:path target-client-id}))
           response (frontend/get-note request)]
-      
+
       ;; 验证返回成功
       (is (= 200 (:status response)))
       ;; 验证 backlinks 使用 client_id (数据中包含 source-client-id)
       (is (str/includes? (:body response) source-client-id))))
-  
+
   (testing "堆叠路径应该使用 client_id"
     (let [;; 创建测试数据
           tenant-id (utils/generate-uuid)
@@ -249,22 +249,22 @@
           vault-id (utils/generate-uuid)
           domain "stacking-test.com"
           _ (db/create-vault! vault-id tenant-id "Stacking Test" domain (utils/generate-uuid))
-          
+
           ;; 创建多个文档
           client-id-1 "stack-doc-1"
           client-id-2 "stack-doc-2"
-          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc1.md" 
-                                 client-id-1 "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
-          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc2.md" 
-                                 client-id-2 "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
-          
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc1.md"
+                             client-id-1 "# Doc 1" nil "hash1" "2024-01-01T00:00:00Z")
+          _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "doc2.md"
+                             client-id-2 "# Doc 2" nil "hash2" "2024-01-01T00:00:00Z")
+
           ;; 使用堆叠路径访问 (/{client_id}+{client_id})
           stacked-path (str client-id-1 "+" client-id-2)
           request (-> (mock/request :get (str "/" stacked-path))
-                     (assoc :headers {"host" domain})
-                     (assoc :path-params {:path stacked-path}))
+                      (assoc :headers {"host" domain})
+                      (assoc :path-params {:path stacked-path}))
           response (frontend/get-note request)]
-      
+
       ;; 验证返回成功（两个文档都应该被渲染）
       (is (= 200 (:status response)))
       ;; 验证数据中包含两个 client-id
@@ -293,26 +293,26 @@
           vault-id (utils/generate-uuid)
           domain "asset-test.com"
           _ (db/create-vault! vault-id tenant-id "Asset Test" domain (utils/generate-uuid))
-          
+
           ;; Create and store asset (object_key is now based on client_id)
           asset-content "test image content"
           client-id "test-client-123"
           object-key (str "assets/" client-id)]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         ;; Initialize storage
         (object-store/set-store! (local-store/create-local-store))
-        
+
         ;; Store the asset
         (object-store/put-object! vault-id object-key asset-content "image/png")
-        
+
         ;; Request the asset using object_key as path
         (let [request (-> (mock/request :get (str "/storage/" object-key))
                           (assoc :headers {"host" domain})
                           (assoc :path-params {:path object-key}))
               response (frontend/serve-asset request)]
-          
+
           ;; Verify response
           (is (= 200 (:status response)))
           ;; Note: Content-Type falls back to application/octet-stream because
@@ -322,7 +322,7 @@
           (is (some? (get-in response [:headers "Content-Type"])))
           (is (bytes? (:body response)))
           (is (= asset-content (String. (:body response) "UTF-8")))))))
-  
+
   (testing "Return 404 for non-existent asset"
     (let [temp-storage (create-temp-storage)
           tenant-id (utils/generate-uuid)
@@ -330,54 +330,54 @@
           vault-id (utils/generate-uuid)
           domain "asset-404-test.com"
           _ (db/create-vault! vault-id tenant-id "Asset 404 Test" domain (utils/generate-uuid))]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
-        
+
         (let [request (-> (mock/request :get "/storage/assets/nonexistent")
                           (assoc :headers {"host" domain})
                           (assoc :path-params {:path "assets/nonexistent"}))
               response (frontend/serve-asset request)]
-          
+
           (is (= 404 (:status response)))))))
-  
+
   (testing "Return 404 for unknown domain (vault isolation)"
     (let [temp-storage (create-temp-storage)]
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
-        
+
         (let [request (-> (mock/request :get "/storage/assets/some-client-id")
                           (assoc :headers {"host" "unknown-domain.com"})
                           (assoc :path-params {:path "assets/some-client-id"}))
               response (frontend/serve-asset request)]
-          
+
           (is (= 404 (:status response)))))))
-  
+
   (testing "Vault isolation - cannot access other vault's assets"
     (let [temp-storage (create-temp-storage)
           ;; Create two vaults
           tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org 3")
-          
+
           vault-id-1 (utils/generate-uuid)
           domain-1 "vault1.com"
           _ (db/create-vault! vault-id-1 tenant-id "Vault 1" domain-1 (utils/generate-uuid))
-          
+
           vault-id-2 (utils/generate-uuid)
           domain-2 "vault2.com"
           _ (db/create-vault! vault-id-2 tenant-id "Vault 2" domain-2 (utils/generate-uuid))
-          
+
           object-key "assets/secret-client-id"]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
-        
+
         ;; Store asset in vault-1 only
         (object-store/put-object! vault-id-1 object-key "vault1 secret" "image/png")
-        
+
         ;; Access from vault-1 - should succeed
         (let [request-1 (-> (mock/request :get (str "/storage/" object-key))
                             (assoc :headers {"host" domain-1})
@@ -385,23 +385,23 @@
               response-1 (frontend/serve-asset request-1)]
           (is (= 200 (:status response-1)))
           (is (= "vault1 secret" (String. (:body response-1) "UTF-8"))))
-        
+
         ;; Access from vault-2 - should fail (404, not 403 to avoid enumeration)
         (let [request-2 (-> (mock/request :get (str "/storage/" object-key))
                             (assoc :headers {"host" domain-2})
                             (assoc :path-params {:path object-key}))
               response-2 (frontend/serve-asset request-2)]
           (is (= 404 (:status response-2)))))))
-  
+
   (testing "Return 404 when using S3 storage"
     (with-redefs [config/storage-type (constantly :s3)]
       (let [request (-> (mock/request :get "/storage/assets/some-client-id")
                         (assoc :headers {"host" "any-domain.com"})
                         (assoc :path-params {:path "assets/some-client-id"}))
             response (frontend/serve-asset request)]
-        
+
         (is (= 404 (:status response))))))
-  
+
   (testing "Return 400 for missing path"
     (let [temp-storage (create-temp-storage)
           tenant-id (utils/generate-uuid)
@@ -409,18 +409,18 @@
           vault-id (utils/generate-uuid)
           domain "missing-path-test.com"
           _ (db/create-vault! vault-id tenant-id "Missing Path Test" domain (utils/generate-uuid))]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
-        
+
         (let [request (-> (mock/request :get "/storage/")
                           (assoc :headers {"host" domain})
                           (assoc :path-params {:path ""}))
               response (frontend/serve-asset request)]
-          
+
           (is (= 400 (:status response)))))))
-  
+
   (testing "Cache headers are set correctly"
     (let [temp-storage (create-temp-storage)
           tenant-id (utils/generate-uuid)
@@ -429,18 +429,18 @@
           domain "cache-test.com"
           _ (db/create-vault! vault-id tenant-id "Cache Test" domain (utils/generate-uuid))
           object-key "assets/cached-client-id"]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
-        
+
         (object-store/put-object! vault-id object-key "cached content" "image/png")
-        
+
         (let [request (-> (mock/request :get (str "/storage/" object-key))
                           (assoc :headers {"host" domain})
                           (assoc :path-params {:path object-key}))
               response (frontend/serve-asset request)]
-          
+
           (is (= 200 (:status response)))
           (is (str/includes? (get-in response [:headers "Cache-Control"]) "max-age"))
           (is (str/includes? (get-in response [:headers "Cache-Control"]) "immutable")))))))
@@ -461,22 +461,22 @@
           logo-object-key (str "site/logo/" logo-hash ".png")
           favicon-object-key (str logo-object-key "@favicon.png")
           _ (db/update-vault-logo! vault-id logo-object-key)]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
         (object-store/put-object! vault-id favicon-object-key "favicon-content" "image/png")
-        
+
         (let [request (-> (mock/request :get "/favicon.ico")
                           (assoc :headers {"host" domain}))
               response (frontend/serve-favicon request)]
-          
+
           (is (= 200 (:status response)))
           (is (= "image/png" (get-in response [:headers "Content-Type"])))
           (is (= "favicon-content" (String. (:body response) "UTF-8")))
           (is (str/includes? (get-in response [:headers "Cache-Control"]) "max-age=3600"))
           (is (= (str "\"" logo-hash "\"") (get-in response [:headers "ETag"])))))))
-  
+
   (testing "Fallback to logo when favicon not found"
     (let [temp-storage (create-temp-storage)
           tenant-id (utils/generate-uuid)
@@ -487,20 +487,20 @@
           logo-hash "fallback456"
           logo-object-key (str "site/logo/" logo-hash ".png")
           _ (db/update-vault-logo! vault-id logo-object-key)]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
         ;; Only store logo, not favicon
         (object-store/put-object! vault-id logo-object-key "original-logo" "image/png")
-        
+
         (let [request (-> (mock/request :get "/favicon.ico")
                           (assoc :headers {"host" domain}))
               response (frontend/serve-favicon request)]
-          
+
           (is (= 200 (:status response)))
           (is (= "original-logo" (String. (:body response) "UTF-8")))))))
-  
+
   (testing "Return 304 Not Modified when ETag matches"
     (let [temp-storage (create-temp-storage)
           tenant-id (utils/generate-uuid)
@@ -511,40 +511,37 @@
           logo-hash "etag789"
           logo-object-key (str "site/logo/" logo-hash ".png")
           _ (db/update-vault-logo! vault-id logo-object-key)]
-      
+
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
         (object-store/set-store! (local-store/create-local-store))
         (object-store/put-object! vault-id logo-object-key "favicon-content" "image/png")
-        
+
         ;; Request with matching ETag
         (let [request (-> (mock/request :get "/favicon.ico")
                           (assoc :headers {"host" domain
                                            "if-none-match" (str "\"" logo-hash "\"")}))
               response (frontend/serve-favicon request)]
-          
+
           (is (= 304 (:status response)))
           (is (nil? (:body response)))))))
-  
+
   (testing "Return 404 for vault without logo"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org No Favicon")
           vault-id (utils/generate-uuid)
           domain "no-favicon-test.com"
           _ (db/create-vault! vault-id tenant-id "No Favicon Test" domain (utils/generate-uuid))]
-      
+
       (let [request (-> (mock/request :get "/favicon.ico")
                         (assoc :headers {"host" domain}))
             response (frontend/serve-favicon request)]
-        
+
         (is (= 404 (:status response))))))
-  
+
   (testing "Return 404 for unknown domain"
     (let [request (-> (mock/request :get "/favicon.ico")
                       (assoc :headers {"host" "unknown-favicon-domain.com"}))
           response (frontend/serve-favicon request)]
-      
+
       (is (= 404 (:status response))))))
-
-
-
