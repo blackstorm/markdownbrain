@@ -17,15 +17,15 @@
         notes (db/search-notes-by-vault (:id vault) "")
         storage-bytes (db/get-vault-storage-size (:id vault))
         logo-url (when-let [key (:logo-object-key vault)]
-                   (common/admin-asset-url (:id vault) key))]
+                   (common/console-asset-url (:id vault) key))]
     (assoc vault
            :masked-key masked
            :notes notes
            :storage-size (common/format-storage-size storage-bytes)
            :logo-url logo-url)))
 
-(defn admin-home
-  "Admin home page showing all vaults."
+(defn console-home
+  "Console home page showing all vaults."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         tenant (db/get-tenant tenant-id)

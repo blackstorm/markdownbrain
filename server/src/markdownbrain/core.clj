@@ -47,10 +47,10 @@
        :type :frontend
        :stop #(.stop server)})))
 
-(defn start-admin-server []
-  (let [port (config/get-config :server :admin :port)
-        host (config/get-config :server :admin :host)]
-    (log/info "Starting Admin server on" host ":" port)
+(defn start-console-server []
+  (let [port (config/get-config :server :console :port)
+        host (config/get-config :server :console :host)]
+    (log/info "Starting Console server on" host ":" port)
     (let [server (undertow/run-undertow
                   (-> routes/console-app
                       (middleware/wrap-middleware)
@@ -60,7 +60,7 @@
                    :host host})]
       {:server server
        :port port
-       :type :admin
+       :type :console
        :stop #(.stop server)})))
 
 (defn start-servers []
@@ -81,17 +81,17 @@
   (object-store/init-storage!)
 
   (let [frontend (start-frontend-server)
-        admin (start-admin-server)]
+        console (start-console-server)]
     (log/info "=== MarkdownBrain Servers Started ===")
     (log/info (str "Frontend: http://localhost:" (:port frontend)))
-    (log/info (str "Admin:    http://localhost:" (:port admin)))
+    (log/info (str "Console:    http://localhost:" (:port console)))
     (log/info "=====================================")
     {:frontend frontend
-     :admin admin
+     :console console
      :stop (fn []
              (log/info "Stopping servers...")
              ((:stop frontend))
-             ((:stop admin))
+             ((:stop console))
              (log/info "All servers stopped"))}))
 
 (defn -main [& args]

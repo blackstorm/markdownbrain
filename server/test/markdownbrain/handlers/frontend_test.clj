@@ -8,7 +8,7 @@
             [markdownbrain.object-store.local :as local-store]
             [markdownbrain.utils :as utils]
             [markdownbrain.handlers.frontend :as frontend]
-            [markdownbrain.handlers.console :as admin]
+            [markdownbrain.handlers.console :as console]
             [next.jdbc :as jdbc]
             [ring.mock.request :as mock]
             [selmer.parser :as selmer]))
@@ -68,17 +68,17 @@
       (is (or (= 404 (:status response))
               (= 200 (:status response)))))))
 
-;; Admin Pages 测试
-(deftest test-admin-pages
-  (testing "Admin home page renders"
+;; Console Pages 测试
+(deftest test-console-pages
+  (testing "Console home page renders"
     (let [request (mock/request :get "/console")
-          response (admin/admin-home request)]
+          response (console/console-home request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))))
 
   (testing "Login page renders"
     (let [request (mock/request :get "/console/login")
-          response (admin/login-page request)]
+          response (console/login-page request)]
       (is (= 200 (:status response)))
       (is (string? (:body response))))))
 

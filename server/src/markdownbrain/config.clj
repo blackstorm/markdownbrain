@@ -93,8 +93,8 @@
    {:frontend
     {:port (->int (getenv "FRONTEND_PORT") 8080)
      :host (or (getenv "HOST") "0.0.0.0")}
-    :admin
-    {:port (->int (getenv "ADMIN_PORT") 9090)
+    :console
+    {:port (->int (getenv "CONSOLE_PORT") 9090)
      :host (or (getenv "HOST") "0.0.0.0")}}
 
    :database

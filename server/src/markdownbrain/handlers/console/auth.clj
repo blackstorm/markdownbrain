@@ -1,13 +1,13 @@
 (ns markdownbrain.handlers.console.auth
-  "Admin authentication and initialization handlers."
+  "Console authentication and initialization handlers."
   (:require
    [markdownbrain.db :as db]
    [markdownbrain.response :as resp]
    [markdownbrain.utils :as utils]
    [selmer.parser :as selmer]))
 
-(defn init-admin
-  "Initialize system with first admin user."
+(defn init-console
+  "Initialize system with first console user."
   [request]
   (if (db/has-any-user?)
     {:status 403
@@ -36,7 +36,7 @@
                          :user-id user-id}))))))
 
 (defn login
-  "Admin login handler."
+  "Console login handler."
   [request]
   (let [params (or (:body-params request) (:params request))
         {:keys [username password]} params
@@ -52,7 +52,7 @@
               :error "Invalid username or password"}})))
 
 (defn logout
-  "Admin logout handler."
+  "Console logout handler."
   [request]
   {:status 302
    :session nil

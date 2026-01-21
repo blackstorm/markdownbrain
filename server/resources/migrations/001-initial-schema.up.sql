@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS tenants (
 );
 --;;
 
--- Admin users (manage vaults)
+-- Console users (manage vaults)
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL,

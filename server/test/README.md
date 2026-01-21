@@ -6,7 +6,7 @@
 
 - ✅ 单元测试（Utils）
 - ✅ 数据库集成测试
-- ✅ HTTP API 测试（Admin/Sync/Frontend Handlers）
+- ✅ HTTP API 测试（Console/Sync/Frontend Handlers）
 - ✅ 中间件测试
 - ✅ 配置测试
 - ✅ 路由集成测试
@@ -23,7 +23,7 @@ test/
 │   ├── middleware_test.clj         # 中间件（认证、CORS、JSON）测试
 │   ├── routes_test.clj             # 路由集成测试
 │   └── handlers/
-│       ├── admin_test.clj          # 管理后台 API 测试
+│       ├── console/                # Console API 测试
 │       ├── sync_test.clj           # 同步 API 测试
 │       └── frontend_test.clj       # 前端 API 测试
 └── frontend/
@@ -122,7 +122,7 @@ start test/frontend/test.html
 
 ### 3. HTTP API 测试
 
-#### Admin Handler (admin_test.clj)
+#### Console Handlers (handlers/console/*.clj)
 - ✅ 系统初始化
 - ✅ 登录/登出
 - ✅ Vault 列表

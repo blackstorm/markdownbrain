@@ -763,7 +763,7 @@ server/
 ├── resources/
 │   ├── templates/
 │   │   ├── base.html                # Base layout
-│   │   ├── admin/
+│   │   ├── console/
 │   │   │   ├── login.html          # Login page
 │   │   │   ├── init.html           # Initial setup
 │   │   │   ├── vaults.html         # Dashboard
@@ -776,7 +776,7 @@ server/
 │       │   └── app.css              # Compiled CSS (generated)
 │       └── js/
 │           ├── helpers.js           # Global utilities
-│           └── admin.js             # Admin dashboard logic
+│           └── console.js             # Console dashboard logic
 ```
 
 **Note:** All design system styles are defined in `server/app.css` and compiled to `server/resources/publics/console/css/console.css`. When making style changes, edit `server/app.css` and run the CSS build process.

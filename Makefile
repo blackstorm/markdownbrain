@@ -48,20 +48,20 @@ plugin-install:
 	@cd obsidian-plugin && npm install
 
 # 开发模式
-# 支持自定义端口: make dev FRONTEND_PORT=3000 ADMIN_PORT=4000
+# 支持自定义端口: make dev FRONTEND_PORT=3000 CONSOLE_PORT=4000
 FRONTEND_PORT ?= 4000
-ADMIN_PORT ?= 9090
+CONSOLE_PORT ?= 9090
 
 dev:
 	@echo "Starting backend development server..."
-	@echo "Frontend Port: $(FRONTEND_PORT), Admin Port: $(ADMIN_PORT)"
+	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
 	@echo "Use Ctrl+C to stop"
-	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) ADMIN_PORT=$(ADMIN_PORT) clojure -M:dev
+	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) clojure -M:dev
 
 backend-dev:
 	@echo "Starting backend development server..."
-	@echo "Frontend Port: $(FRONTEND_PORT), Admin Port: $(ADMIN_PORT)"
-	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) ADMIN_PORT=$(ADMIN_PORT) clojure -M:dev
+	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
+	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) clojure -M:dev
 
 backend-repl:
 	@echo "Starting backend REPL..."

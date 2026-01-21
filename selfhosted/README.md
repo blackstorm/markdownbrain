@@ -12,7 +12,7 @@
 ## On-demand TLS
 
 When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy calls `/console/domain-check` to
-validate requested domains. Keep the admin port private (bound to localhost or
+validate requested domains. Keep the console port private (bound to localhost or
 internal network only).
 
 ## 何时使用哪种部署
@@ -42,9 +42,9 @@ export S3_PUBLIC_URL=https://s3.your-domain.com
 docker compose -f selfhosted/compose/docker-compose.s3.yml up -d
 ```
 
-## Admin 访问
+## Console 访问
 
-Admin 端口 (9090) 仅绑定到 localhost。需要通过 SSH 隧道访问：
+Console 端口 (9090) 仅绑定到 localhost。需要通过 SSH 隧道访问：
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server

@@ -236,7 +236,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          username "admin"
+          username "console"
           password-hash "hashed-password"
           result (create-user! user-id tenant-id username password-hash)]
       (is (map? result))

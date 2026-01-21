@@ -1,5 +1,5 @@
 (ns markdownbrain.handlers.console.common
-  "Shared utilities for admin handlers."
+  "Shared utilities for console handlers."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -17,8 +17,8 @@
     (< bytes (* 1024 1024 1024)) (format "%.1f MB" (/ bytes (* 1024.0 1024)))
     :else (format "%.2f GB" (/ bytes (* 1024.0 1024 1024)))))
 
-(defn admin-asset-url
-  "Generate admin storage URL for an asset.
+(defn console-asset-url
+  "Generate console storage URL for an asset.
    Returns URL like /console/storage/{vault-id}/{object-key}"
   [vault-id object-key]
   (str "/console/storage/" vault-id "/" object-key))
@@ -30,8 +30,8 @@
     (io/copy is baos)
     (.toByteArray baos)))
 
-(defn serve-admin-asset
-  "Serve assets from storage for admin panel.
+(defn serve-console-asset
+  "Serve assets from storage for console panel.
    Route: GET /console/storage/:id/*path
    
    Unlike frontend's /storage/* which uses Host header for vault resolution,

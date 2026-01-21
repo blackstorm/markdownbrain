@@ -30,7 +30,7 @@ make install
 make dev
 
 # Frontend: http://localhost:8080
-# Admin: http://localhost:9090
+# Console: http://localhost:9090
 ```
 
 ### 其他开发命令
@@ -97,9 +97,9 @@ docker compose up -d
 docker compose logs -f
 ```
 
-### 访问 Admin 面板
+### 访问 Console 面板
 
-Admin 端口 (9090) 仅绑定到 localhost，务必不要对公网开放。通过 SSH 隧道访问：
+Console 端口 (9090) 仅绑定到 localhost，务必不要对公网开放。通过 SSH 隧道访问：
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server
@@ -109,7 +109,7 @@ ssh -L 9090:localhost:9090 user@your-server
 
 ### 添加站点域名
 
-1. 登录 Admin 面板
+1. 登录 Console 面板
 2. 创建新站点，填写域名（如 `notes.example.com`）
 3. 将域名 DNS 解析到服务器 IP
 4. 如果启用了 `CADDY_ON_DEMAND_TLS_ENABLED`，Caddy 会自动为该域名获取 SSL 证书
@@ -124,10 +124,10 @@ ssh -L 9090:localhost:9090 user@your-server
 
 ### 配置
 
-1. 在 Admin 面板创建站点，获取 Sync Key
+1. 在 Console 面板创建站点，获取 Sync Key
 2. 在插件设置中填写：
-   - Server URL: `https://your-admin-domain.com`
-   - Sync Key: 从 Admin 面板复制
+   - Server URL: `https://your-console-domain.com`
+   - Sync Key: 从 Console 面板复制
 
 ### 同步
 
@@ -146,7 +146,7 @@ ssh -L 9090:localhost:9090 user@your-server
               │                         │
               ▼                         ▼
     ┌─────────────────┐      ┌─────────────────┐
-    │  Frontend:8080  │      │  Admin:9090     │
+    │  Frontend:8080  │      │  Console:9090     │
     │  (公开访问)      │      │  (仅 localhost) │
     └─────────────────┘      └─────────────────┘
               │                         │

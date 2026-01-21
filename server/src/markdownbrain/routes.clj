@@ -1,7 +1,7 @@
 (ns markdownbrain.routes
   (:require
    [markdownbrain.config :as config]
-   [markdownbrain.handlers.console :as admin]
+   [markdownbrain.handlers.console :as console]
    [markdownbrain.handlers.frontend :as frontend]
    [markdownbrain.handlers.internal :as internal]
    [markdownbrain.handlers.sync :as sync]
@@ -37,38 +37,38 @@
           ["/vault/info" {:get sync/vault-info}]]
 
          ["/console"
-          ["" {:middleware [middleware/wrap-auth] :get admin/admin-home}]
+          ["" {:middleware [middleware/wrap-auth] :get console/console-home}]
           ["/health" {:get internal/health}]
-          ["/login" {:get admin/login-page
-                     :post admin/login}]
+          ["/login" {:get console/login-page
+                     :post console/login}]
           ["/logout" {:post {:middleware [middleware/wrap-auth]
-                             :handler admin/logout}}]
-          ["/init" {:get admin/init-page
-                    :post admin/init-admin}]
+                             :handler console/logout}}]
+          ["/init" {:get console/init-page
+                    :post console/init-console}]
           ["/storage/:id/{*path}" {:middleware [middleware/wrap-auth]
-                                   :get admin/serve-admin-asset}]
+                                   :get console/serve-console-asset}]
           ["/vaults" {:middleware [middleware/wrap-auth]
-                      :get admin/list-vaults
-                      :post admin/create-vault}]
+                      :get console/list-vaults
+                      :post console/create-vault}]
           ["/vaults/:id" {:middleware [middleware/wrap-auth]
-                          :put admin/update-vault
-                          :delete admin/delete-vault}]
+                          :put console/update-vault
+                          :delete console/delete-vault}]
           ["/vaults/:id/notes" {:middleware [middleware/wrap-auth]
-                                :get admin/search-vault-notes}]
+                                :get console/search-vault-notes}]
           ["/vaults/:id/root-note" {:middleware [middleware/wrap-auth]
-                                    :put admin/update-vault-root-note}]
+                                    :put console/update-vault-root-note}]
           ["/vaults/:id/root-note-selector" {:middleware [middleware/wrap-auth]
-                                             :get admin/get-root-note-selector}]
+                                             :get console/get-root-note-selector}]
           ["/vaults/:id/renew-sync-key" {:middleware [middleware/wrap-auth]
-                                         :post admin/renew-vault-sync-key}]
+                                         :post console/renew-vault-sync-key}]
           ["/vaults/:id/logo" {:get {:middleware [middleware/wrap-auth]
-                                     :handler admin/serve-vault-logo}
+                                     :handler console/serve-vault-logo}
                                :post {:middleware [middleware/wrap-auth]
-                                      :handler admin/upload-vault-logo}
+                                      :handler console/upload-vault-logo}
                                :delete {:middleware [middleware/wrap-auth]
-                                        :handler admin/delete-vault-logo}}]
+                                        :handler console/delete-vault-logo}}]
           ["/vaults/:id/favicon" {:get {:middleware [middleware/wrap-auth]
-                                        :handler admin/serve-vault-favicon}}]]]
+                                        :handler console/serve-vault-favicon}}]]]
         ;; Conditionally add domain-check route when on-demand TLS is enabled
         domain-check-route ["/console/domain-check" {:get internal/domain-check}]]
     (if (config/on-demand-tls-enabled?)

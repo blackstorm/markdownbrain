@@ -1,5 +1,5 @@
 (ns markdownbrain.handlers.console
-  "Admin handlers facade - re-exports functions from submodules.
+  "Console handlers facade - re-exports functions from submodules.
 
    This namespace maintains backward compatibility for routes.clj and other consumers
    while the actual implementation is split across:
@@ -17,7 +17,7 @@
 ;; Auth handlers
 ;; ============================================================
 
-(def init-admin auth/init-admin)
+(def init-console auth/init-console)
 (def login auth/login)
 (def logout auth/logout)
 (def login-page auth/login-page)
@@ -27,7 +27,7 @@
 ;; Vault handlers
 ;; ============================================================
 
-(def admin-home vaults/admin-home)
+(def console-home vaults/console-home)
 (def list-vaults vaults/list-vaults)
 (def create-vault vaults/create-vault)
 (def update-vault vaults/update-vault)
@@ -50,6 +50,6 @@
 ;; Common utilities
 ;; ============================================================
 
-(def serve-admin-asset common/serve-admin-asset)
-(def admin-asset-url common/admin-asset-url)
+(def serve-console-asset common/serve-console-asset)
+(def console-asset-url common/console-asset-url)
 (def format-storage-size common/format-storage-size)

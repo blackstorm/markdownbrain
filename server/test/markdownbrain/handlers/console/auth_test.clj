@@ -1,5 +1,5 @@
 (ns markdownbrain.handlers.console.auth-test
-  "Tests for admin authentication handlers."
+  "Tests for console authentication handlers."
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [markdownbrain.db :as db]
@@ -10,51 +10,51 @@
 
 (use-fixtures :each test-utils/setup-test-db)
 
-(deftest test-admin-init-success
-  (testing "Initialize system with first admin user"
+(deftest test-console-init-success
+  (testing "Initialize system with first console user"
     (let [request (-> (mock/request :post "/api/console/init")
                       (assoc :body-params {:tenant-name "Test Org"
-                                           :username "admin"
+                                           :username "console"
                                            :password "password123"}))
-          response (auth/init-admin request)]
+          response (auth/init-console request)]
       (is (= 200 (:status response)))
       (is (get-in response [:body :success]))
       (is (string? (get-in response [:body :tenant-id])))
       (is (string? (get-in response [:body :user-id]))))))
 
-(deftest test-admin-init-already-initialized
+(deftest test-console-init-already-initialized
   (testing "Cannot initialize when system already initialized"
-    (let [_ (auth/init-admin (-> (mock/request :post "/api/console/init")
+    (let [_ (auth/init-console (-> (mock/request :post "/api/console/init")
                                  (assoc :body-params {:tenant-name "First Org"
-                                                      :username "admin1"
+                                                      :username "console1"
                                                       :password "pass1"})))
           request (-> (mock/request :post "/api/console/init")
                       (assoc :body-params {:tenant-name "Second Org"
-                                           :username "admin2"
+                                           :username "console2"
                                            :password "pass2"}))
-          response (auth/init-admin request)]
+          response (auth/init-console request)]
       (is (= 403 (:status response)))
       (is (false? (get-in response [:body :success])))
       (is (= "System already initialized" (get-in response [:body :error]))))))
 
-(deftest test-admin-init-missing-fields
+(deftest test-console-init-missing-fields
   (testing "Missing required fields returns 200 with error"
     (let [request (-> (mock/request :post "/api/console/init")
                       (assoc :body-params {:tenant-name "Test Org"}))
-          response (auth/init-admin request)]
+          response (auth/init-console request)]
       (is (= 200 (:status response)))
       (is (false? (get-in response [:body :success]))))))
 
-(deftest test-admin-login
+(deftest test-console-login
   (testing "Successful login"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
           password "password123"
           password-hash (utils/hash-password password)
-          _ (db/create-user! user-id tenant-id "login-test-admin" password-hash)
+          _ (db/create-user! user-id tenant-id "login-test-console" password-hash)
           request (-> (mock/request :post "/api/console/login")
-                      (assoc :body-params {:username "login-test-admin"
+                      (assoc :body-params {:username "login-test-console"
                                            :password password}))
           response (auth/login request)]
       (is (= 200 (:status response)))
@@ -84,7 +84,7 @@
       (is (= 200 (:status response)))
       (is (false? (get-in response [:body :success]))))))
 
-(deftest test-admin-logout
+(deftest test-console-logout
   (testing "Successful logout redirects to login page"
     (let [request (-> (mock/request :post "/api/console/logout")
                       (assoc :session {:user-id "user-123" :tenant-id "tenant-123"}))

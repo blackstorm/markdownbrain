@@ -14,13 +14,13 @@
       (is (number? port))
       (is (pos? port))))
 
-  (testing "Get admin server host"
-    (let [host (config/get-config :server :admin :host)]
+  (testing "Get console server host"
+    (let [host (config/get-config :server :console :host)]
       (is (string? host))
       (is (not (clojure.string/blank? host)))))
 
-  (testing "Get admin server port"
-    (let [port (config/get-config :server :admin :port)]
+  (testing "Get console server port"
+    (let [port (config/get-config :server :console :port)]
       (is (number? port))
       (is (pos? port))))
 
@@ -33,7 +33,7 @@
     (let [server-config (config/get-config :server)]
       (is (map? server-config))
       (is (contains? server-config :frontend))
-      (is (contains? server-config :admin)))))
+      (is (contains? server-config :console)))))
 
 ;; Default Config Values 测试
 (deftest test-default-config-values
@@ -51,17 +51,17 @@
   (testing "Server config has required keys"
     (let [server-config (config/get-config :server)]
       (is (contains? server-config :frontend))
-      (is (contains? server-config :admin))))
+      (is (contains? server-config :console))))
 
   (testing "Frontend server config has required keys"
     (let [frontend-config (config/get-config :server :frontend)]
       (is (contains? frontend-config :host))
       (is (contains? frontend-config :port))))
 
-  (testing "Admin server config has required keys"
-    (let [admin-config (config/get-config :server :admin)]
-      (is (contains? admin-config :host))
-      (is (contains? admin-config :port))))
+  (testing "Console server config has required keys"
+    (let [console-config (config/get-config :server :console)]
+      (is (contains? console-config :host))
+      (is (contains? console-config :port))))
 
   (testing "Database config has required keys"
     (let [db-config (config/get-config :database)]
@@ -75,11 +75,11 @@
   (testing "Frontend server port is number"
     (is (number? (config/get-config :server :frontend :port))))
 
-  (testing "Admin server host is string"
-    (is (string? (config/get-config :server :admin :host))))
+  (testing "Console server host is string"
+    (is (string? (config/get-config :server :console :host))))
 
-  (testing "Admin server port is number"
-    (is (number? (config/get-config :server :admin :port))))
+  (testing "Console server port is number"
+    (is (number? (config/get-config :server :console :port))))
 
   (testing "Database jdbcUrl is string"
     (is (string? (config/get-config :database :jdbcUrl)))))

@@ -89,7 +89,7 @@
         (db/update-vault-logo! vault-id logo-object-key)
 
         (resp/success {:message "Logo uploaded successfully"
-                       :logo-url (common/admin-asset-url vault-id logo-object-key)})))))
+                       :logo-url (common/console-asset-url vault-id logo-object-key)})))))
 
 (defn delete-vault-logo
   "Remove the logo and favicon for a vault."

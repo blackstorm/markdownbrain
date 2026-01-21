@@ -31,7 +31,7 @@ COPY --from=backend-builder --chown=mdbrain:mdbrain /app/server/target/server-st
 USER mdbrain
 
 ENV FRONTEND_PORT=8080
-ENV ADMIN_PORT=9090
+ENV CONSOLE_PORT=9090
 ENV DB_PATH=/app/data/markdownbrain.db
 ENV ENVIRONMENT=production
 

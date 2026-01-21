@@ -1,5 +1,5 @@
 (ns markdownbrain.handlers.console.test-utils
-  "Shared test utilities for admin handler tests."
+  "Shared test utilities for console handler tests."
   (:require
    [clojure.java.io :as io]
    [markdownbrain.db :as db]

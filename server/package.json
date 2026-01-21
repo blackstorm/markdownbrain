@@ -3,12 +3,12 @@
   "version": "0.0.1",
   "description": "MarkdownBrain frontend assets",
   "scripts": {
-    "build:admin": "bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --minify",
-    "watch:admin": "bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css && bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --watch",
+    "build:console": "bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --minify",
+    "watch:console": "bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css && bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --watch",
     "build:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --minify",
     "watch:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css && bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --watch",
-    "build": "bun run build:admin && bun run build:frontend",
-    "watch": "bun run watch:admin & bun run watch:frontend & wait"
+    "build": "bun run build:console && bun run build:frontend",
+    "watch": "bun run watch:console & bun run watch:frontend & wait"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",

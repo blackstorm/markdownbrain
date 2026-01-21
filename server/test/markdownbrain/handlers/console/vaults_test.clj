@@ -16,7 +16,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "list-vaults-admin" "hash")
+          _ (db/create-user! user-id tenant-id "list-vaults-console" "hash")
           vault-id-1 (utils/generate-uuid)
           vault-id-2 (utils/generate-uuid)
           _ (db/create-vault! vault-id-1 tenant-id "Blog 1" "blog1.com" (utils/generate-uuid))
@@ -33,7 +33,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "empty-vaults-admin" "hash")
+          _ (db/create-user! user-id tenant-id "empty-vaults-console" "hash")
           request (authenticated-request :get "/api/console/vaults" tenant-id user-id)
           response (vaults/list-vaults request)]
       (is (= 200 (:status response)))
@@ -45,7 +45,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "create-vault-admin" "hash")
+          _ (db/create-user! user-id tenant-id "create-vault-console" "hash")
           request (authenticated-request :post "/api/console/vaults"
                                          tenant-id user-id
                                          :body {:name "My Blog"
@@ -63,7 +63,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "missing-fields-admin" "hash")
+          _ (db/create-user! user-id tenant-id "missing-fields-console" "hash")
           request (authenticated-request :post "/api/console/vaults"
                                          tenant-id user-id
                                          :body {:name "Blog Only"})
@@ -77,7 +77,7 @@
       (let [tenant-id (utils/generate-uuid)
             _ (db/create-tenant! tenant-id "Test Org")
             user-id (utils/generate-uuid)
-            _ (db/create-user! user-id tenant-id "delete-vault-admin" "hash")
+            _ (db/create-user! user-id tenant-id "delete-vault-console" "hash")
             vault-id (utils/generate-uuid)
             sync-key (utils/generate-uuid)
             _ (db/create-vault! vault-id tenant-id "My Blog" "delete-test.com" sync-key)
@@ -100,7 +100,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "notfound-admin" "hash")
+          _ (db/create-user! user-id tenant-id "notfound-console" "hash")
           request (-> (authenticated-request :delete "/api/console/vaults/nonexistent"
                                              tenant-id user-id)
                       (assoc :path-params {:id "nonexistent"}))
@@ -118,8 +118,8 @@
             _ (db/create-tenant! tenant-id-2 "Org 2")
             user-id-1 (utils/generate-uuid)
             user-id-2 (utils/generate-uuid)
-            _ (db/create-user! user-id-1 tenant-id-1 "tenant1-admin" "hash")
-            _ (db/create-user! user-id-2 tenant-id-2 "tenant2-admin" "hash")
+            _ (db/create-user! user-id-1 tenant-id-1 "tenant1-console" "hash")
+            _ (db/create-user! user-id-2 tenant-id-2 "tenant2-console" "hash")
             vault-id (utils/generate-uuid)
             _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" (utils/generate-uuid))
             request (-> (authenticated-request :delete (str "/api/console/vaults/" vault-id)
@@ -135,7 +135,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "renew-admin" "hash")
+          _ (db/create-user! user-id tenant-id "renew-console" "hash")
           vault-id (utils/generate-uuid)
           old-sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "My Blog" "renew-test.com" old-sync-key)
@@ -156,7 +156,7 @@
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
-          _ (db/create-user! user-id tenant-id "notfound-admin" "hash")
+          _ (db/create-user! user-id tenant-id "notfound-console" "hash")
           request (-> (authenticated-request :post "/api/console/vaults/nonexistent/renew-sync-key"
                                              tenant-id user-id)
                       (assoc :path-params {:id "nonexistent"}))
@@ -173,8 +173,8 @@
           _ (db/create-tenant! tenant-id-2 "Org 2")
           user-id-1 (utils/generate-uuid)
           user-id-2 (utils/generate-uuid)
-          _ (db/create-user! user-id-1 tenant-id-1 "tenant1-admin" "hash")
-          _ (db/create-user! user-id-2 tenant-id-2 "tenant2-admin" "hash")
+          _ (db/create-user! user-id-1 tenant-id-1 "tenant1-console" "hash")
+          _ (db/create-user! user-id-2 tenant-id-2 "tenant2-console" "hash")
           vault-id (utils/generate-uuid)
           old-sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" old-sync-key)
