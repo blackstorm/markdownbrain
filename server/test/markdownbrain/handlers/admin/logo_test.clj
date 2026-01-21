@@ -36,7 +36,7 @@
                                                    (reset! uploaded-logo-key key))))
                     object-store/delete-object! (fn [vid key] nil)]
 
-        (let [request (-> (authenticated-request :post (str "/admin/vaults/" vault-id "/logo")
+        (let [request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id})
                           (assoc :multipart-params {"logo" logo-file}))
@@ -71,7 +71,7 @@
                     object-store/delete-object! (fn [vid key]
                                                   (swap! deleted-keys conj key))]
 
-        (let [request (-> (authenticated-request :post (str "/admin/vaults/" vault-id "/logo")
+        (let [request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id})
                           (assoc :multipart-params {"logo" logo-file}))
@@ -103,7 +103,7 @@
                                                    (reset! uploaded-logo-key key))))
                     object-store/delete-object! (fn [vid key] nil)]
 
-        (let [request (-> (authenticated-request :post (str "/admin/vaults/" vault-id "/logo")
+        (let [request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id})
                           (assoc :multipart-params {"logo" logo-file}))
@@ -122,7 +122,7 @@
           _ (db/create-user! user-id tenant-id "no-file-admin" "hash")
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "No File Vault" "nofile.com" (utils/generate-uuid))
-          request (-> (authenticated-request :post (str "/admin/vaults/" vault-id "/logo")
+          request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                              tenant-id user-id)
                       (assoc :path-params {:id vault-id}))
           response (logo/upload-vault-logo request)]
@@ -138,7 +138,7 @@
           _ (db/create-vault! vault-id tenant-id "Bad Type Vault" "badtype.com" (utils/generate-uuid))
           logo-bytes (create-test-png 100 100)
           logo-file (create-temp-file logo-bytes "text/plain")
-          request (-> (authenticated-request :post (str "/admin/vaults/" vault-id "/logo")
+          request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                              tenant-id user-id)
                       (assoc :path-params {:id vault-id})
                       (assoc :multipart-params {"logo" logo-file}))
@@ -166,7 +166,7 @@
                                                    :ContentType "image/png"}
                                                   nil)))]
 
-        (let [request (-> (authenticated-request :get (str "/admin/vaults/" vault-id "/favicon")
+        (let [request (-> (authenticated-request :get (str "/console/vaults/" vault-id "/favicon")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id}))
               response (logo/serve-vault-favicon request)]
@@ -194,7 +194,7 @@
                                                 {:Body (java.io.ByteArrayInputStream. logo-bytes)
                                                  :ContentType "image/png"}))]
 
-        (let [request (-> (authenticated-request :get (str "/admin/vaults/" vault-id "/favicon")
+        (let [request (-> (authenticated-request :get (str "/console/vaults/" vault-id "/favicon")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id}))
               response (logo/serve-vault-favicon request)]
@@ -211,7 +211,7 @@
           _ (db/create-user! user-id tenant-id "no-logo-admin" "hash")
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "No Logo Vault" "nologo.com" (utils/generate-uuid))
-          request (-> (authenticated-request :get (str "/admin/vaults/" vault-id "/favicon")
+          request (-> (authenticated-request :get (str "/console/vaults/" vault-id "/favicon")
                                              tenant-id user-id)
                       (assoc :path-params {:id vault-id}))
           response (logo/serve-vault-favicon request)]
@@ -233,7 +233,7 @@
       (with-redefs [object-store/delete-object! (fn [vid key]
                                                   (swap! deleted-keys conj key))]
 
-        (let [request (-> (authenticated-request :delete (str "/admin/vaults/" vault-id "/logo")
+        (let [request (-> (authenticated-request :delete (str "/console/vaults/" vault-id "/logo")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id}))
               response (logo/delete-vault-logo request)]
@@ -254,7 +254,7 @@
           _ (db/create-user! user-id tenant-id "no-logo-delete-admin" "hash")
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "No Logo Delete Vault" "nologodelete.com" (utils/generate-uuid))
-          request (-> (authenticated-request :delete (str "/admin/vaults/" vault-id "/logo")
+          request (-> (authenticated-request :delete (str "/console/vaults/" vault-id "/logo")
                                              tenant-id user-id)
                       (assoc :path-params {:id vault-id}))
           response (logo/delete-vault-logo request)]

@@ -21,7 +21,7 @@
            data-client-id="{{note.client-id}}"
            data-path="{{note.path|lower}}"
            data-display="{{note.path}}"
-           hx-put="/admin/vaults/{{vault-id}}/root-note"
+           hx-put="/console/vaults/{{vault-id}}/root-note"
            hx-vals='{"rootNoteId": "{{note.client-id}}"}'
            hx-swap="none"
            hx-on::after-request="handleNoteSelect('{{vault-id}}', this, event)">

@@ -40,6 +40,6 @@ EXPOSE 8080 9090
 VOLUME ["/app/data"]
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:9090/admin/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:9090/console/health || exit 1
 
 CMD ["java", "-jar", "app.jar"]

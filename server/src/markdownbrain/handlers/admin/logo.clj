@@ -126,7 +126,7 @@
 
 (defn serve-vault-logo
   "Serve vault logo (original image for website display).
-   Route: GET /admin/vaults/:id/logo
+   Route: GET /console/vaults/:id/logo
    Returns 404 if no logo is set."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
@@ -156,7 +156,7 @@
 
 (defn serve-vault-favicon
   "Serve vault favicon (32x32).
-   Route: GET /admin/vaults/:id/favicon
+   Route: GET /console/vaults/:id/favicon
    Falls back to original logo if favicon doesn't exist.
    Returns 404 if no logo is set."
   [request]

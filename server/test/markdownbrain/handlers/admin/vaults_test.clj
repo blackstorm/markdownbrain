@@ -21,7 +21,7 @@
           vault-id-2 (utils/generate-uuid)
           _ (db/create-vault! vault-id-1 tenant-id "Blog 1" "blog1.com" (utils/generate-uuid))
           _ (db/create-vault! vault-id-2 tenant-id "Blog 2" "blog2.com" (utils/generate-uuid))
-          request (authenticated-request :get "/api/admin/vaults" tenant-id user-id)
+          request (authenticated-request :get "/api/console/vaults" tenant-id user-id)
           response (vaults/list-vaults request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))
@@ -34,7 +34,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
           _ (db/create-user! user-id tenant-id "empty-vaults-admin" "hash")
-          request (authenticated-request :get "/api/admin/vaults" tenant-id user-id)
+          request (authenticated-request :get "/api/console/vaults" tenant-id user-id)
           response (vaults/list-vaults request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))
@@ -46,7 +46,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
           _ (db/create-user! user-id tenant-id "create-vault-admin" "hash")
-          request (authenticated-request :post "/api/admin/vaults"
+          request (authenticated-request :post "/api/console/vaults"
                                          tenant-id user-id
                                          :body {:name "My Blog"
                                                 :domain "myblog.com"})
@@ -64,7 +64,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
           _ (db/create-user! user-id tenant-id "missing-fields-admin" "hash")
-          request (authenticated-request :post "/api/admin/vaults"
+          request (authenticated-request :post "/api/console/vaults"
                                          tenant-id user-id
                                          :body {:name "Blog Only"})
           response (vaults/create-vault request)]
@@ -85,7 +85,7 @@
             _ (db/upsert-note! (utils/generate-uuid) tenant-id vault-id "note2.md" "c2" "# Note 2" "{}" "h2" "2024-01-01T00:00:00Z")
             notes-before (db/list-notes-by-vault vault-id)
             _ (is (= 2 (count notes-before)))
-            request (-> (authenticated-request :delete (str "/api/admin/vaults/" vault-id)
+            request (-> (authenticated-request :delete (str "/api/console/vaults/" vault-id)
                                                tenant-id user-id)
                         (assoc :path-params {:id vault-id}))
             response (vaults/delete-vault request)]
@@ -101,7 +101,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
           _ (db/create-user! user-id tenant-id "notfound-admin" "hash")
-          request (-> (authenticated-request :delete "/api/admin/vaults/nonexistent"
+          request (-> (authenticated-request :delete "/api/console/vaults/nonexistent"
                                              tenant-id user-id)
                       (assoc :path-params {:id "nonexistent"}))
           response (vaults/delete-vault request)]
@@ -122,7 +122,7 @@
             _ (db/create-user! user-id-2 tenant-id-2 "tenant2-admin" "hash")
             vault-id (utils/generate-uuid)
             _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" (utils/generate-uuid))
-            request (-> (authenticated-request :delete (str "/api/admin/vaults/" vault-id)
+            request (-> (authenticated-request :delete (str "/api/console/vaults/" vault-id)
                                                tenant-id-2 user-id-2)
                         (assoc :path-params {:id vault-id}))
             response (vaults/delete-vault request)]
@@ -139,7 +139,7 @@
           vault-id (utils/generate-uuid)
           old-sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "My Blog" "renew-test.com" old-sync-key)
-          request (-> (authenticated-request :post (str "/api/admin/vaults/" vault-id "/renew-sync-key")
+          request (-> (authenticated-request :post (str "/api/console/vaults/" vault-id "/renew-sync-key")
                                              tenant-id user-id)
                       (assoc :path-params {:id vault-id}))
           response (vaults/renew-vault-sync-key request)]
@@ -157,7 +157,7 @@
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
           _ (db/create-user! user-id tenant-id "notfound-admin" "hash")
-          request (-> (authenticated-request :post "/api/admin/vaults/nonexistent/renew-sync-key"
+          request (-> (authenticated-request :post "/api/console/vaults/nonexistent/renew-sync-key"
                                              tenant-id user-id)
                       (assoc :path-params {:id "nonexistent"}))
           response (vaults/renew-vault-sync-key request)]
@@ -178,7 +178,7 @@
           vault-id (utils/generate-uuid)
           old-sync-key (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" old-sync-key)
-          request (-> (authenticated-request :post (str "/api/admin/vaults/" vault-id "/renew-sync-key")
+          request (-> (authenticated-request :post (str "/api/console/vaults/" vault-id "/renew-sync-key")
                                              tenant-id-2 user-id-2)
                       (assoc :path-params {:id vault-id}))
           response (vaults/renew-vault-sync-key request)]

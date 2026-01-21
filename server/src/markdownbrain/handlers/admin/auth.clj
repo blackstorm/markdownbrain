@@ -56,7 +56,7 @@
   [request]
   {:status 302
    :session nil
-   :headers {"Location" "/admin/login"}})
+   :headers {"Location" "/console/login"}})
 
 (defn login-page
   "Render login page."

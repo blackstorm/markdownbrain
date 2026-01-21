@@ -153,7 +153,7 @@
 
 (defn on-demand-tls-enabled?
   "Returns true if on-demand TLS is enabled.
-   When enabled, the /admin/domain-check endpoint is registered for Caddy to verify domains."
+   When enabled, the /console/domain-check endpoint is registered for Caddy to verify domains."
   []
   (= "true" (getenv "CADDY_ON_DEMAND_TLS_ENABLED")))
 

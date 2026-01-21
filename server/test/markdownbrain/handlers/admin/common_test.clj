@@ -28,7 +28,7 @@
 
 (deftest test-admin-asset-url
   (testing "Generate correct URL"
-    (is (= "/admin/storage/vault-123/site/logo/abc.png"
+    (is (= "/console/storage/vault-123/site/logo/abc.png"
            (common/admin-asset-url "vault-123" "site/logo/abc.png")))))
 
 (deftest test-serve-admin-asset-success
@@ -46,7 +46,7 @@
                                               (when (and (= vid vault-id)
                                                          (= key "site/logo/abc123.png"))
                                                 mock-result))]
-        (let [request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/site/logo/abc123.png")
+        (let [request (-> (authenticated-request :get (str "/console/storage/" vault-id "/site/logo/abc123.png")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id :path "site/logo/abc123.png"}))
               response (common/serve-admin-asset request)]
@@ -61,7 +61,7 @@
           user-id (utils/generate-uuid)
           _ (db/create-user! user-id tenant-id "notfound-asset-admin" "hash")
 
-          request (-> (authenticated-request :get "/admin/storage/non-existent-id/site/logo/test.png"
+          request (-> (authenticated-request :get "/console/storage/non-existent-id/site/logo/test.png"
                                              tenant-id user-id)
                       (assoc :path-params {:id "non-existent-id" :path "site/logo/test.png"}))
           response (common/serve-admin-asset request)]
@@ -80,7 +80,7 @@
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id-1 "Tenant1 Vault" "tenant1.com" (utils/generate-uuid))
 
-          request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/site/logo/test.png")
+          request (-> (authenticated-request :get (str "/console/storage/" vault-id "/site/logo/test.png")
                                              tenant-id-2 user-id-2)
                       (assoc :path-params {:id vault-id :path "site/logo/test.png"}))
           response (common/serve-admin-asset request)]
@@ -95,7 +95,7 @@
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "Missing Path Test" "missingpath.com" (utils/generate-uuid))
 
-          request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/")
+          request (-> (authenticated-request :get (str "/console/storage/" vault-id "/")
                                              tenant-id user-id)
                       (assoc :path-params {:id vault-id :path nil}))
           response (common/serve-admin-asset request)]
@@ -110,7 +110,7 @@
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "NonExist Asset Test" "nonexistasset.com" (utils/generate-uuid))]
       (with-redefs [object-store/get-object (fn [_ _] nil)]
-        (let [request (-> (authenticated-request :get (str "/admin/storage/" vault-id "/site/logo/notfound.png")
+        (let [request (-> (authenticated-request :get (str "/console/storage/" vault-id "/site/logo/notfound.png")
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id :path "site/logo/notfound.png"}))
               response (common/serve-admin-asset request)]

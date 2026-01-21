@@ -32,7 +32,7 @@
         ;; 未登录，重定向到登录页
         (do
           {:status 302
-           :headers {"Location" "/admin/login"}})))))
+           :headers {"Location" "/console/login"}})))))
 
 ;; CORS 中间件
 (defn wrap-cors [handler]
@@ -60,12 +60,12 @@
         (handler request)
 
         ;; 如果已有用户，禁止访问初始化页面
-        (and has-user (= uri "/admin/init"))
-        (response/redirect "/admin/login")
+        (and has-user (= uri "/console/init"))
+        (response/redirect "/console/login")
 
         ;; 如果没有用户，只允许访问初始化页面
-        (and (not has-user) (not= uri "/admin/init"))
-        (response/redirect "/admin/init")
+        (and (not has-user) (not= uri "/console/init"))
+        (response/redirect "/console/init")
 
         ;; 其他情况正常处理
         :else

@@ -128,7 +128,7 @@ function openEditModal(id, name, domain) {
     // Update form action URL
     const form = document.getElementById('edit-form');
     if (form) {
-      form.setAttribute('hx-put', `/admin/vaults/${id}`);
+      form.setAttribute('hx-put', `/console/vaults/${id}`);
       // Re-process HTMX attributes after dynamic update
       htmx.process(form);
     }
@@ -344,7 +344,7 @@ function doLogoUpload(file, vaultId) {
   const formData = new FormData();
   formData.append('logo', file);
 
-  fetch(`/admin/vaults/${vaultId}/logo`, {
+  fetch(`/console/vaults/${vaultId}/logo`, {
     method: 'POST',
     body: formData
   })
@@ -366,7 +366,7 @@ function doLogoUpload(file, vaultId) {
 function deleteLogo(vaultId) {
   if (!confirm('Are you sure you want to delete this logo?')) return;
 
-  fetch(`/admin/vaults/${vaultId}/logo`, {
+  fetch(`/console/vaults/${vaultId}/logo`, {
     method: 'DELETE'
   })
   .then(response => response.json())

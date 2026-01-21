@@ -14,9 +14,9 @@
             </div>
         </div>
         <div class="header-actions">
-            <button hx-post="/admin/logout"
+            <button hx-post="/console/logout"
                     hx-swap="none"
-                    hx-on::after-request="window.location.href='/admin/login'"
+                    hx-on::after-request="window.location.href='/console/login'"
                     class="btn">
                 <i data-lucide="log-out" class="icon-sm"></i>
                 <span>Logout</span>

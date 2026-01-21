@@ -105,7 +105,7 @@ Admin 端口 (9090) 仅绑定到 localhost，务必不要对公网开放。通�
 ssh -L 9090:localhost:9090 user@your-server
 ```
 
-然后在本地浏览器访问 `http://localhost:9090/admin`
+然后在本地浏览器访问 `http://localhost:9090/console`
 
 ### 添加站点域名
 

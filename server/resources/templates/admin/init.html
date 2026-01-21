@@ -29,7 +29,7 @@
         <div class="init-body">
             <div id="message-container"></div>
 
-            <form hx-post="/admin/init"
+            <form hx-post="/console/init"
                   hx-target="#message-container"
                   hx-swap="innerHTML"
                   hx-disabled-elt="button"
@@ -58,7 +58,7 @@
 
     <script>
         document.body.addEventListener('htmx:afterRequest', function(event) {
-            if (event.detail.pathInfo.requestPath !== '/admin/init') return;
+            if (event.detail.pathInfo.requestPath !== '/console/init') return;
 
             if (event.detail.successful) {
                 try {
@@ -71,7 +71,7 @@
                             </div>
                         `;
                         lucide.createIcons();
-                        setTimeout(() => window.location.href = '/admin/login', 1200);
+                        setTimeout(() => window.location.href = '/console/login', 1200);
                     } else {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-error">

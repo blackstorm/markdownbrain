@@ -12,7 +12,7 @@
 
 (deftest test-admin-init-success
   (testing "Initialize system with first admin user"
-    (let [request (-> (mock/request :post "/api/admin/init")
+    (let [request (-> (mock/request :post "/api/console/init")
                       (assoc :body-params {:tenant-name "Test Org"
                                            :username "admin"
                                            :password "password123"}))
@@ -24,11 +24,11 @@
 
 (deftest test-admin-init-already-initialized
   (testing "Cannot initialize when system already initialized"
-    (let [_ (auth/init-admin (-> (mock/request :post "/api/admin/init")
+    (let [_ (auth/init-admin (-> (mock/request :post "/api/console/init")
                                  (assoc :body-params {:tenant-name "First Org"
                                                       :username "admin1"
                                                       :password "pass1"})))
-          request (-> (mock/request :post "/api/admin/init")
+          request (-> (mock/request :post "/api/console/init")
                       (assoc :body-params {:tenant-name "Second Org"
                                            :username "admin2"
                                            :password "pass2"}))
@@ -39,7 +39,7 @@
 
 (deftest test-admin-init-missing-fields
   (testing "Missing required fields returns 200 with error"
-    (let [request (-> (mock/request :post "/api/admin/init")
+    (let [request (-> (mock/request :post "/api/console/init")
                       (assoc :body-params {:tenant-name "Test Org"}))
           response (auth/init-admin request)]
       (is (= 200 (:status response)))
@@ -53,7 +53,7 @@
           password "password123"
           password-hash (utils/hash-password password)
           _ (db/create-user! user-id tenant-id "login-test-admin" password-hash)
-          request (-> (mock/request :post "/api/admin/login")
+          request (-> (mock/request :post "/api/console/login")
                       (assoc :body-params {:username "login-test-admin"
                                            :password password}))
           response (auth/login request)]
@@ -68,7 +68,7 @@
           user-id (utils/generate-uuid)
           password-hash (utils/hash-password "correct-password")
           _ (db/create-user! user-id tenant-id "wrong-pass-user" password-hash)
-          request (-> (mock/request :post "/api/admin/login")
+          request (-> (mock/request :post "/api/console/login")
                       (assoc :body-params {:username "wrong-pass-user"
                                            :password "wrong-password"}))
           response (auth/login request)]
@@ -77,7 +77,7 @@
       (is (= "Invalid username or password" (get-in response [:body :error])))))
 
   (testing "Login with non-existent user returns 200 with error"
-    (let [request (-> (mock/request :post "/api/admin/login")
+    (let [request (-> (mock/request :post "/api/console/login")
                       (assoc :body-params {:username "nonexistent"
                                            :password "password"}))
           response (auth/login request)]
@@ -86,15 +86,15 @@
 
 (deftest test-admin-logout
   (testing "Successful logout redirects to login page"
-    (let [request (-> (mock/request :post "/api/admin/logout")
+    (let [request (-> (mock/request :post "/api/console/logout")
                       (assoc :session {:user-id "user-123" :tenant-id "tenant-123"}))
           response (auth/logout request)]
       (is (= 302 (:status response)))
       (is (nil? (:session response)))
-      (is (= "/admin/login" (get-in response [:headers "Location"])))))
+      (is (= "/console/login" (get-in response [:headers "Location"])))))
 
   (testing "Logout without session also redirects"
-    (let [request (mock/request :post "/api/admin/logout")
+    (let [request (mock/request :post "/api/console/logout")
           response (auth/logout request)]
       (is (= 302 (:status response)))
       (is (nil? (:session response))))))

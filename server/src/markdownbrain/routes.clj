@@ -27,7 +27,7 @@
 
 (def admin-routes
   (let [base-routes
-        [["/" {:get (fn [_] (response/redirect "/admin"))}]
+        [["/" {:get (fn [_] (response/redirect "/console"))}]
 
          ["/obsidian"
           ["/sync"
@@ -36,7 +36,7 @@
            ["/assets/:id" {:post sync/sync-asset}]]
           ["/vault/info" {:get sync/vault-info}]]
 
-         ["/admin"
+         ["/console"
           ["" {:middleware [middleware/wrap-auth] :get admin/admin-home}]
           ["/health" {:get internal/health}]
           ["/login" {:get admin/login-page
@@ -70,7 +70,7 @@
           ["/vaults/:id/favicon" {:get {:middleware [middleware/wrap-auth]
                                         :handler admin/serve-vault-favicon}}]]]
         ;; Conditionally add domain-check route when on-demand TLS is enabled
-        domain-check-route ["/admin/domain-check" {:get internal/domain-check}]]
+        domain-check-route ["/console/domain-check" {:get internal/domain-check}]]
     (if (config/on-demand-tls-enabled?)
       (conj base-routes domain-check-route)
       base-routes)))

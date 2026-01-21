@@ -17,7 +17,7 @@
     (let [tenant-id (utils/generate-uuid)
           user-id (utils/generate-uuid)
           handler (middleware/wrap-auth echo-handler)
-          request (-> (mock/request :get "/api/admin/vaults")
+          request (-> (mock/request :get "/api/console/vaults")
                      (assoc :session {:user-id user-id :tenant-id tenant-id}))
           response (handler request)]
       (is (= 200 (:status response)))
@@ -26,21 +26,21 @@
 
   (testing "Unauthenticated request returns 302 redirect"
     (let [handler (middleware/wrap-auth echo-handler)
-          request (mock/request :get "/api/admin/vaults")
+          request (mock/request :get "/api/console/vaults")
           response (handler request)]
       (is (= 302 (:status response)))
-      (is (= "/admin/login" (get-in response [:headers "Location"])))))
+      (is (= "/console/login" (get-in response [:headers "Location"])))))
 
   (testing "Request with empty session returns 302 redirect"
     (let [handler (middleware/wrap-auth echo-handler)
-          request (-> (mock/request :get "/api/admin/vaults")
+          request (-> (mock/request :get "/api/console/vaults")
                      (assoc :session {}))
           response (handler request)]
       (is (= 302 (:status response)))))
 
   (testing "Request with nil session returns 302 redirect"
     (let [handler (middleware/wrap-auth echo-handler)
-          request (-> (mock/request :get "/api/admin/vaults")
+          request (-> (mock/request :get "/api/console/vaults")
                      (assoc :session nil))
           response (handler request)]
       (is (= 302 (:status response))))))
@@ -156,7 +156,7 @@
     (let [handler (middleware/wrap-auth echo-handler)
           user-id (utils/generate-uuid)
           tenant-id (utils/generate-uuid)
-          request (-> (mock/request :get "/api/admin/test")
+          request (-> (mock/request :get "/api/console/test")
                      (assoc :session {:user-id user-id :tenant-id tenant-id}))
           response (handler request)]
       (is (= 200 (:status response)))
@@ -165,7 +165,7 @@
   (testing "Full middleware chain without authentication"
     (let [handler (middleware/wrap-auth echo-handler)
           wrapped-handler (middleware/wrap-middleware handler)
-          request (mock/request :get "/api/admin/test")
+          request (mock/request :get "/api/console/test")
           response (wrapped-handler request)]
       ;; wrap-auth now returns 302 redirect instead of 401
       (is (= 302 (:status response)))))

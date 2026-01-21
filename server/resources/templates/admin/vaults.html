@@ -37,7 +37,7 @@
 
         <!-- Vault List -->
         <div id="vault-list"
-             hx-get="/admin/vaults"
+             hx-get="/console/vaults"
              hx-trigger="refreshList from:body"
              hx-swap="innerHTML"
              class="vault-grid">
@@ -56,7 +56,7 @@
                     <i data-lucide="x" class="icon-lg"></i>
                 </button>
             </div>
-            <form hx-post="/admin/vaults"
+            <form hx-post="/console/vaults"
                   hx-swap="none"
                   hx-disabled-elt="button[type=submit]"
                   hx-indicator=".create-spinner"

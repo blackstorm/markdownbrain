@@ -19,9 +19,9 @@
 
 (defn admin-asset-url
   "Generate admin storage URL for an asset.
-   Returns URL like /admin/storage/{vault-id}/{object-key}"
+   Returns URL like /console/storage/{vault-id}/{object-key}"
   [vault-id object-key]
-  (str "/admin/storage/" vault-id "/" object-key))
+  (str "/console/storage/" vault-id "/" object-key))
 
 (defn input-stream->bytes
   "Convert InputStream to byte array."
@@ -32,7 +32,7 @@
 
 (defn serve-admin-asset
   "Serve assets from storage for admin panel.
-   Route: GET /admin/storage/:id/*path
+   Route: GET /console/storage/:id/*path
    
    Unlike frontend's /storage/* which uses Host header for vault resolution,
    this route takes vault-id explicitly and verifies tenant isolation via session."

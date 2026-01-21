@@ -71,13 +71,13 @@
 ;; Admin Pages 测试
 (deftest test-admin-pages
   (testing "Admin home page renders"
-    (let [request (mock/request :get "/admin")
+    (let [request (mock/request :get "/console")
           response (admin/admin-home request)]
       (is (= 200 (:status response)))
       (is (string? (:body response)))))
 
   (testing "Login page renders"
-    (let [request (mock/request :get "/admin/login")
+    (let [request (mock/request :get "/console/login")
           response (admin/login-page request)]
       (is (= 200 (:status response)))
       (is (string? (:body response))))))

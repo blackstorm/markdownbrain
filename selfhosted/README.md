@@ -11,7 +11,7 @@
 
 ## On-demand TLS
 
-When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy calls `/admin/domain-check` to
+When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy calls `/console/domain-check` to
 validate requested domains. Keep the admin port private (bound to localhost or
 internal network only).
 
@@ -50,4 +50,4 @@ Admin 端口 (9090) 仅绑定到 localhost。需要通过 SSH 隧道访问：
 ssh -L 9090:localhost:9090 user@your-server
 ```
 
-然后访问 `http://localhost:9090/admin`。
+然后访问 `http://localhost:9090/console`。
