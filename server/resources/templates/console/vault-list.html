@@ -1,0 +1,6 @@
+{% if vaults|not-empty %} {% for vault in vaults %} {% include
+"templates/console/components/vault-card.html" %} {% endfor %} {% else %} {%
+with icon="inbox" title="No sites yet" message="Create your first site to start
+publishing your Obsidian notes to the web" cta-text="Create first site"
+cta-action="openCreateModal()" cta-icon="plus" grid-full=true %} {% include
+"templates/console/components/empty-state.html" %} {% endwith %} {% endif %}
