@@ -1,158 +1,124 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Admin Dashboard - MarkdownBrain</title>
-        <link href="/publics/console/css/console.css" rel="stylesheet" />
-        <script src="/publics/shared/htmx.min.js"></script>
-        <script src="/publics/console/js/console.js"></script>
-        <script src="/publics/shared/lucide.min.js"></script>
-    </head>
-    <body>
-        <!-- Notification Container -->
-        <div
-            id="notification-container"
-            class="fixed top-4 right-4 z-[9999]"
-        ></div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - MarkdownBrain</title>
+    <link href="/publics/console/css/app.css" rel="stylesheet">
+    <script src="/publics/shared/htmx.min.js"></script>
+    <script src="/publics/console/js/console.js"></script>
+    <script src="/publics/shared/lucide.min.js"></script>
+</head>
+<body>
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-[9999]"></div>
 
-        <script>
-            document.addEventListener("DOMContentLoaded", () =>
-                lucide.createIcons(),
-            );
-            document.body.addEventListener("htmx:afterSwap", () =>
-                lucide.createIcons(),
-            );
-        </script>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+    </script>
 
-        {% with tenant=tenant %} {% include
-        "templates/console/components/header.html" %} {% endwith %}
+    {% with tenant=tenant %}
+      {% include "templates/console/components/header.html" %}
+    {% endwith %}
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <div class="page-header">
-                <div>
-                    <h2>Site Management</h2>
-                    <p>Manage your published Obsidian vaults</p>
-                </div>
-                <button onclick="openCreateModal()" class="btn btn-primary">
-                    <i data-lucide="plus" class="icon-sm"></i>
-                    <span>New Site</span>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h2>Site Management</h2>
+                <p>Manage your published Obsidian vaults</p>
+            </div>
+            <button onclick="openCreateModal()" class="btn btn-primary">
+                <i data-lucide="plus" class="icon-sm"></i>
+                <span>New Site</span>
+            </button>
+        </div>
+
+        <!-- Vault List -->
+        <div id="vault-list"
+             hx-get="/console/vaults"
+             hx-trigger="refreshList from:body"
+             hx-swap="innerHTML"
+             class="vault-grid">
+            {% include "templates/console/vault-list.html" %}
+        </div>
+    </main>
+
+    {% include "templates/console/components/footer.html" %}
+
+    <!-- Create Site Modal -->
+    <dialog id="modal-create" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Site</h3>
+                <button type="button" class="btn-close" onclick="closeCreateModal()">
+                    <i data-lucide="x" class="icon-lg"></i>
                 </button>
             </div>
+            <form hx-post="/console/vaults"
+                  hx-swap="none"
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".create-spinner"
+                  hx-on::after-request="if(event.detail.successful) { closeCreateModal(); this.reset(); htmx.trigger('body', 'refreshList'); showNotification('Site created', 'success'); }">
+                <div class="modal-body">
+                    <div id="create-result"></div>
 
-            <!-- Vault List -->
-            <div
-                id="vault-list"
-                hx-get="/console/vaults"
-                hx-trigger="refreshList from:body"
-                hx-swap="innerHTML"
-                class="vault-grid"
-            >
-                {% include "templates/console/vault-list.html" %}
-            </div>
-        </main>
+                    {% with id="create-name" name="name" label="Site Name" placeholder="My Digital Garden" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
 
-        {% include "templates/console/components/footer.html" %}
-
-        <!-- Create Site Modal -->
-        <dialog id="modal-create" class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>New Site</h3>
-                    <button
-                        type="button"
-                        class="btn-close"
-                        onclick="closeCreateModal()"
-                    >
-                        <i data-lucide="x" class="icon-lg"></i>
+                    {% with id="create-domain" name="domain" label="Domain" placeholder="notes.example.com" hint="Your custom domain (without https://)" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeCreateModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner create-spinner"></span>
+                        <span>Create Site</span>
                     </button>
                 </div>
-                <form
-                    hx-post="/console/vaults"
-                    hx-swap="none"
-                    hx-disabled-elt="button[type=submit]"
-                    hx-indicator=".create-spinner"
-                    hx-on::after-request="if(event.detail.successful) { closeCreateModal(); this.reset(); htmx.trigger('body', 'refreshList'); showNotification('Site created', 'success'); }"
-                >
-                    <div class="modal-body">
-                        <div id="create-result"></div>
+            </form>
+        </div>
+    </dialog>
 
-                        {% with id="create-name" name="name" label="Site Name"
-                        placeholder="My Digital Garden" required=true %} {%
-                        include "templates/console/components/form-field.html"
-                        %} {% endwith %} {% with id="create-domain"
-                        name="domain" label="Domain"
-                        placeholder="notes.example.com" hint="Your custom domain
-                        (without https://)" required=true %} {% include
-                        "templates/console/components/form-field.html" %} {%
-                        endwith %}
-                    </div>
-                    <div class="modal-footer">
-                        <button
-                            type="button"
-                            class="btn"
-                            onclick="closeCreateModal()"
-                        >
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <span class="spinner create-spinner"></span>
-                            <span>Create Site</span>
-                        </button>
-                    </div>
-                </form>
+    <!-- Edit Site Modal -->
+    <dialog id="modal-edit" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Site</h3>
+                <button type="button" class="btn-close" onclick="closeEditModal()">
+                    <i data-lucide="x" class="icon-lg"></i>
+                </button>
             </div>
-        </dialog>
+            <form id="edit-form"
+                  hx-put=""
+                  hx-swap="none"
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".edit-spinner"
+                  hx-on::after-request="if(event.detail.successful) { closeEditModal(); htmx.trigger('body', 'refreshList'); showNotification('Site updated', 'success'); }">
+                <input type="hidden" name="id" id="edit-vault-id">
+                <div class="modal-body">
+                    <div id="edit-result"></div>
 
-        <!-- Edit Site Modal -->
-        <dialog id="modal-edit" class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Edit Site</h3>
-                    <button
-                        type="button"
-                        class="btn-close"
-                        onclick="closeEditModal()"
-                    >
-                        <i data-lucide="x" class="icon-lg"></i>
+                    {% with id="edit-name" name="name" label="Site Name" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="edit-domain" name="domain" label="Domain" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner edit-spinner"></span>
+                        <span>Save Changes</span>
                     </button>
                 </div>
-                <form
-                    id="edit-form"
-                    hx-put=""
-                    hx-swap="none"
-                    hx-disabled-elt="button[type=submit]"
-                    hx-indicator=".edit-spinner"
-                    hx-on::after-request="if(event.detail.successful) { closeEditModal(); htmx.trigger('body', 'refreshList'); showNotification('Site updated', 'success'); }"
-                >
-                    <input type="hidden" name="id" id="edit-vault-id" />
-                    <div class="modal-body">
-                        <div id="edit-result"></div>
-
-                        {% with id="edit-name" name="name" label="Site Name"
-                        required=true %} {% include
-                        "templates/console/components/form-field.html" %} {%
-                        endwith %} {% with id="edit-domain" name="domain"
-                        label="Domain" required=true %} {% include
-                        "templates/console/components/form-field.html" %} {%
-                        endwith %}
-                    </div>
-                    <div class="modal-footer">
-                        <button
-                            type="button"
-                            class="btn"
-                            onclick="closeEditModal()"
-                        >
-                            Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <span class="spinner edit-spinner"></span>
-                            <span>Save Changes</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </dialog>
-    </body>
+            </form>
+        </div>
+    </dialog>
+</body>
 </html>

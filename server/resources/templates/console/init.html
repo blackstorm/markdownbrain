@@ -1,134 +1,105 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Welcome - MarkdownBrain</title>
-        <link href="/publics/console/css/console.css" rel="stylesheet" />
-        <script src="/publics/shared/htmx.min.js"></script>
-        <script src="/publics/console/js/console.js"></script>
-        <script src="/publics/shared/lucide.min.js"></script>
-    </head>
-    <body class="auth-page">
-        <script>
-            document.addEventListener("DOMContentLoaded", () =>
-                lucide.createIcons(),
-            );
-            document.body.addEventListener("htmx:afterSwap", () =>
-                lucide.createIcons(),
-            );
-        </script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - MarkdownBrain</title>
+    <link href="/publics/console/css/app.css" rel="stylesheet">
+    <script src="/publics/shared/htmx.min.js"></script>
+    <script src="/publics/console/js/console.js"></script>
+    <script src="/publics/shared/lucide.min.js"></script>
+</head>
+<body class="auth-page">
+    <script>
+      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
+      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
+    </script>
 
-        <div class="init-container">
-            <!-- Header -->
-            <div class="init-header">
-                <div class="welcome-icon">
-                    <i
-                        data-lucide="sparkles"
-                        class="icon-xl text-[var(--accent)]"
-                    ></i>
-                </div>
-                <h1
-                    class="text-[1.375rem] font-semibold text-[var(--text-primary)] m-0 mb-2 text-center"
-                >
-                    Welcome to MarkdownBrain
-                </h1>
-                <p class="text-sm text-[var(--text-secondary)] m-0 text-center">
-                    Create an admin account to get started
-                </p>
+    <div class="init-container">
+        <!-- Header -->
+        <div class="init-header">
+            <div class="welcome-icon">
+                <i data-lucide="sparkles" class="icon-xl text-[var(--accent)]"></i>
             </div>
-
-            <!-- Body -->
-            <div class="init-body">
-                <div id="message-container"></div>
-
-                <form
-                    hx-post="/console/init"
-                    hx-target="#message-container"
-                    hx-swap="innerHTML"
-                    hx-disabled-elt="button"
-                    hx-indicator=".spinner"
-                >
-                    {% with id="tenant-name" name="tenant-name"
-                    label="Organization Name" placeholder="My Organization"
-                    hint="Your company or personal workspace name"
-                    autofocus=true required=true %} {% include
-                    "templates/console/components/form-field.html" %} {% endwith
-                    %} {% with id="username" name="username" type="email"
-                    label="Admin Email" placeholder="admin@example.com"
-                    autocomplete="username" required=true %} {% include
-                    "templates/console/components/form-field.html" %} {% endwith
-                    %} {% with id="password" name="password" type="password"
-                    label="Password" placeholder="••••••••"
-                    autocomplete="new-password" minlength="8" hint="At least 8
-                    characters, use a strong password" required=true %} {%
-                    include "templates/console/components/form-field.html" %} {%
-                    endwith %}
-
-                    <button type="submit" class="btn-primary">
-                        <span class="spinner"></span>
-                        <i data-lucide="rocket" class="icon-md"></i>
-                        <span>Create Account</span>
-                    </button>
-                </form>
-            </div>
+            <h1 class="text-[1.375rem] font-semibold text-[var(--text-primary)] m-0 mb-2 text-center">Welcome to MarkdownBrain</h1>
+            <p class="text-sm text-[var(--text-secondary)] m-0 text-center">Create an console account to get started</p>
         </div>
 
-        <script>
-            document.body.addEventListener(
-                "htmx:afterRequest",
-                function (event) {
-                    if (event.detail.pathInfo.requestPath !== "/console/init")
-                        return;
+        <!-- Body -->
+        <div class="init-body">
+            <div id="message-container"></div>
 
-                    if (event.detail.successful) {
-                        try {
-                            const response = JSON.parse(
-                                event.detail.xhr.response,
-                            );
-                            if (response.success) {
-                                event.detail.target.innerHTML = `
+            <form hx-post="/console/init"
+                  hx-target="#message-container"
+                  hx-swap="innerHTML"
+                  hx-disabled-elt="button"
+                  hx-indicator=".spinner">
+
+                {% with id="tenant-name" name="tenant-name" label="Organization Name" placeholder="My Organization" hint="Your company or personal workspace name" autofocus=true required=true %}
+                  {% include "templates/console/components/form-field.html" %}
+                {% endwith %}
+
+                {% with id="username" name="username" type="email" label="console Email" placeholder="console@example.com" autocomplete="username" required=true %}
+                  {% include "templates/console/components/form-field.html" %}
+                {% endwith %}
+
+                {% with id="password" name="password" type="password" label="Password" placeholder="••••••••" autocomplete="new-password" minlength="8" hint="At least 8 characters, use a strong password" required=true %}
+                  {% include "templates/console/components/form-field.html" %}
+                {% endwith %}
+
+                <button type="submit" class="btn-primary">
+                    <span class="spinner"></span>
+                    <i data-lucide="rocket" class="icon-md"></i>
+                    <span>Create Account</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.body.addEventListener('htmx:afterRequest', function(event) {
+            if (event.detail.pathInfo.requestPath !== '/console/init') return;
+
+            if (event.detail.successful) {
+                try {
+                    const response = JSON.parse(event.detail.xhr.response);
+                    if (response.success) {
+                        event.detail.target.innerHTML = `
                             <div class="alert alert-success">
                                 <i data-lucide="check-circle" class="icon-sm"></i>
                                 <span>Account created successfully, redirecting...</span>
                             </div>
                         `;
-                                lucide.createIcons();
-                                setTimeout(
-                                    () =>
-                                        (window.location.href =
-                                            "/console/login"),
-                                    1200,
-                                );
-                            } else {
-                                event.detail.target.innerHTML = `
+                        lucide.createIcons();
+                        setTimeout(() => window.location.href = '/console/login', 1200);
+                    } else {
+                        event.detail.target.innerHTML = `
                             <div class="alert alert-error">
                                 <i data-lucide="alert-circle" class="icon-sm"></i>
-                                <span>${response.error || "Creation failed"}</span>
+                                <span>${response.error || 'Creation failed'}</span>
                             </div>
                         `;
-                                lucide.createIcons();
-                            }
-                        } catch (e) {
-                            event.detail.target.innerHTML = `
+                        lucide.createIcons();
+                    }
+                } catch (e) {
+                    event.detail.target.innerHTML = `
                         <div class="alert alert-error">
                             <i data-lucide="alert-circle" class="icon-sm"></i>
                             <span>Server response error</span>
                         </div>
                     `;
-                            lucide.createIcons();
-                        }
-                    } else {
-                        event.detail.target.innerHTML = `
+                    lucide.createIcons();
+                }
+            } else {
+                event.detail.target.innerHTML = `
                     <div class="alert alert-error">
                         <i data-lucide="alert-circle" class="icon-sm"></i>
                         <span>Network error, please try again</span>
                     </div>
                 `;
-                        lucide.createIcons();
-                    }
-                },
-            );
-        </script>
-    </body>
+                lucide.createIcons();
+            }
+        });
+    </script>
+</body>
 </html>
