@@ -2,9 +2,9 @@ FROM node:20-alpine AS frontend-builder
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
-COPY server/admin.css server/frontend.css ./
+COPY server/console.css server/frontend.css ./
 COPY server/resources/templates ./resources/templates
-RUN mkdir -p resources/publics/admin/css resources/publics/frontend/css
+RUN mkdir -p resources/publics/console/css resources/publics/frontend/css
 RUN npm run build
 
 FROM clojure:temurin-21-tools-deps-alpine AS backend-builder
@@ -13,7 +13,7 @@ COPY server/deps.edn server/build.clj ./
 RUN clojure -P -T:build
 COPY server/src ./src
 COPY server/resources ./resources
-COPY --from=frontend-builder /app/server/resources/publics/admin/css/admin.css ./resources/publics/admin/css/admin.css
+COPY --from=frontend-builder /app/server/resources/publics/console/css/console.css ./resources/publics/console/css/console.css
 COPY --from=frontend-builder /app/server/resources/publics/frontend/css/frontend.css ./resources/publics/frontend/css/frontend.css
 RUN clojure -T:build uberjar
 

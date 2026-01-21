@@ -14,8 +14,8 @@
 
 (defn wrap-resource-with-context
   "Serve static resources from classpath at a specific URL context path.
-   Example: (wrap-resource-with-context handler \"/publics/admin\" \"publics/admin\")
-   This will serve files from classpath:publics/admin/* at URL /publics/admin/*"
+   Example: (wrap-resource-with-context handler \"/publics/console\" \"publics/console\")
+   This will serve files from classpath:publics/console/* at URL /publics/console/*"
   [handler context-path resource-root]
   (fn [request]
     (let [uri (:uri request)]
@@ -52,9 +52,9 @@
         host (config/get-config :server :admin :host)]
     (log/info "Starting Admin server on" host ":" port)
     (let [server (undertow/run-undertow
-                  (-> routes/admin-app
+                  (-> routes/console-app
                       (middleware/wrap-middleware)
-                      (wrap-resource-with-context "/publics/admin" "publics/admin")
+                      (wrap-resource-with-context "/publics/console" "publics/console")
                       (wrap-resource-with-context "/publics/shared" "publics/shared"))
                   {:port port
                    :host host})]

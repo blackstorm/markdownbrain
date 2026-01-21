@@ -13,7 +13,7 @@
 
 ## Build, Test, and Development Commands
 - `make install`: install backend/frontend/plugin dependencies.
-- `make dev`: start backend dev server (Frontend/Admin ports via `FRONTEND_PORT`/`ADMIN_PORT`).
+- `make dev`: start backend dev server (Frontend/Console ports via `FRONTEND_PORT`/`ADMIN_PORT`).
 - `make frontend-dev`: watch and rebuild Tailwind CSS.
 - `make plugin-dev`: watch plugin, outputs to `vault/test/.obsidian/plugins/markdownbrain`.
 - `make build`: build backend uberjar, frontend CSS, and plugin.
@@ -23,7 +23,7 @@
 ## Coding Style & Naming Conventions
 - Clojure: follow existing idioms and indentation; namespaces use kebab-case (e.g., `markdownbrain.link-parser`) and filenames use snake_case (e.g., `link_parser.clj`).
 - TypeScript: keep formatting consistent with existing files; tests live in `src/__tests__/*.test.ts`.
-- CSS: generated via Tailwind (`server/admin.css`, `server/frontend.css`). Avoid editing compiled files in `server/resources/publics/` directly.
+- CSS: generated via Tailwind (`server/console.css`, `server/frontend.css`). Avoid editing compiled files in `server/resources/publics/` directly.
 
 ## Testing Guidelines
 - Backend tests live under `server/test/markdownbrain/`; naming is `*_test.clj`.

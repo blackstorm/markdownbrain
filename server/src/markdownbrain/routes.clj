@@ -25,7 +25,7 @@
    ["/" {:get frontend/get-note}]
    ["/{*path}" {:get frontend/get-note}]])
 
-(def admin-routes
+(def console-routes
   (let [base-routes
         [["/" {:get (fn [_] (response/redirect "/console"))}]
 
@@ -84,9 +84,9 @@
                                      muuntaja/format-middleware]}})
    (ring/create-default-handler)))
 
-(def admin-app
+(def console-app
   (ring/ring-handler
-   (ring/router admin-routes
+   (ring/router console-routes
                 {:data {:muuntaja muuntaja-instance
                         :middleware [parameters/parameters-middleware
                                      muuntaja/format-middleware]}})
