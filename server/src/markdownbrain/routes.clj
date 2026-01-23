@@ -61,6 +61,8 @@
                                              :get console/get-root-note-selector}]
           ["/vaults/:id/renew-sync-key" {:middleware [middleware/wrap-auth]
                                          :post console/renew-vault-sync-key}]
+          ["/vaults/:id/custom-head-html" {:middleware [middleware/wrap-auth]
+                                           :put console/update-custom-head-html}]
           ["/vaults/:id/logo" {:get {:middleware [middleware/wrap-auth]
                                      :handler console/serve-vault-logo}
                                :post {:middleware [middleware/wrap-auth]
@@ -69,7 +71,6 @@
                                         :handler console/delete-vault-logo}}]
           ["/vaults/:id/favicon" {:get {:middleware [middleware/wrap-auth]
                                         :handler console/serve-vault-favicon}}]]]
-        ;; Conditionally add domain-check route when on-demand TLS is enabled
         domain-check-route ["/console/domain-check" {:get internal/domain-check}]]
     (if (config/on-demand-tls-enabled?)
       (conj base-routes domain-check-route)

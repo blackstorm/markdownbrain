@@ -10,7 +10,6 @@
     <script src="/publics/shared/lucide.min.js"></script>
 </head>
 <body>
-    <!-- Notification Container -->
     <div id="notification-container" class="fixed top-4 right-4 z-[9999]"></div>
 
     <script>
@@ -22,7 +21,6 @@
       {% include "templates/console/components/header.html" %}
     {% endwith %}
 
-    <!-- Main Content -->
     <main class="main-content">
         <div class="page-header">
             <div>
@@ -35,7 +33,6 @@
             </button>
         </div>
 
-        <!-- Vault List -->
         <div id="vault-list"
              hx-get="/console/vaults"
              hx-trigger="refreshList from:body"
@@ -47,7 +44,6 @@
 
     {% include "templates/console/components/footer.html" %}
 
-    <!-- Create Site Modal -->
     <dialog id="modal-create" class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -83,7 +79,6 @@
         </div>
     </dialog>
 
-    <!-- Edit Site Modal -->
     <dialog id="modal-edit" class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -118,6 +113,37 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-custom-html" class="modal-dialog">
+        <div class="modal-content modal-content-wide">
+            <div class="modal-header">
+                <h3>Custom HTML</h3>
+                <button type="button" class="btn-close" onclick="closeCustomHtmlModal()">
+                    <i data-lucide="x" class="icon-lg"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p class="form-hint" style="margin-top: 0; margin-bottom: 12px;">
+                    Add custom &lt;style&gt; or &lt;script&gt; tags to inject into your site's &lt;head&gt;. Useful for analytics or custom styling.
+                </p>
+                <input type="hidden" id="custom-html-vault-id">
+                <textarea
+                    id="custom-html-textarea"
+                    class="form-input"
+                    rows="10"
+                    maxlength="65536"
+                    style="font-family: var(--font-mono); font-size: 0.875rem; resize: vertical;"
+                    placeholder="<style>&#10;  body { background: #f5f5f5; }&#10;</style>&#10;&#10;<script>&#10;  console.log('Hello');&#10;</script>"
+                ></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" onclick="closeCustomHtmlModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveCustomHtml()">
+                    <span>Save</span>
+                </button>
+            </div>
         </div>
     </dialog>
 </body>

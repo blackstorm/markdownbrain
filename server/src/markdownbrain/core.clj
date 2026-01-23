@@ -9,13 +9,11 @@
    [markdownbrain.object-store :as object-store]
    [markdownbrain.routes :as routes]
    [ring.adapter.undertow :as undertow]
-   [ring.util.response :as response])
+   [ring.util.response :as response]
+   [ring.util.mime-type :as mime])
   (:gen-class))
 
 (defn wrap-resource-with-context
-  "Serve static resources from classpath at a specific URL context path.
-   Example: (wrap-resource-with-context handler \"/publics/console\" \"publics/console\")
-   This will serve files from classpath:publics/console/* at URL /publics/console/*"
   [handler context-path resource-root]
   (fn [request]
     (let [uri (:uri request)]
@@ -27,7 +25,11 @@
               full-path (str resource-root "/" resource-path)
               resource (io/resource full-path)]
           (if resource
-            (response/resource-response resource-path {:root resource-root})
+            (let [resp (response/resource-response resource-path {:root resource-root})
+                  content-type (mime/ext-mime-type resource-path)]
+              (if content-type
+                (response/content-type resp content-type)
+                resp))
             (handler request)))
         (handler request)))))
 
@@ -95,6 +97,10 @@
              (log/info "All servers stopped"))}))
 
 (defn -main [& args]
-  (start-servers)
-  ;; 保持主线程运行
-  @(promise))
+  (let [servers (start-servers)]
+    (.addShutdownHook
+     (Runtime/getRuntime)
+     (Thread. ^Runnable (fn []
+                          (log/info "Shutdown signal received, stopping servers...")
+                          ((:stop servers)))))
+    @(promise)))

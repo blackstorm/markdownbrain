@@ -40,6 +40,13 @@
         </button>
         <button
           type="button"
+          onclick="openCustomHtmlModal('{{vault.id}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          <i data-lucide="code" class="icon-xs"></i>
+          <span>Custom HTML</span>
+        </button>
+        <button
+          type="button"
           class="warning"
           hx-post="/console/vaults/{{vault.id}}/renew-sync-key"
           hx-confirm="Are you sure you want to renew the sync key for '{{vault.name}}'? The old key will no longer work for syncing."
@@ -61,6 +68,7 @@
           <span>Delete</span>
         </button>
       </div>
+      <span hidden id="custom-html-data-{{vault.id}}">{{vault.custom-head-html}}</span>
     </div>
   </div>
 

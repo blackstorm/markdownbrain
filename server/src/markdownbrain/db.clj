@@ -366,6 +366,12 @@
         (h/set {:logo_object_key logo-object-key})
         (h/where [:= :id vault-id]))))
 
+(defn update-vault-custom-head-html! [vault-id custom-head-html]
+  (execute-one!
+    (-> (h/update :vaults)
+        (h/set {:custom_head_html custom-head-html})
+        (h/where [:= :id vault-id]))))
+
 ;; Asset 操作
 (defn upsert-asset!
   [id tenant-id vault-id client-id path object-key size-bytes content-type md5]

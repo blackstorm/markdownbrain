@@ -155,6 +155,10 @@
             0 8px 10px -6px rgb(0 0 0 / 0.1);
     }
 
+    .modal-content-wide {
+        @apply min-w-[500px];
+    }
+
     .modal-dialog[open] {
         animation: modal-in 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
@@ -325,14 +329,14 @@
         @apply text-[var(--error)];
     }
 
-    .action-menu button + button {
-        @apply border-t border-[var(--border-color)];
-    }
+	    .action-menu button + button {
+	        @apply border-t border-[var(--border-color)];
+	    }
 
-    .spinner {
-        @apply hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full;
-        animation: spin 0.6s linear infinite;
-    }
+	    .spinner {
+	        @apply hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full;
+	        animation: spin 0.6s linear infinite;
+	    }
 
     .htmx-request .spinner {
         @apply inline-block;
@@ -715,6 +719,14 @@
 
     .logo-upload-area:hover {
         @apply bg-gray-100;
+    }
+
+    .section-label-row {
+        @apply flex items-center justify-between mb-2;
+    }
+
+    .btn-sm {
+        @apply px-2 py-1 text-xs;
     }
 }
 

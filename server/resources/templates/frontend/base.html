@@ -8,6 +8,7 @@
   {% if vault.logo-object-key %}<link rel="icon" href="/favicon.ico">{% endif %}
   <link rel="stylesheet" href="/publics/frontend/css/frontend.css">
   <link rel="stylesheet" href="/publics/shared/katex.min.css">
+  {{ vault.custom-head-html|safe }}
 </head>
 <body>
   <div id="app">

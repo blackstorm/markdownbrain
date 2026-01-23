@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS vaults (
   client_type TEXT NOT NULL DEFAULT 'obsidian',
   root_note_id TEXT,
   logo_object_key TEXT,
+  custom_head_html TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );

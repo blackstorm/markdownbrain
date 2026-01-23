@@ -386,3 +386,81 @@ function deleteLogo(vaultId) {
 
 window.uploadLogo = uploadLogo;
 window.deleteLogo = deleteLogo;
+
+// ============================================================
+// Custom HTML Modal
+// ============================================================
+
+function openCustomHtmlModal(vaultId) {
+  const modal = document.getElementById('modal-custom-html');
+  const vaultIdInput = document.getElementById('custom-html-vault-id');
+  const textarea = document.getElementById('custom-html-textarea');
+  const dataEl = document.getElementById(`custom-html-data-${vaultId}`);
+  
+  if (modal && vaultIdInput && textarea) {
+    vaultIdInput.value = vaultId;
+    textarea.value = dataEl ? dataEl.textContent : '';
+    modal.showModal();
+  }
+}
+
+function closeCustomHtmlModal() {
+  const modal = document.getElementById('modal-custom-html');
+  if (modal) {
+    modal.classList.add('closing');
+    modal.addEventListener('animationend', () => {
+      modal.close();
+      modal.classList.remove('closing');
+    }, { once: true });
+  }
+}
+
+function saveCustomHtml() {
+  const vaultIdInput = document.getElementById('custom-html-vault-id');
+  const textarea = document.getElementById('custom-html-textarea');
+  
+  if (!vaultIdInput || !textarea) {
+    showNotification('Modal not initialized', 'error');
+    return;
+  }
+  
+  const vaultId = vaultIdInput.value;
+  const code = textarea.value;
+  
+  fetch(`/console/vaults/${vaultId}/custom-head-html`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ customHeadHtml: code })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showNotification('Custom HTML saved', 'success');
+      closeCustomHtmlModal();
+      htmx.trigger('body', 'refreshList');
+    } else {
+      showNotification(data.error || 'Save failed', 'error');
+    }
+  })
+  .catch(err => {
+    console.error('Save custom HTML error:', err);
+    showNotification('Save failed', 'error');
+  });
+}
+
+// Setup backdrop click handler for custom HTML modal
+document.addEventListener('DOMContentLoaded', () => {
+  const customHtmlModal = document.getElementById('modal-custom-html');
+  if (customHtmlModal) {
+    customHtmlModal.addEventListener('click', (e) => {
+      const clickedOnContent = e.target.closest('.modal-content');
+      if (!clickedOnContent) {
+        closeCustomHtmlModal();
+      }
+    });
+  }
+});
+
+window.openCustomHtmlModal = openCustomHtmlModal;
+window.closeCustomHtmlModal = closeCustomHtmlModal;
+window.saveCustomHtml = saveCustomHtml;

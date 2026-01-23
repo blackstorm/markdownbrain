@@ -241,3 +241,35 @@
          :body {:success true
                 :message "Sync key renewed"
                 :sync-key new-sync-key}}))))
+
+(def ^:private max-custom-html-size 65536) ; 64KB
+
+(defn update-custom-head-html
+  [request]
+  (let [tenant-id (get-in request [:session :tenant-id])
+        vault-id (get-in request [:path-params :id])
+        params (or (:body-params request) (:params request))
+        custom-head-html (:customHeadHtml params)
+        vault (db/get-vault-by-id vault-id)]
+    (cond
+      (nil? vault)
+      {:status 200
+       :body {:success false
+              :error "Vault not found"}}
+
+      (not= (:tenant-id vault) tenant-id)
+      {:status 200
+       :body {:success false
+              :error "Permission denied"}}
+
+      (and custom-head-html (> (count custom-head-html) max-custom-html-size))
+      {:status 200
+       :body {:success false
+              :error (str "Custom HTML exceeds maximum size of 64KB")}}
+
+      :else
+      (do
+        (db/update-vault-custom-head-html! vault-id custom-head-html)
+        {:status 200
+         :body {:success true
+                :message "Custom HTML updated"}}))))
