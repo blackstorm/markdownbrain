@@ -13,7 +13,7 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
     const { containerEl } = this;
 
     containerEl.empty();
-    containerEl.createEl("h2", { text: "MarkdownBrain 同步设置" });
+    containerEl.createEl("h2", { text: "MarkdownBrain 设置" });
 
     new Setting(containerEl)
       .setName("服务器地址")
@@ -29,8 +29,8 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Sync Key")
-      .setDesc("从管理后台获取的同步密钥")
+      .setName("Publish Key")
+      .setDesc("从 Console 获取的发布密钥（Publish Key）")
       .addText((text) =>
         text
           .setPlaceholder("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")

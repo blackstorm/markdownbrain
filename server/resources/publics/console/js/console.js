@@ -79,21 +79,19 @@ function formatDate(dateStr) {
   });
 }
 
-// ============================================================
-// CSRF helpers (Console)
-// ============================================================
-
-function getCsrfToken() {
-  const meta = document.querySelector('meta[name="csrf-token"]');
-  const token = meta && meta.getAttribute('content');
-  return token || null;
+function safeParseJson(text) {
+  if (!text || typeof text !== 'string') return null;
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    return null;
+  }
 }
 
-function csrfFetch(url, options = {}) {
-  const headers = new Headers(options.headers || {});
-  const token = getCsrfToken();
-  if (token) headers.set('X-CSRF-Token', token);
-  return fetch(url, { ...options, headers });
+function getHtmxJsonResponse(event) {
+  const xhr = event?.detail?.xhr;
+  if (!xhr) return null;
+  return safeParseJson(xhr.responseText || xhr.response || '') || null;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -215,19 +213,20 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
+});
 
-  const changePasswordForm = document.getElementById('change-password-form');
-  if (changePasswordForm) {
-    changePasswordForm.addEventListener('submit', (e) => {
-      const newInput = changePasswordForm.querySelector('[name="new-password"]');
-      const confirmInput = changePasswordForm.querySelector('[name="confirm-password"]');
-      const newPassword = newInput ? newInput.value : '';
-      const confirmPassword = confirmInput ? confirmInput.value : '';
-      if (newPassword !== confirmPassword) {
-        e.preventDefault();
-        showNotification('New password confirmation does not match', 'error');
-      }
-    });
+document.addEventListener('htmx:beforeRequest', function(event) {
+  if (event.detail.pathInfo.requestPath !== '/console/user/password') return;
+
+  const form = event.detail.elt;
+  const newInput = form && form.querySelector && form.querySelector('[name="new-password"]');
+  const confirmInput = form && form.querySelector && form.querySelector('[name="confirm-password"]');
+  const newPassword = newInput ? newInput.value : '';
+  const confirmPassword = confirmInput ? confirmInput.value : '';
+
+  if (newPassword !== confirmPassword) {
+    event.preventDefault();
+    showNotification('New password confirmation does not match', 'error');
   }
 });
 
@@ -238,9 +237,9 @@ window.formatDate = formatDate;
 window.openCreateModal = openCreateModal;
 window.closeCreateModal = closeCreateModal;
 window.openEditModal = openEditModal;
-window.closeEditModal = closeEditModal;
-window.openChangePasswordModal = openChangePasswordModal;
-window.closeChangePasswordModal = closeChangePasswordModal;
+	window.closeEditModal = closeEditModal;
+	window.openChangePasswordModal = openChangePasswordModal;
+	window.closeChangePasswordModal = closeChangePasswordModal;
 
 document.addEventListener('htmx:afterRequest', function(event) {
   if (event.detail.pathInfo.requestPath !== '/console/user/password') return;
@@ -375,91 +374,23 @@ window.toggleActionMenu = toggleActionMenu;
 window.toggleSyncKey = toggleSyncKey;
 
 // ============================================================
-// Logo Upload & Delete
+// Logo Upload & Delete (HTMX)
 // ============================================================
 
-function uploadLogo(input, vaultId) {
-  const file = input.files[0];
-  if (!file) return;
+function handleLogoRequest(event) {
+  const response = getHtmxJsonResponse(event) || {};
+  const verb = event?.detail?.requestConfig?.verb;
 
-  const maxSize = 2 * 1024 * 1024;
-  if (file.size > maxSize) {
-    showNotification('File too large. Maximum size is 2MB.', 'error');
+  if (event.detail.successful && response.success !== false) {
+    showNotification(response.message || (verb === 'delete' ? 'Logo deleted' : 'Logo uploaded'), 'success');
+    htmx.trigger('body', 'refreshList');
     return;
   }
 
-  const allowedTypes = ['image/png', 'image/jpeg'];
-  if (!allowedTypes.includes(file.type)) {
-    showNotification('Invalid file type. Allowed: PNG, JPEG', 'error');
-    return;
-  }
-
-  // Validate minimum dimensions (128x128)
-  const img = new Image();
-  img.onload = function() {
-    URL.revokeObjectURL(img.src);
-    if (img.width < 128 || img.height < 128) {
-      showNotification('Image too small. Minimum size is 128x128 pixels.', 'error');
-      input.value = '';
-      return;
-    }
-    doLogoUpload(file, vaultId);
-  };
-  img.onerror = function() {
-    URL.revokeObjectURL(img.src);
-    showNotification('Failed to read image file.', 'error');
-    input.value = '';
-  };
-  img.src = URL.createObjectURL(file);
-  input.value = '';
+  showNotification(response.error || response.message || 'Request failed', 'error');
 }
 
-function doLogoUpload(file, vaultId) {
-  const formData = new FormData();
-  formData.append('logo', file);
-
-  csrfFetch(`/console/vaults/${vaultId}/logo`, {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showNotification('Logo uploaded successfully', 'success');
-      htmx.trigger('body', 'refreshList');
-    } else {
-      showNotification(data.error || 'Upload failed', 'error');
-    }
-  })
-  .catch(err => {
-    console.error('Logo upload error:', err);
-    showNotification('Upload failed', 'error');
-  });
-}
-
-function deleteLogo(vaultId) {
-  if (!confirm('Are you sure you want to delete this logo?')) return;
-
-  csrfFetch(`/console/vaults/${vaultId}/logo`, {
-    method: 'DELETE'
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showNotification('Logo deleted', 'success');
-      htmx.trigger('body', 'refreshList');
-    } else {
-      showNotification(data.error || 'Delete failed', 'error');
-    }
-  })
-  .catch(err => {
-    console.error('Logo delete error:', err);
-    showNotification('Delete failed', 'error');
-  });
-}
-
-window.uploadLogo = uploadLogo;
-window.deleteLogo = deleteLogo;
+window.handleLogoRequest = handleLogoRequest;
 
 // ============================================================
 // Custom HTML Modal
@@ -467,10 +398,16 @@ window.deleteLogo = deleteLogo;
 
 function openCustomHtmlModal(vaultId) {
   const modal = document.getElementById('modal-custom-html');
+  const form = document.getElementById('custom-html-form');
   const vaultIdInput = document.getElementById('custom-html-vault-id');
   const textarea = document.getElementById('custom-html-textarea');
   const dataEl = document.getElementById(`custom-html-data-${vaultId}`);
-  
+
+  if (form) {
+    form.setAttribute('hx-put', `/console/vaults/${vaultId}/custom-head-html`);
+    htmx.process(form);
+  }
+
   if (modal && vaultIdInput && textarea) {
     vaultIdInput.value = vaultId;
     textarea.value = dataEl ? dataEl.textContent : '';
@@ -489,37 +426,17 @@ function closeCustomHtmlModal() {
   }
 }
 
-function saveCustomHtml() {
-  const vaultIdInput = document.getElementById('custom-html-vault-id');
-  const textarea = document.getElementById('custom-html-textarea');
-  
-  if (!vaultIdInput || !textarea) {
-    showNotification('Modal not initialized', 'error');
+function onSaveCustomHtml(event) {
+  const response = getHtmxJsonResponse(event) || {};
+
+  if (event.detail.successful && response.success) {
+    showNotification('Custom HTML saved', 'success');
+    closeCustomHtmlModal();
+    htmx.trigger('body', 'refreshList');
     return;
   }
-  
-  const vaultId = vaultIdInput.value;
-  const code = textarea.value;
-  
-  csrfFetch(`/console/vaults/${vaultId}/custom-head-html`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ customHeadHtml: code })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showNotification('Custom HTML saved', 'success');
-      closeCustomHtmlModal();
-      htmx.trigger('body', 'refreshList');
-    } else {
-      showNotification(data.error || 'Save failed', 'error');
-    }
-  })
-  .catch(err => {
-    console.error('Save custom HTML error:', err);
-    showNotification('Save failed', 'error');
-  });
+
+  showNotification(response.error || 'Save failed', 'error');
 }
 
 // Setup backdrop click handler for custom HTML modal
@@ -537,4 +454,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 window.openCustomHtmlModal = openCustomHtmlModal;
 window.closeCustomHtmlModal = closeCustomHtmlModal;
-window.saveCustomHtml = saveCustomHtml;
+window.onSaveCustomHtml = onSaveCustomHtml;

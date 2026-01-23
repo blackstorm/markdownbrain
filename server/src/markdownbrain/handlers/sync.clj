@@ -33,7 +33,7 @@
   (if-let [sync-key (parse-sync-key request)]
     (if-let [vault (validate-sync-key sync-key)]
       {:ok true :vault vault}
-      {:ok false :response (resp/unauthorized "Invalid sync-key")})
+      {:ok false :response (resp/unauthorized "Invalid publish key")})
     {:ok false :response (resp/unauthorized "Missing authorization header")}))
 
 ;; =============================================================================

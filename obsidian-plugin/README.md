@@ -46,7 +46,7 @@ npm run package
 在 Obsidian 设置 → 社区插件 → MarkdownBrain Sync 中配置：
 
 - **服务器地址**: MarkdownBrain API 地址（例如：`https://api.markdownbrain.com`）
-- **Sync Key**: 从管理后台获取的同步密钥
+- **Publish Key**: 从 Console 获取的发布密钥（Publish Key）
 - **自动同步**: 启用后文件修改时自动同步
 
 ### 测试连接

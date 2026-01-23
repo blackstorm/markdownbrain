@@ -124,10 +124,10 @@ ssh -L 9090:localhost:9090 user@your-server
 
 ### 配置
 
-1. 在 Console 面板创建站点，获取 Sync Key
+1. 在 Console 面板创建站点，获取 Publish Key
 2. 在插件设置中填写：
    - Server URL: `https://your-console-domain.com`
-   - Sync Key: 从 Console 面板复制
+   - Publish Key: 从 Console 面板复制
 
 ### 同步
 

@@ -231,7 +231,7 @@
                                     :root-note-id root-note-id})}))))
 
 (defn renew-vault-sync-key
-  "Generate a new sync key for a vault."
+  "Generate a new publish key for a vault."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])
         vault-id (get-in request [:path-params :id])
@@ -253,7 +253,7 @@
         (db/update-vault-sync-key! vault-id new-sync-key)
         {:status 200
          :body {:success true
-                :message "Sync key renewed"
+                :message "Publish key renewed"
                 :sync-key new-sync-key}}))))
 
 (def ^:private max-custom-html-size 65536) ; 64KB

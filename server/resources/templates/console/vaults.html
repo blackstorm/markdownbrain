@@ -10,7 +10,7 @@
     <script src="/publics/console/js/console.js"></script>
     <script src="/publics/shared/lucide.min.js"></script>
 </head>
-<body>
+<body hx-headers='{"X-CSRF-Token":"{{csrf-token}}"}'>
     <div id="notification-container" class="fixed top-4 right-4 z-[9999]"></div>
 
     <script>
@@ -25,8 +25,8 @@
     <main class="main-content">
         <div class="page-header">
             <div>
-                <h2>Site Management</h2>
-                <p>Manage your published Obsidian vaults</p>
+                <h2>Publishing</h2>
+                <p>Manage your published vaults, domains, and publish keys.</p>
             </div>
             <button onclick="openCreateModal()" class="btn btn-primary">
                 <i data-lucide="plus" class="icon-sm"></i>
@@ -127,26 +127,36 @@
                     <i data-lucide="x" class="icon-lg"></i>
                 </button>
             </div>
-            <div class="modal-body">
-                <p class="form-hint" style="margin-top: 0; margin-bottom: 12px;">
-                    Add custom &lt;style&gt; or &lt;script&gt; tags to inject into your site's &lt;head&gt;. Useful for analytics or custom styling.
-                </p>
-                <input type="hidden" id="custom-html-vault-id">
-                <textarea
-                    id="custom-html-textarea"
-                    class="form-input"
-                    rows="10"
-                    maxlength="65536"
-                    style="font-family: var(--font-mono); font-size: 0.875rem; resize: vertical;"
-                    placeholder="<style>&#10;  body { background: #f5f5f5; }&#10;</style>&#10;&#10;<script>&#10;  console.log('Hello');&#10;</script>"
-                ></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn" onclick="closeCustomHtmlModal()">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveCustomHtml()">
-                    <span>Save</span>
-                </button>
-            </div>
+            <form
+                id="custom-html-form"
+                hx-put=""
+                hx-swap="none"
+                hx-disabled-elt="button[type=submit]"
+                hx-on::after-request="onSaveCustomHtml(event)"
+            >
+                <div class="modal-body">
+                    <p class="form-hint" style="margin-top: 0; margin-bottom: 12px;">
+                        Add custom &lt;style&gt; or &lt;script&gt; tags to inject into your site's &lt;head&gt;. Useful for analytics or custom styling.
+                    </p>
+                    <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
+                    <input type="hidden" id="custom-html-vault-id">
+                    <textarea
+                        id="custom-html-textarea"
+                        name="customHeadHtml"
+                        class="form-input"
+                        rows="10"
+                        maxlength="65536"
+                        style="font-family: var(--font-mono); font-size: 0.875rem; resize: vertical;"
+                        placeholder="<style>&#10;  body { background: #f5f5f5; }&#10;</style>&#10;&#10;<script>&#10;  console.log('Hello');&#10;</script>"
+                    ></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeCustomHtmlModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </dialog>
 
