@@ -171,7 +171,10 @@
                        (conj "Missing S3_ACCESS_KEY: required when STORAGE_TYPE=s3")
                        
                        (nil? (:secret-key s3))
-                       (conj "Missing S3_SECRET_KEY: required when STORAGE_TYPE=s3"))
+                       (conj "Missing S3_SECRET_KEY: required when STORAGE_TYPE=s3")
+
+                       (str/blank? (:public-url s3))
+                       (conj "Missing S3_PUBLIC_URL: required when STORAGE_TYPE=s3 (assets must be publicly reachable)"))
                  :local []
                  ;; Unknown storage type
                  [(str "Unknown STORAGE_TYPE: " storage-type ". Supported: s3, local")])]

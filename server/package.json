@@ -3,12 +3,12 @@
   "version": "0.0.1",
   "description": "MarkdownBrain frontend assets",
   "scripts": {
-    "build:console": "bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --minify",
-    "watch:console": "bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css && bunx tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --watch",
-    "build:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --minify",
-    "watch:frontend": "bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css && bunx tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --watch",
-    "build": "bun run build:console && bun run build:frontend",
-    "watch": "bun run watch:console & bun run watch:frontend & wait"
+    "build:console": "tailwindcss -i ./console.css -o ./resources/publics/console/css/app.css --minify",
+    "watch:console": "tailwindcss -i ./console.css -o ./resources/publics/console/css/app.css && tailwindcss -i ./console.css -o ./resources/publics/console/css/app.css --watch",
+    "build:frontend": "tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --minify",
+    "watch:frontend": "tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css && tailwindcss -i ./frontend.css -o ./resources/publics/frontend/css/frontend.css --watch",
+    "build": "npm run build:console && npm run build:frontend",
+    "watch": "npm run watch:console & npm run watch:frontend & wait"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.19",

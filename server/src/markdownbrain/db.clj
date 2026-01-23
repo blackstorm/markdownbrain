@@ -124,6 +124,14 @@
 (defn get-user-by-id [id]
   (find-by :users :id id))
 
+(defn update-user-password!
+  "Update a user's password hash."
+  [user-id password-hash]
+  (execute-one!
+    (-> (h/update :users)
+        (h/set {:password_hash password-hash})
+        (h/where [:= :id user-id]))))
+
 (def ^:private has-user-cache (atom nil))
 
 (defn has-any-user? []

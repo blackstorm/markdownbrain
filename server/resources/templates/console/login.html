@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{csrf-token}}">
     <title>Login - MarkdownBrain</title>
     <link href="/publics/console/css/app.css" rel="stylesheet">
     <script src="/publics/shared/htmx.min.js"></script>
@@ -33,6 +34,7 @@
                   hx-swap="innerHTML"
                   hx-disabled-elt="button"
                   hx-indicator=".spinner">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
 
                 {% with id="username" name="username" type="email" label="Email" placeholder="console@example.com" autocomplete="username" autofocus=true required=true %}
                   {% include "templates/console/components/form-field.html" %}

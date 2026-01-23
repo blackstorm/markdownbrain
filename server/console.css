@@ -148,15 +148,15 @@
 
     .modal-content {
         @apply bg-white border border-[var(--border-color)];
-        @apply m-4 max-h-[calc(100vh-2rem)];
-        @apply overflow-y-auto;
+        @apply max-h-[calc(100vh-2rem)];
+        @apply w-full overflow-y-auto overflow-x-hidden;
         box-shadow:
             0 20px 25px -5px rgb(0 0 0 / 0.1),
             0 8px 10px -6px rgb(0 0 0 / 0.1);
     }
 
-    .modal-content-wide {
-        @apply min-w-[500px];
+    .modal-dialog-wide {
+        @apply max-w-[720px];
     }
 
     .modal-dialog[open] {
@@ -305,21 +305,22 @@
         @apply text-[var(--text-tertiary)];
     }
 
-    .action-menu {
-        @apply hidden absolute top-full right-0 mt-1 min-w-[160px];
-        @apply bg-white border border-[var(--border-color)] shadow-md z-10;
-    }
+	    .action-menu {
+	        @apply hidden absolute top-full right-0 mt-1 min-w-[160px];
+	        @apply bg-white border border-[var(--border-color)] shadow-md z-10;
+	        @apply w-max whitespace-nowrap;
+	    }
 
     .action-menu.open {
         @apply block;
     }
 
-    .action-menu button {
-        @apply w-full px-4 py-2.5 text-sm text-left;
-        @apply border-0 bg-transparent cursor-pointer;
-        @apply text-[var(--text-primary)];
-        @apply flex items-center gap-2.5;
-    }
+	    .action-menu button {
+	        @apply w-full px-4 py-2.5 text-sm text-left;
+	        @apply border-0 bg-transparent cursor-pointer;
+	        @apply text-[var(--text-primary)];
+	        @apply flex items-center gap-2.5;
+	    }
 
     .action-menu button:hover {
         @apply bg-gray-50;

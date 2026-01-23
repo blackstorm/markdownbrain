@@ -22,6 +22,7 @@
 (def logout auth/logout)
 (def login-page auth/login-page)
 (def init-page auth/init-page)
+(def change-password auth/change-password)
 
 ;; ============================================================
 ;; Vault handlers

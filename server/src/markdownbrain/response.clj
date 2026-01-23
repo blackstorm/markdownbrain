@@ -1,4 +1,5 @@
-(ns markdownbrain.response)
+(ns markdownbrain.response
+  (:require [clojure.data.json :as json]))
 
 ;; HTTP 响应辅助函数
 
@@ -79,5 +80,5 @@
   [status error-msg]
   {:status status
    :headers {"Content-Type" "application/json"}
-   :body {:success false
-          :error error-msg}})
+   :body (json/write-str {:success false
+                          :error error-msg})})

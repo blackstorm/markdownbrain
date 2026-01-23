@@ -79,6 +79,23 @@ function formatDate(dateStr) {
   });
 }
 
+// ============================================================
+// CSRF helpers (Console)
+// ============================================================
+
+function getCsrfToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  const token = meta && meta.getAttribute('content');
+  return token || null;
+}
+
+function csrfFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = getCsrfToken();
+  if (token) headers.set('X-CSRF-Token', token);
+  return fetch(url, { ...options, headers });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   console.log('MarkdownBrain frontend initialized');
 });
@@ -151,13 +168,36 @@ function closeEditModal() {
   }
 }
 
+// ============================================================
+// Change Password Modal
+// ============================================================
+
+function openChangePasswordModal() {
+  const modal = document.getElementById('modal-change-password');
+  const form = document.getElementById('change-password-form');
+  if (form) form.reset();
+  if (modal) modal.showModal();
+}
+
+function closeChangePasswordModal() {
+  const modal = document.getElementById('modal-change-password');
+  if (modal) {
+    modal.classList.add('closing');
+    modal.addEventListener('animationend', () => {
+      modal.close();
+      modal.classList.remove('closing');
+    }, { once: true });
+  }
+}
+
 // Setup backdrop click handlers
 document.addEventListener('DOMContentLoaded', () => {
   const createModal = document.getElementById('modal-create');
   const editModal = document.getElementById('modal-edit');
+  const changePasswordModal = document.getElementById('modal-change-password');
 
   // Click outside modal content to close
-  [createModal, editModal].forEach(modal => {
+  [createModal, editModal, changePasswordModal].forEach(modal => {
     if (modal) {
       modal.addEventListener('click', (e) => {
         // Check if clicked on content or its children
@@ -168,11 +208,27 @@ document.addEventListener('DOMContentLoaded', () => {
             closeCreateModal();
           } else if (modal.id === 'modal-edit') {
             closeEditModal();
+          } else if (modal.id === 'modal-change-password') {
+            closeChangePasswordModal();
           }
         }
       });
     }
   });
+
+  const changePasswordForm = document.getElementById('change-password-form');
+  if (changePasswordForm) {
+    changePasswordForm.addEventListener('submit', (e) => {
+      const newInput = changePasswordForm.querySelector('[name="new-password"]');
+      const confirmInput = changePasswordForm.querySelector('[name="confirm-password"]');
+      const newPassword = newInput ? newInput.value : '';
+      const confirmPassword = confirmInput ? confirmInput.value : '';
+      if (newPassword !== confirmPassword) {
+        e.preventDefault();
+        showNotification('New password confirmation does not match', 'error');
+      }
+    });
+  }
 });
 
 // Expose global functions
@@ -183,6 +239,24 @@ window.openCreateModal = openCreateModal;
 window.closeCreateModal = closeCreateModal;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
+window.openChangePasswordModal = openChangePasswordModal;
+window.closeChangePasswordModal = closeChangePasswordModal;
+
+document.addEventListener('htmx:afterRequest', function(event) {
+  if (event.detail.pathInfo.requestPath !== '/console/user/password') return;
+
+  try {
+    const response = JSON.parse(event.detail.xhr.response || '{}');
+    if (response.success) {
+      showNotification('Password updated', 'success');
+      closeChangePasswordModal();
+    } else {
+      showNotification(response.error || 'Password update failed', 'error');
+    }
+  } catch (e) {
+    showNotification('Server response error', 'error');
+  }
+});
 
 function filterNotes(vaultId, query) {
   const container = document.getElementById(`note-selector-${vaultId}`);
@@ -344,7 +418,7 @@ function doLogoUpload(file, vaultId) {
   const formData = new FormData();
   formData.append('logo', file);
 
-  fetch(`/console/vaults/${vaultId}/logo`, {
+  csrfFetch(`/console/vaults/${vaultId}/logo`, {
     method: 'POST',
     body: formData
   })
@@ -366,7 +440,7 @@ function doLogoUpload(file, vaultId) {
 function deleteLogo(vaultId) {
   if (!confirm('Are you sure you want to delete this logo?')) return;
 
-  fetch(`/console/vaults/${vaultId}/logo`, {
+  csrfFetch(`/console/vaults/${vaultId}/logo`, {
     method: 'DELETE'
   })
   .then(response => response.json())
@@ -427,7 +501,7 @@ function saveCustomHtml() {
   const vaultId = vaultIdInput.value;
   const code = textarea.value;
   
-  fetch(`/console/vaults/${vaultId}/custom-head-html`, {
+  csrfFetch(`/console/vaults/${vaultId}/custom-head-html`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ customHeadHtml: code })

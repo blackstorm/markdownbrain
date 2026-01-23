@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{csrf-token}}">
     <title>Console Dashboard - MarkdownBrain</title>
     <link href="/publics/console/css/app.css" rel="stylesheet">
     <script src="/publics/shared/htmx.min.js"></script>
@@ -57,6 +58,7 @@
                   hx-disabled-elt="button[type=submit]"
                   hx-indicator=".create-spinner"
                   hx-on::after-request="if(event.detail.successful) { closeCreateModal(); this.reset(); htmx.trigger('body', 'refreshList'); showNotification('Site created', 'success'); }">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
                 <div class="modal-body">
                     <div id="create-result"></div>
 
@@ -93,6 +95,7 @@
                   hx-disabled-elt="button[type=submit]"
                   hx-indicator=".edit-spinner"
                   hx-on::after-request="if(event.detail.successful) { closeEditModal(); htmx.trigger('body', 'refreshList'); showNotification('Site updated', 'success'); }">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
                 <input type="hidden" name="id" id="edit-vault-id">
                 <div class="modal-body">
                     <div id="edit-result"></div>
@@ -116,8 +119,8 @@
         </div>
     </dialog>
 
-    <dialog id="modal-custom-html" class="modal-dialog">
-        <div class="modal-content modal-content-wide">
+    <dialog id="modal-custom-html" class="modal-dialog modal-dialog-wide">
+        <div class="modal-content">
             <div class="modal-header">
                 <h3>Custom HTML</h3>
                 <button type="button" class="btn-close" onclick="closeCustomHtmlModal()">
@@ -144,6 +147,46 @@
                     <span>Save</span>
                 </button>
             </div>
+        </div>
+    </dialog>
+
+    <dialog id="modal-change-password" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Change Password</h3>
+                <button type="button" class="btn-close" onclick="closeChangePasswordModal()">
+                    <i data-lucide="x" class="icon-lg"></i>
+                </button>
+            </div>
+            <form id="change-password-form"
+                  hx-put="/console/user/password"
+                  hx-swap="none"
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".password-spinner">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
+                <div class="modal-body">
+                    <div id="change-password-result"></div>
+
+                    {% with id="current-password" name="current-password" type="password" label="Current Password" autocomplete="current-password" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="new-password" name="new-password" type="password" label="New Password" autocomplete="new-password" minlength="8" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="confirm-password" name="confirm-password" type="password" label="Confirm New Password" autocomplete="new-password" minlength="8" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeChangePasswordModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner password-spinner"></span>
+                        <span>Update Password</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </dialog>
 </body>

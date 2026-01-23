@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]
+   [markdownbrain.response :as resp]
    [ring.middleware.keyword-params :as keyword-params]
    [ring.middleware.multipart-params :as multipart]
    [ring.middleware.params :as params]
@@ -37,11 +38,53 @@
 ;; CORS 中间件
 (defn wrap-cors [handler]
   (fn [request]
-    (let [response (handler request)]
-      (-> response
-          (assoc-in [:headers "Access-Control-Allow-Origin"] "*")
-          (assoc-in [:headers "Access-Control-Allow-Methods"] "GET, POST, PUT, DELETE, OPTIONS")
-          (assoc-in [:headers "Access-Control-Allow-Headers"] "Content-Type, Authorization")))))
+    (let [uri (:uri request)
+          cors-enabled? (str/starts-with? uri "/obsidian/")]
+      (if-not cors-enabled?
+        (handler request)
+        (let [cors-headers {"Access-Control-Allow-Origin" "*"
+                            "Access-Control-Allow-Methods" "GET, POST, PUT, DELETE, OPTIONS"
+                            "Access-Control-Allow-Headers" "Content-Type, Authorization"}
+              response (if (= :options (:request-method request))
+                         {:status 200 :body ""}
+                         (handler request))]
+          (update response :headers (fnil merge {}) cors-headers))))))
+
+;; CSRF 中间件（仅保护 Console 路由）
+(defn- get-csrf-token-from-request [request]
+  (let [headers (:headers request)
+        header-token (get headers "x-csrf-token")
+        params (:params request)]
+    (or header-token
+        (get params "__anti-forgery-token")
+        (get params :__anti-forgery-token))))
+
+(defn wrap-console-csrf [handler]
+  (fn [request]
+    (if-not (str/starts-with? (:uri request) "/console")
+      (handler request)
+      (let [session (or (:session request) {})
+            csrf-token (or (:csrf-token session) (config/generate-random-hex 32))
+            request' (-> request
+                         (assoc :anti-forgery-token csrf-token)
+                         (assoc :session (assoc session :csrf-token csrf-token)))
+            state-changing? (contains? #{:post :put :delete :patch} (:request-method request'))
+            provided-token (when state-changing? (get-csrf-token-from-request request'))]
+        (if (and state-changing? (not= provided-token csrf-token))
+          (resp/json-error 403 "CSRF token missing or incorrect")
+          (let [response (handler request')
+                response-session (:session response)]
+            (cond
+              ;; Handler explicitly set :session (e.g. login/logout)
+              (contains? response :session)
+              (cond
+                (nil? response-session) response
+                (map? response-session) (assoc response :session (assoc response-session :csrf-token csrf-token))
+                :else response)
+
+              ;; Handler didn't set :session; persist CSRF token
+              :else
+              (assoc response :session (:session request')))))))))
 
 ;; 初始化检查中间件（检查是否有用户，没有则跳转到初始化页面）
 (defn wrap-init-check [handler]
@@ -74,11 +117,12 @@
 ;; 完整中间件栈
 (defn wrap-middleware [handler]
   (-> handler
-      wrap-init-check
+      wrap-console-csrf
       wrap-session-middleware
       keyword-params/wrap-keyword-params
       multipart/wrap-multipart-params
       params/wrap-params
+      wrap-init-check
       ;; 移除 json/wrap-json-body 和 json/wrap-json-response
       ;; 因为 Reitit 的 muuntaja 中间件会处理 JSON
       wrap-cors))

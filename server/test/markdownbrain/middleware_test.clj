@@ -47,24 +47,24 @@
 
 ;; CORS Middleware 测试
 (deftest test-wrap-cors
-  (testing "CORS headers added to response"
+  (testing "CORS headers added to /obsidian/* response"
     (let [handler (middleware/wrap-cors echo-handler)
-          request (mock/request :get "/api/test")
+          request (mock/request :get "/obsidian/sync/changes")
           response (handler request)]
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"])))
       (is (= "GET, POST, PUT, DELETE, OPTIONS" (get-in response [:headers "Access-Control-Allow-Methods"])))
       (is (= "Content-Type, Authorization" (get-in response [:headers "Access-Control-Allow-Headers"])))))
 
-  (testing "OPTIONS request returns 200"
+  (testing "OPTIONS preflight returns 200 for /obsidian/*"
     (let [handler (middleware/wrap-cors echo-handler)
-          request (mock/request :options "/api/test")
+          request (mock/request :options "/obsidian/sync/changes")
           response (handler request)]
       (is (= 200 (:status response)))
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"])))))
 
   (testing "POST request with CORS"
     (let [handler (middleware/wrap-cors echo-handler)
-          request (mock/request :post "/api/sync")
+          request (mock/request :post "/obsidian/sync/changes")
           response (handler request)]
       (is (= 200 (:status response)))
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"]))))))
@@ -172,7 +172,7 @@
 
   (testing "Middleware chain with CORS preflight"
     (let [wrapped-handler (middleware/wrap-middleware echo-handler)
-          request (-> (mock/request :options "/api/test")
+          request (-> (mock/request :options "/obsidian/sync/changes")
                      (mock/header "Origin" "http://localhost:3000"))
           response (wrapped-handler request)]
       (is (= 200 (:status response)))
@@ -188,7 +188,7 @@
 
   (testing "CORS security headers"
     (let [wrapped-handler (middleware/wrap-middleware echo-handler)
-          request (-> (mock/request :get "/api/test")
+          request (-> (mock/request :get "/obsidian/sync/changes")
                      (mock/header "Origin" "http://example.com"))
           response (wrapped-handler request)]
       (is (= "*" (get-in response [:headers "Access-Control-Allow-Origin"]))))))

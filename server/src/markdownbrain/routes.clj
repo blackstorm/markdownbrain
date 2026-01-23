@@ -43,6 +43,8 @@
                      :post console/login}]
           ["/logout" {:post {:middleware [middleware/wrap-auth]
                              :handler console/logout}}]
+          ["/user/password" {:middleware [middleware/wrap-auth]
+                             :put console/change-password}]
           ["/init" {:get console/init-page
                     :post console/init-console}]
           ["/storage/:id/{*path}" {:middleware [middleware/wrap-auth]

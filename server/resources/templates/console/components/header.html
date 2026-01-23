@@ -14,13 +14,32 @@
             </div>
         </div>
         <div class="header-actions">
-            <button hx-post="/console/logout"
-                    hx-swap="none"
-                    hx-on::after-request="window.location.href='/console/login'"
-                    class="btn">
-                <i data-lucide="log-out" class="icon-sm"></i>
-                <span>Logout</span>
-            </button>
+            <div class="vault-actions">
+                <button type="button" class="btn" onclick="toggleActionMenu(this)">
+                    <i data-lucide="user" class="icon-sm"></i>
+                    <span>Account</span>
+                    <i data-lucide="chevron-down" class="icon-sm"></i>
+                </button>
+                <div class="action-menu">
+                    <button
+                        type="button"
+                        onclick="openChangePasswordModal(); toggleActionMenu(this.closest('.vault-actions').querySelector('button'))"
+                    >
+                        <i data-lucide="key" class="icon-xs"></i>
+                        <span>Change password</span>
+                    </button>
+                    <button
+                        type="button"
+                        hx-post="/console/logout"
+                        hx-swap="none"
+                        hx-on::after-request="window.location.href='/console/login'"
+                        onclick="toggleActionMenu(this.closest('.vault-actions').querySelector('button'))"
+                    >
+                        <i data-lucide="log-out" class="icon-xs"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </header>

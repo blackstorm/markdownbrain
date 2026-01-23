@@ -33,7 +33,8 @@
         vaults-with-data (mapv enrich-vault-data vaults)]
     (resp/html (selmer/render-file "templates/console/vaults.html"
                                    {:tenant tenant
-                                    :vaults vaults-with-data}))))
+                                    :vaults vaults-with-data
+                                    :csrf-token (:anti-forgery-token request)}))))
 
 (defn list-vaults
   "List all vaults for current tenant."
@@ -101,7 +102,9 @@
         params (or (:body-params request) (:params request))
         name (:name params)
         domain (:domain params)
-        vault (db/get-vault-by-id vault-id)]
+        vault (db/get-vault-by-id vault-id)
+        existing-domain (when (and domain (not (str/blank? domain)))
+                          (db/get-vault-by-domain domain))]
     (cond
       (nil? vault)
       {:status 200
@@ -123,14 +126,25 @@
        :body {:success false
               :error "Domain is required"}}
 
+      (and existing-domain (not= (:id existing-domain) vault-id))
+      {:status 200
+       :body {:success false
+              :error "Domain already in use"}}
+
       :else
-      (do
+      (try
         (db/update-vault! vault-id name domain)
         {:status 200
          :body {:success true
                 :vault {:id vault-id
                         :name name
-                        :domain domain}}}))))
+                        :domain domain}}}
+        (catch Exception e
+          (if (str/includes? (.getMessage e) "UNIQUE constraint failed: vaults.domain")
+            {:status 200
+             :body {:success false
+                    :error "Domain already in use"}}
+            (throw e)))))))
 
 (defn search-vault-notes
   "Search notes within a vault."

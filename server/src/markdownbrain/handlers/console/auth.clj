@@ -1,6 +1,7 @@
 (ns markdownbrain.handlers.console.auth
   "Console authentication and initialization handlers."
   (:require
+   [clojure.string :as str]
    [markdownbrain.db :as db]
    [markdownbrain.response :as resp]
    [markdownbrain.utils :as utils]
@@ -61,9 +62,44 @@
 (defn login-page
   "Render login page."
   [request]
-  (resp/html (selmer/render-file "templates/console/login.html" {})))
+  (resp/html (selmer/render-file "templates/console/login.html"
+                                 {:csrf-token (:anti-forgery-token request)})))
 
 (defn init-page
   "Render initialization page."
   [request]
-  (resp/html (selmer/render-file "templates/console/init.html" {})))
+  (resp/html (selmer/render-file "templates/console/init.html"
+                                 {:csrf-token (:anti-forgery-token request)})))
+
+(defn change-password
+  "Change current console user's password."
+  [request]
+  (let [user-id (get-in request [:session :user-id])
+        params (or (:body-params request) (:params request))
+        {:keys [current-password new-password confirm-password]} params
+        current (some-> current-password str)
+        next (some-> new-password str)
+        confirm (some-> confirm-password str)]
+    (cond
+      (or (str/blank? current) (str/blank? next) (str/blank? confirm))
+      (resp/error 400 "Missing required fields")
+
+      (not= next confirm)
+      (resp/error 400 "New password confirmation does not match")
+
+      (< (count next) 8)
+      (resp/error 400 "New password must be at least 8 characters")
+
+      :else
+      (let [user (db/get-user-by-id user-id)]
+        (cond
+          (nil? user)
+          (resp/error 404 "User not found")
+
+          (not (utils/verify-password current (:password-hash user)))
+          (resp/error 400 "Current password is incorrect")
+
+          :else
+          (let [password-hash (utils/hash-password next)]
+            (db/update-user-password! user-id password-hash)
+            (resp/success {:message "Password updated"})))))))
