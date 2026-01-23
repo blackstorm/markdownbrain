@@ -72,6 +72,48 @@
     </div>
   </div>
 
+  <!-- Publish Status -->
+  <div class="vault-section">
+    <span class="section-label">Publish Status</span>
+    <div>
+      {% if vault.publish-ok %}
+        <div class="flex items-center gap-2 text-sm">
+          <i data-lucide="check-circle" class="icon-xs"></i>
+          <span>OK</span>
+        </div>
+      {% else %}
+        {% if vault.publish-error %}
+          <div class="flex items-center gap-2 text-sm">
+            <i data-lucide="alert-circle" class="icon-xs"></i>
+            <span>Error</span>
+          </div>
+        {% else %}
+          <div class="flex items-center gap-2 text-sm">
+            <i data-lucide="clock" class="icon-xs"></i>
+            <span>Never</span>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="text-xs text-(--text-tertiary) mt-2">
+        Last publish:
+        {% if vault.last-publish-at %}
+          <span data-utc-datetime="{{vault.last-publish-at}}">{{vault.last-publish-at}}</span>
+        {% else %}
+          Never
+        {% endif %}
+      </div>
+
+      {% if vault.publish-error %}
+        {% if vault.last-publish-error-message %}
+          <div class="text-xs text-[var(--error)] mt-2">
+            {{vault.last-publish-error-message}}
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
   <!-- Site Logo Section -->
   <div class="vault-section">
     <span class="section-label">Site Logo</span>

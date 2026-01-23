@@ -190,6 +190,28 @@
         (h/set {:sync_key new-sync-key})
         (h/where [:= :id vault-id]))))
 
+(defn record-vault-publish-success!
+  "Record a successful publish attempt for a vault."
+  [vault-id]
+  (execute-one!
+    (-> (h/update :vaults)
+        (h/set {:last_publish_status "ok"
+                :last_publish_at [:raw "CURRENT_TIMESTAMP"]
+                :last_publish_error_code nil
+                :last_publish_error_message nil})
+        (h/where [:= :id vault-id]))))
+
+(defn record-vault-publish-error!
+  "Record a failed publish attempt for a vault."
+  [vault-id error-code error-message]
+  (execute-one!
+    (-> (h/update :vaults)
+        (h/set {:last_publish_status "error"
+                :last_publish_at [:raw "CURRENT_TIMESTAMP"]
+                :last_publish_error_code error-code
+                :last_publish_error_message error-message})
+        (h/where [:= :id vault-id]))))
+
 ;; Note 操作
 (defn upsert-note! [id tenant-id vault-id path client-id content metadata hash mtime]
   (execute-one!

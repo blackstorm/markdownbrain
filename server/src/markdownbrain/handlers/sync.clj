@@ -40,6 +40,62 @@
 ;; Helpers
 ;; =============================================================================
 
+(def ^:private max-publish-error-message-length 400)
+
+(defn- truncate-string
+  [s max-length]
+  (let [s (when (some? s) (str s))]
+    (when (some? s)
+      (subs s 0 (min (count s) max-length)))))
+
+(defn- publish-error-details
+  [response]
+  (let [status (or (:status response) 500)
+        body (:body response)
+        message (cond
+                  (map? body) (or (:error body) (:message body))
+                  (string? body) body
+                  :else nil)
+        code (cond
+               (<= 500 status) "server_error"
+               (<= 400 status 499) "bad_request"
+               :else "error")]
+    {:code code
+     :message (or (some-> message str str/trim)
+                  "Request failed")}))
+
+(defn- record-publish-result!
+  [vault response]
+  (let [vault-id (:id vault)
+        status (or (:status response) 500)]
+    (try
+      (if (< status 400)
+        (db/record-vault-publish-success! vault-id)
+        (let [{:keys [code message]} (publish-error-details response)]
+          (db/record-vault-publish-error!
+            vault-id
+            code
+            (truncate-string message max-publish-error-message-length))))
+      (catch Exception e
+        (log/warn "Failed to record publish status"
+                  {:vault-id vault-id
+                   :status status
+                   :error (.getMessage e)}))))
+  response)
+
+(defn- record-publish-exception!
+  [vault exception]
+  (try
+    (db/record-vault-publish-error!
+      (:id vault)
+      "server_error"
+      (truncate-string (or (.getMessage exception) "Internal server error")
+                       max-publish-error-message-length))
+    (catch Exception e
+      (log/warn "Failed to record publish exception"
+                {:vault-id (:id vault)
+                 :error (.getMessage e)}))))
+
 (defn- normalize-hash-entry [entry]
   {:id (:id entry)
    :hash (:hash entry)})
@@ -156,38 +212,44 @@
   (let [{:keys [ok vault response]} (require-auth request)]
     (if-not ok
       response
-      (let [vault-id (:id vault)
-            {:keys [notes assets]} (:body-params request)
-            client-notes (map normalize-hash-entry (or notes []))
-            client-assets (map normalize-hash-entry (or assets []))
-            client-note-map (into {} (map (juxt :id :hash) client-notes))
-            client-asset-map (into {} (map (juxt :id :hash) client-assets))
-            server-notes (db/list-notes-by-vault vault-id)
-            server-assets (db/list-assets-by-vault vault-id)
-            server-note-map (into {} (map (juxt :client-id :hash) server-notes))
-            server-asset-map (into {} (map (juxt :client-id :md5) server-assets))
-            notes-to-delete (->> server-note-map
-                                 (remove (fn [[id _]] (contains? client-note-map id)))
-                                 (map (fn [[id hash]] {:id id :hash hash})))
-            assets-to-delete (->> server-asset-map
-                                  (remove (fn [[id _]] (contains? client-asset-map id)))
-                                  (map (fn [[id hash]] {:id id :hash hash})))
-            notes-to-upsert (->> client-note-map
-                                 (filter (fn [[id hash]]
-                                           (not= hash (get server-note-map id))))
-                                 (map (fn [[id hash]] {:id id :hash hash})))
-            assets-to-upsert (->> client-asset-map
-                                  (filter (fn [[id hash]]
-                                            (not= hash (get server-asset-map id))))
-                                  (map (fn [[id hash]] {:id id :hash hash})))]
-        (doseq [{:keys [id]} notes-to-delete]
-          (delete-note! vault-id id))
-        (doseq [{:keys [id]} assets-to-delete]
-          (delete-asset! vault-id id))
-        (resp/ok {:need_upsert {:notes (vec notes-to-upsert)
-                                :assets (vec assets-to-upsert)}
-                  :deleted_on_server {:notes (vec notes-to-delete)
-                                      :assets (vec assets-to-delete)}})))))
+      (try
+        (let [vault-id (:id vault)
+              {:keys [notes assets]} (:body-params request)
+              client-notes (map normalize-hash-entry (or notes []))
+              client-assets (map normalize-hash-entry (or assets []))
+              client-note-map (into {} (map (juxt :id :hash) client-notes))
+              client-asset-map (into {} (map (juxt :id :hash) client-assets))
+              server-notes (db/list-notes-by-vault vault-id)
+              server-assets (db/list-assets-by-vault vault-id)
+              server-note-map (into {} (map (juxt :client-id :hash) server-notes))
+              server-asset-map (into {} (map (juxt :client-id :md5) server-assets))
+              notes-to-delete (->> server-note-map
+                                   (remove (fn [[id _]] (contains? client-note-map id)))
+                                   (map (fn [[id hash]] {:id id :hash hash})))
+              assets-to-delete (->> server-asset-map
+                                    (remove (fn [[id _]] (contains? client-asset-map id)))
+                                    (map (fn [[id hash]] {:id id :hash hash})))
+              notes-to-upsert (->> client-note-map
+                                   (filter (fn [[id hash]]
+                                             (not= hash (get server-note-map id))))
+                                   (map (fn [[id hash]] {:id id :hash hash})))
+              assets-to-upsert (->> client-asset-map
+                                    (filter (fn [[id hash]]
+                                              (not= hash (get server-asset-map id))))
+                                    (map (fn [[id hash]] {:id id :hash hash})))
+              response (do
+                         (doseq [{:keys [id]} notes-to-delete]
+                           (delete-note! vault-id id))
+                         (doseq [{:keys [id]} assets-to-delete]
+                           (delete-asset! vault-id id))
+                         (resp/ok {:need_upsert {:notes (vec notes-to-upsert)
+                                                 :assets (vec assets-to-upsert)}
+                                   :deleted_on_server {:notes (vec notes-to-delete)
+                                                       :assets (vec assets-to-delete)}}))]
+          (record-publish-result! vault response))
+        (catch Exception e
+          (record-publish-exception! vault e)
+          (throw e))))))
 
 (defn sync-note
   "POST /obsidian/sync/notes/{id}
@@ -218,70 +280,74 @@
   (let [{:keys [ok vault response]} (require-auth request)]
     (if-not ok
       response
-      (let [vault-id (:id vault)
-            tenant-id (:tenant-id vault)
-            note-id (get-in request [:path-params :id])
-            {:keys [path content hash metadata assets linked_notes]} (:body-params request)
-            note-path (ensure-string path)
-            note-hash (ensure-string hash)]
-        (cond
-          (str/blank? note-id)
-          (resp/bad-request "Missing note id")
+      (try
+        (let [vault-id (:id vault)
+              tenant-id (:tenant-id vault)
+              note-id (get-in request [:path-params :id])
+              {:keys [path content hash metadata assets linked_notes]} (:body-params request)
+              note-path (ensure-string path)
+              note-hash (ensure-string hash)
+              response (cond
+                         (str/blank? note-id)
+                         (resp/bad-request "Missing note id")
 
-          (str/blank? note-path)
-          (resp/bad-request "Missing note path")
+                         (str/blank? note-path)
+                         (resp/bad-request "Missing note path")
 
-          (str/blank? note-hash)
-          (resp/bad-request "Missing note hash")
+                         (str/blank? note-hash)
+                         (resp/bad-request "Missing note hash")
 
-          (nil? content)
-          (resp/bad-request "Missing note content")
+                         (nil? content)
+                         (resp/bad-request "Missing note content")
 
-          (not (vector? assets))
-          (resp/bad-request "Missing assets")
+                         (not (vector? assets))
+                         (resp/bad-request "Missing assets")
 
-          (not (vector? linked_notes))
-          (resp/bad-request "Missing linked notes")
+                         (not (vector? linked_notes))
+                         (resp/bad-request "Missing linked notes")
 
-          :else
-          (let [existing (db/get-note-by-client-id vault-id note-id)
-                existing-hash (:hash existing)
-                existing-path (:path existing)]
-            (if (and existing (= existing-hash note-hash) (= existing-path note-path))
-              (resp/ok {:status "skipped" :noteId note-id})
-              (do
-                ;; Sync note content + links, then update asset refs and compute missing uploads.
-                (upsert-note-with-links! tenant-id vault-id note-id note-path content note-hash metadata)
-                (let [asset-entries assets
-                      asset-ids (mapv :id asset-entries)
-                      linked-entries (mapv normalize-hash-entry linked_notes)]
-                  (update-note-asset-refs! vault-id note-id asset-ids)
-                  (let [need-upload (->> asset-entries
-                                         (filter (fn [{:keys [id hash]}]
-                                                   (let [existing (db/get-asset-by-client-id vault-id id)]
-                                                     (or (nil? existing)
-                                                         (not= (:md5 existing) hash)))))
-                                         (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))
-                        need-upload-notes (->> linked-entries
-                                               (filter (fn [{:keys [id hash]}]
-                                                         (let [existing (db/get-note-by-client-id vault-id id)]
-                                                           (or (nil? existing)
-                                                               (not= (:hash existing) hash)))))
-                                               (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))]
-                    (when (config/development?)
-                      (log/debug "sync-note assets"
-                                 {:note-id note-id
-                                  :referenced (count asset-entries)
-                                  :need-upload (count need-upload)}))
-                    (when (config/development?)
-                      (log/debug "sync-note linked-notes"
-                                 {:note-id note-id
-                                  :referenced (count linked-entries)
-                                  :need-upload (count need-upload-notes)}))
-                    (resp/ok {:status "stored"
-                              :noteId note-id
-                              :need_upload_assets need-upload
-                              :need_upload_notes need-upload-notes})))))))))))
+                         :else
+                         (let [existing (db/get-note-by-client-id vault-id note-id)
+                               existing-hash (:hash existing)
+                               existing-path (:path existing)]
+                           (if (and existing (= existing-hash note-hash) (= existing-path note-path))
+                             (resp/ok {:status "skipped" :noteId note-id})
+                             (do
+                               (upsert-note-with-links! tenant-id vault-id note-id note-path content note-hash metadata)
+                               (let [asset-entries assets
+                                     asset-ids (mapv :id asset-entries)
+                                     linked-entries (mapv normalize-hash-entry linked_notes)
+                                     _ (update-note-asset-refs! vault-id note-id asset-ids)
+                                     need-upload (->> asset-entries
+                                                      (filter (fn [{:keys [id hash]}]
+                                                                (let [existing (db/get-asset-by-client-id vault-id id)]
+                                                                  (or (nil? existing)
+                                                                      (not= (:md5 existing) hash)))))
+                                                      (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))
+                                     need-upload-notes (->> linked-entries
+                                                           (filter (fn [{:keys [id hash]}]
+                                                                     (let [existing (db/get-note-by-client-id vault-id id)]
+                                                                       (or (nil? existing)
+                                                                           (not= (:hash existing) hash)))))
+                                                           (mapv (fn [{:keys [id hash]}] {:id id :hash hash})))]
+                                 (when (config/development?)
+                                   (log/debug "sync-note assets"
+                                              {:note-id note-id
+                                               :referenced (count asset-entries)
+                                               :need-upload (count need-upload)}))
+                                 (when (config/development?)
+                                   (log/debug "sync-note linked-notes"
+                                              {:note-id note-id
+                                               :referenced (count linked-entries)
+                                               :need-upload (count need-upload-notes)}))
+                                 (resp/ok {:status "stored"
+                                           :noteId note-id
+                                           :need_upload_assets need-upload
+                                           :need_upload_notes need-upload-notes}))))))]
+          (record-publish-result! vault response))
+        (catch Exception e
+          (record-publish-exception! vault e)
+          (throw e))))))
 
 (defn sync-asset
   "POST /obsidian/sync/assets/{id}"
@@ -289,63 +355,65 @@
   (let [{:keys [ok vault response]} (require-auth request)]
     (if-not ok
       response
-      (let [vault-id (:id vault)
-            tenant-id (:tenant-id vault)
-            asset-id (get-in request [:path-params :id])
-            {:keys [path contentType size hash content]} (:body-params request)
-            asset-path (ensure-string path)
-            asset-hash (ensure-string hash)
-            asset-content-type (ensure-string contentType)]
-        (cond
-          (str/blank? asset-id)
-          (resp/bad-request "Missing asset id")
+      (try
+        (let [vault-id (:id vault)
+              tenant-id (:tenant-id vault)
+              asset-id (get-in request [:path-params :id])
+              {:keys [path contentType size hash content]} (:body-params request)
+              asset-path (ensure-string path)
+              asset-hash (ensure-string hash)
+              asset-content-type (ensure-string contentType)
+              response (cond
+                         (str/blank? asset-id)
+                         (resp/bad-request "Missing asset id")
 
-          (str/blank? asset-path)
-          (resp/bad-request "Missing asset path")
+                         (str/blank? asset-path)
+                         (resp/bad-request "Missing asset path")
 
-          (str/blank? asset-hash)
-          (resp/bad-request "Missing asset hash")
+                         (str/blank? asset-hash)
+                         (resp/bad-request "Missing asset hash")
 
-          (str/blank? asset-content-type)
-          (resp/bad-request "Missing asset contentType")
+                         (str/blank? asset-content-type)
+                         (resp/bad-request "Missing asset contentType")
 
-          :else
-          (let [existing (db/get-asset-by-client-id vault-id asset-id)
-                existing-hash (:md5 existing)
-                existing-path (:path existing)]
-            (if (and existing
-                     (= existing-hash asset-hash)
-                     (= existing-path asset-path))
-              (do
-                (when (config/development?)
-                  (log/debug "sync-asset skipped"
-                             {:vault-id vault-id
-                              :asset-id asset-id
-                              :path asset-path
-                              :hash asset-hash}))
-                (resp/ok {:status "skipped" :assetId asset-id}))
-              (let [content-bytes (decode-base64 content)]
-                (cond
-                  (nil? content-bytes)
-                  (resp/bad-request "Missing asset content")
-
-                  :else
-                  (let [extension (object-store/content-type->extension asset-content-type)
-                        object-key (object-store/asset-object-key asset-id extension)
-                        asset-size (or size (alength ^bytes content-bytes))]
-                    (when (config/development?)
-                      (log/debug "sync-asset stored"
-                                 {:vault-id vault-id
-                                  :asset-id asset-id
-                                  :path asset-path
-                                  :hash asset-hash
-                                  :object-key object-key
-                                  :size asset-size}))
-                    (object-store/put-object! vault-id object-key content-bytes asset-content-type)
-                    (db/upsert-asset! (utils/generate-uuid)
-                                      tenant-id vault-id asset-id asset-path object-key
-                                      asset-size asset-content-type asset-hash)
-                    (resp/ok {:status "stored" :assetId asset-id})))))))))))
+                         :else
+                         (let [existing (db/get-asset-by-client-id vault-id asset-id)
+                               existing-hash (:md5 existing)
+                               existing-path (:path existing)]
+                           (if (and existing
+                                    (= existing-hash asset-hash)
+                                    (= existing-path asset-path))
+                             (do
+                               (when (config/development?)
+                                 (log/debug "sync-asset skipped"
+                                            {:vault-id vault-id
+                                             :asset-id asset-id
+                                             :path asset-path
+                                             :hash asset-hash}))
+                               (resp/ok {:status "skipped" :assetId asset-id}))
+                             (let [content-bytes (decode-base64 content)]
+                               (if (nil? content-bytes)
+                                 (resp/bad-request "Missing asset content")
+                                 (let [extension (object-store/content-type->extension asset-content-type)
+                                       object-key (object-store/asset-object-key asset-id extension)
+                                       asset-size (or size (alength ^bytes content-bytes))]
+                                   (when (config/development?)
+                                     (log/debug "sync-asset stored"
+                                                {:vault-id vault-id
+                                                 :asset-id asset-id
+                                                 :path asset-path
+                                                 :hash asset-hash
+                                                 :object-key object-key
+                                                 :size asset-size}))
+                                   (object-store/put-object! vault-id object-key content-bytes asset-content-type)
+                                   (db/upsert-asset! (utils/generate-uuid)
+                                                     tenant-id vault-id asset-id asset-path object-key
+                                                     asset-size asset-content-type asset-hash)
+                                   (resp/ok {:status "stored" :assetId asset-id})))))))]
+          (record-publish-result! vault response))
+        (catch Exception e
+          (record-publish-exception! vault e)
+          (throw e))))))
 
 (defn vault-info [request]
   (let [{:keys [ok vault response]} (require-auth request)]

@@ -14,12 +14,17 @@
   [vault]
   (let [sync-key (:sync-key vault)
         masked (str (subs sync-key 0 8) "******" (subs sync-key (- (count sync-key) 8)))
+        publish-status (or (:last-publish-status vault) "never")
         notes (db/search-notes-by-vault (:id vault) "")
         storage-bytes (db/get-vault-storage-size (:id vault))
         logo-url (when-let [key (:logo-object-key vault)]
                    (common/console-asset-url (:id vault) key))]
     (assoc vault
            :masked-key masked
+           :last-publish-status publish-status
+           :publish-ok (= publish-status "ok")
+           :publish-error (= publish-status "error")
+           :publish-never (not (contains? #{"ok" "error"} publish-status))
            :notes notes
            :storage-size (common/format-storage-size storage-bytes)
            :logo-url logo-url)))

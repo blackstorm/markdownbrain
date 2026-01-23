@@ -46,6 +46,42 @@
         (is (nil? (db/get-note-by-client-id vault-id note-id-3)))
         (is (nil? (db/get-asset-by-client-id vault-id asset-id-2)))))))
 
+(deftest test-vault-publish-status-snapshot
+  (testing "records last publish status/time/error for authorized sync requests"
+    (with-redefs [object-store/delete-object! (fn [_ _] nil)]
+      (let [tenant-id (support/create-test-tenant!)
+            {:keys [vault-id sync-key]} (support/create-test-vault! tenant-id "publish-status.com")
+            initial-vault (db/get-vault-by-id vault-id)
+            _ (is (= "never" (:last-publish-status initial-vault)))
+            _ (is (nil? (:last-publish-at initial-vault)))
+
+            ;; Error attempt
+            bad-request (-> (auth-request :post "/obsidian/sync/notes/note-1" sync-key
+                                          {:path nil
+                                           :content "Hello"
+                                           :hash "hash-note"
+                                           :assets []
+                                           :linked_notes []})
+                            (assoc :path-params {:id "note-1"}))
+            bad-response (sync/sync-note bad-request)
+            error-vault (db/get-vault-by-id vault-id)
+
+            _ (is (= 400 (:status bad-response)))
+            _ (is (= "error" (:last-publish-status error-vault)))
+            _ (is (some? (:last-publish-at error-vault)))
+            _ (is (= "bad_request" (:last-publish-error-code error-vault)))
+            _ (is (= "Missing note path" (:last-publish-error-message error-vault)))
+
+            ;; Success attempt clears errors
+            ok-request (auth-request :post "/obsidian/sync/changes" sync-key {:notes [] :assets []})
+            ok-response (sync/sync-changes ok-request)
+            ok-vault (db/get-vault-by-id vault-id)]
+        (is (= 200 (:status ok-response)))
+        (is (= "ok" (:last-publish-status ok-vault)))
+        (is (some? (:last-publish-at ok-vault)))
+        (is (nil? (:last-publish-error-code ok-vault)))
+        (is (nil? (:last-publish-error-message ok-vault)))))))
+
 (deftest test-sync-note-upsert-with-asset-refs
   (testing "upsert note stores content and updates asset refs"
     (let [tenant-id (support/create-test-tenant!)

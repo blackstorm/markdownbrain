@@ -79,6 +79,31 @@ function formatDate(dateStr) {
   });
 }
 
+function renderLocalDatetimes(root = document) {
+  const scope = root && root.querySelectorAll ? root : document;
+  scope.querySelectorAll('[data-utc-datetime]').forEach((el) => {
+    const raw = el.getAttribute('data-utc-datetime');
+    if (!raw) return;
+
+    const normalized = /[zZ]$|[+-]\d{2}:?\d{2}$/.test(raw)
+      ? raw
+      : /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
+        ? `${raw.replace(' ', 'T')}Z`
+        : raw;
+
+    const date = new Date(normalized);
+    if (Number.isNaN(date.getTime())) return;
+    el.textContent = date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    el.setAttribute('title', raw);
+  });
+}
+
 function safeParseJson(text) {
   if (!text || typeof text !== 'string') return null;
   try {
@@ -96,6 +121,12 @@ function getHtmxJsonResponse(event) {
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('MarkdownBrain frontend initialized');
+  renderLocalDatetimes(document);
+});
+
+document.addEventListener('htmx:afterSwap', (event) => {
+  const target = (event.detail && event.detail.target) || event.target || document;
+  renderLocalDatetimes(target);
 });
 
 /**
