@@ -4,111 +4,118 @@
 
 Publish your Obsidian vault as a website you can self-host.
 
-MarkdownBrain includes:
-- a **Console** (admin UI) to manage sites/domains/publish keys
-- a **Frontend** (public site) to browse published notes
-- an **Obsidian plugin** that publishes notes/assets to your server
+## What it is
 
-## MVP Features
+MarkdownBrain is a personal publishing stack for Obsidian:
 
-- Publish Markdown notes + attachments (images/PDF/audio/video)
+- Console: manage vaults, domains, and Publish Keys
+- Frontend: serve the public site (notes, backlinks, assets)
+- Obsidian plugin: publish notes and assets to your server
+
+## MVP scope
+
+- Publish Markdown notes and attachments
+- Internal links and backlinks
 - Custom domain per vault
-- On-demand TLS via Caddy (optional)
-- Internal links + backlinks
-- Per-vault publish key (renewable)
-- Console shows last publish status/time/error (snapshot)
+- Local storage or S3-compatible object storage
+- Per-vault Publish Key (renewable)
+- Console shows last publish status, time, and error (snapshot)
 
-## Quickstart (Development)
+## Quickstart (self-host)
 
-Prereqs: Java (Temurin 21+ recommended), Clojure CLI, Node.js (for CSS build), Make.
-
-```bash
-make install
-make dev
-# Frontend: http://localhost:8080
-# Console:  http://localhost:9090/console
-```
-
-Other useful commands:
+1. Prepare a Linux server with Docker + Docker Compose, a domain (A/AAAA), and open ports `80/443`.
+2. Create an env file.
 
 ```bash
-make backend-test
-make frontend-dev
-make plugin-dev
-make build
+cp selfhosted/.env.example selfhosted/.env
 ```
 
-## Quickstart (Self-host)
-
-See `selfhosted/README.md` for a detailed guide.
-
-Local storage + Caddy (recommended for single-node):
+3. Start MarkdownBrain (local storage + Caddy, recommended).
 
 ```bash
-docker compose -f selfhosted/compose/docker-compose.local.yml up -d
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
 ```
 
-S3-compatible storage + Caddy:
-
-```bash
-export S3_PUBLIC_URL=https://s3.your-domain.com
-docker compose -f selfhosted/compose/docker-compose.s3.yml up -d
-```
-
-Console is bound to `127.0.0.1:9090` in the provided Compose files. Access it via SSH tunnel:
+4. Access Console (private by default).
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
 
+5. Create the first admin user at `/console/init`, then create a vault and copy its Publish Key.
+6. Install and configure the Obsidian plugin.
+
+Full guide: `selfhosted/README.md`.
+
+## Quickstart (development)
+
+Prereqs: Java 25 (Temurin), Clojure CLI, Node.js 25, pnpm, Make.
+
+```bash
+make install
+make dev
+```
+
+- Frontend: `http://localhost:8080`
+- Console: `http://localhost:9090/console`
+
+## Releases
+
+### Docker image (GHCR)
+
+- Image: `ghcr.io/<owner>/markdownbrain`
+- Tags:
+  - `edge`, `sha-<7>` on `main`
+  - `X.Y.Z`, `X.Y`, `X`, `latest` on git tag `vX.Y.Z`
+
+### Obsidian plugin
+
+- Download `markdownbrain-plugin.zip` from GitHub Releases.
+- Unzip into `.obsidian/plugins/markdownbrain/`.
+
+## Documentation
+
+- Self-hosting: `selfhosted/README.md`
+- Obsidian plugin: `obsidian-plugin/README.md`
+- Tests: `server/test/README.md`
+- UI guidelines: `DESIGN_SYSTEM.md`
+
 ## Configuration
 
-MarkdownBrain reads env vars from the environment and `server/.env` (development).
+MarkdownBrain reads configuration from environment variables. In development, it also reads `server/.env`.
 
-| Env var | Description | Required |
-|---|---|---|
-| `ENVIRONMENT` | `development` or `production` | No |
-| `HOST` | Bind host (defaults to `0.0.0.0`) | No |
-| `FRONTEND_PORT` | Public frontend port (default `8080`) | No |
-| `CONSOLE_PORT` | Console port (default `9090`) | No |
-| `DB_PATH` | SQLite DB path (default `data/markdownbrain.db`) | No |
-| `SESSION_SECRET` | Console session secret (auto-generated if omitted) | No |
-| `STORAGE_TYPE` | `local` or `s3` | No |
-| `LOCAL_STORAGE_PATH` | Local object storage path (default `./data/storage`) | No |
-| `S3_ENDPOINT` | S3 endpoint (required when `STORAGE_TYPE=s3`) | Yes (S3) |
-| `S3_ACCESS_KEY` | S3 access key | Yes (S3) |
-| `S3_SECRET_KEY` | S3 secret key | Yes (S3) |
-| `S3_REGION` | S3 region (default `us-east-1`) | No |
-| `S3_BUCKET` | S3 bucket (default `markdownbrain`) | No |
-| `S3_PUBLIC_URL` | Public base URL for browser asset loading | Yes (S3) |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | `true` to enable Caddy on-demand TLS | No |
+| Name | Description | Default | Required |
+|---|---|---|---|
+| `ENVIRONMENT` | `development` or `production` | `development` | No |
+| `HOST` | Bind host for both servers | `0.0.0.0` | No |
+| `FRONTEND_PORT` | Frontend server port | `8080` | No |
+| `CONSOLE_PORT` | Console server port | `9090` | No |
+| `DB_PATH` | SQLite DB path | `data/markdownbrain.db` | No |
+| `SESSION_SECRET` | Console session secret (hex string) | auto-generated | No |
+| `STORAGE_TYPE` | Storage backend: `local` or `s3` | `local` | No |
+| `LOCAL_STORAGE_PATH` | Local storage path when `STORAGE_TYPE=local` | `./data/storage` | No |
+| `S3_ENDPOINT` | S3 endpoint URL when `STORAGE_TYPE=s3` | - | Yes (S3) |
+| `S3_ACCESS_KEY` | S3 access key when `STORAGE_TYPE=s3` | - | Yes (S3) |
+| `S3_SECRET_KEY` | S3 secret key when `STORAGE_TYPE=s3` | - | Yes (S3) |
+| `S3_REGION` | S3 region | `us-east-1` | No |
+| `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
+| `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets | - | Yes (S3) |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable Caddy on-demand TLS integration | `false` | No |
+| `JAVA_OPTS` | Extra JVM args (Docker runtime) | empty | No |
 
 Notes:
-- `S3_PUBLIC_URL` must be reachable by browsers. Assets are loaded directly from it (not proxied via the app).
-- If `SESSION_SECRET` is omitted, it is generated and stored in `data/.secrets.edn` next to the DB file.
 
-## Obsidian Plugin
-
-- Plugin docs: `obsidian-plugin/README.md`
-- Install (from release): unzip `markdownbrain-plugin.zip` into `.obsidian/plugins/markdownbrain/`
-- Configure:
-  - Server URL: your MarkdownBrain base URL
-  - Publish Key: copy from Console → your vault card
-
-## Repository Layout
-
-- `server/`: Clojure backend + templates + static assets
-- `obsidian-plugin/`: Obsidian plugin (TypeScript)
-- `selfhosted/`: Docker Compose + Caddy configs
-
-## Third-party assets
-
-This repository ships third-party fonts and frontend libraries under their own licenses.
-See `THIRD_PARTY_NOTICES.md` and files under `server/resources/publics/shared/`.
+- If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `data/.secrets.edn` next to the DB.
+- In production, set `ENVIRONMENT=production` to enable secure cookies.
 
 ## License
 
-- Server (`server/`): `AGPL-3.0` (see `LICENSE`).
-- Obsidian plugin (`obsidian-plugin/`): MIT (see `obsidian-plugin/LICENSE`).
-- Deployment configs (`selfhosted/`): MIT (see `selfhosted/LICENSE`).
+- Server (`server/`): `AGPL-3.0-or-later` (see `LICENSE`)
+- Obsidian plugin (`obsidian-plugin/`): MIT (see `obsidian-plugin/LICENSE`)
+- Deployment configs (`selfhosted/`): MIT (see `selfhosted/LICENSE`)
+
+## Third-party notices
+
+This repository bundles third-party fonts and frontend libraries under their own licenses.
+See `THIRD_PARTY_NOTICES.md`.

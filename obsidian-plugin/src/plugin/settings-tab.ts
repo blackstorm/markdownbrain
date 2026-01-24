@@ -34,9 +34,9 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
       .addText((text) =>
         text
           .setPlaceholder("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-          .setValue(this.plugin.settings.syncKey)
+          .setValue(this.plugin.settings.publishKey)
           .onChange(async (value) => {
-            this.plugin.settings.syncKey = value;
+            this.plugin.settings.publishKey = value;
             await this.plugin.saveSettings();
           }),
       );

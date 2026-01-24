@@ -34,7 +34,7 @@ export default class MarkdownBrainPlugin extends Plugin {
     this.syncClient = new SyncApiClient(
       {
         serverUrl: this.settings.serverUrl,
-        syncKey: this.settings.syncKey,
+        publishKey: this.settings.publishKey,
       },
       httpClient,
     );
@@ -455,7 +455,14 @@ export default class MarkdownBrainPlugin extends Plugin {
 
   async loadSettings() {
     const data = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+    const publishKey =
+      data && typeof data === "object"
+        ? (data as Record<string, unknown>).publishKey ??
+          (data as Record<string, unknown>).syncKey
+        : undefined;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data, {
+      publishKey: typeof publishKey === "string" ? publishKey : "",
+    });
   }
 
   async saveSettings() {
@@ -464,7 +471,7 @@ export default class MarkdownBrainPlugin extends Plugin {
     });
     this.syncClient.updateConfig({
       serverUrl: this.settings.serverUrl,
-      syncKey: this.settings.syncKey,
+      publishKey: this.settings.publishKey,
     });
   }
 

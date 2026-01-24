@@ -58,8 +58,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: obsidian-plugin/pnpm-lock.yaml
 
-      - name: Enable Corepack
-        run: corepack enable
+      - name: Install pnpm
+        run: npm install -g pnpm@10.17.1
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

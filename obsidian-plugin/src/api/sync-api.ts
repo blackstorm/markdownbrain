@@ -75,7 +75,7 @@ export class SyncApiClient {
         url: `${this.config.serverUrl}/obsidian/vault/info`,
         method: "GET",
         headers: {
-          Authorization: `Bearer ${this.config.syncKey}`,
+          Authorization: `Bearer ${this.config.publishKey}`,
         },
       });
 
@@ -102,7 +102,7 @@ export class SyncApiClient {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.config.syncKey}`,
+          Authorization: `Bearer ${this.config.publishKey}`,
         },
         body: JSON.stringify(request),
       });
@@ -139,7 +139,7 @@ export class SyncApiClient {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.config.syncKey}`,
+          Authorization: `Bearer ${this.config.publishKey}`,
         },
         body: JSON.stringify(request),
       });
@@ -177,7 +177,7 @@ export class SyncApiClient {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.config.syncKey}`,
+          Authorization: `Bearer ${this.config.publishKey}`,
         },
         body: JSON.stringify(request),
       });

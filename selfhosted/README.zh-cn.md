@@ -4,95 +4,124 @@
 
 本目录提供生产可用的 Docker Compose 与 Caddy 配置。
 
-## 你会得到什么
+## 概览
 
-- 公开站点：由 **frontend** 服务提供（容器内端口 `8080`）
-- 发布 API：Obsidian 插件请求 `/obsidian/*`，由反向代理转发到 **console** 服务（容器内端口 `9090`）
-- 管理后台：Console 默认 **不对公网暴露**（下面的 Compose 文件会把 9090 绑定到 localhost）
+MarkdownBrain 在容器内提供两个端口：
 
-## 目录结构
+- Frontend：`8080`（公开站点）
+- Console：`9090`（管理后台与发布 API，`/obsidian/*`）
 
-- `selfhosted/compose/`：Docker Compose 文件
-- `selfhosted/caddy/`：Caddyfile 与启动脚本
+推荐的安全模型：
+
+- Console 保持私有（宿主机只绑定 `127.0.0.1`）。
+- 只对外暴露公开站点（通过本仓库提供的 Caddy 转发到 `8080`/`9090`）。
 
 ## 选择部署方式
 
-- `compose/docker-compose.minimal.yml`
-  - 仅 MarkdownBrain（本地存储）
-  - 适合本地测试 / 内网使用（不含反向代理）
-- `compose/docker-compose.local.yml`
-  - MarkdownBrain + Caddy（本地存储）
-  - 单机 VPS 推荐
+- `compose/docker-compose.local.yml`（推荐）
+  - MarkdownBrain + Caddy
+  - 本地存储（不使用 S3）
 - `compose/docker-compose.s3.yml`
-  - MarkdownBrain + Caddy + RustFS（S3 兼容对象存储）
-  - 需要对象存储或可扩展存储时推荐（也可替换成你自己的 S3）
+  - MarkdownBrain + Caddy + RustFS（S3 兼容）
+  - 也可以替换为你自己的 S3
+- `compose/docker-compose.minimal.yml`
+  - 仅 MarkdownBrain（不含反向代理）
+  - 适合本地测试或内网环境
 
 ## 前置条件
 
-- 一台 Linux 服务器 / VPS，已安装 Docker 与 Docker Compose
+- 一台 Linux 服务器，已安装 Docker 与 Docker Compose
 - 一个域名，A/AAAA 记录指向服务器
-- 放行 `80/443` 端口（Caddy TLS 需要）
+- 放行 `80/443` 端口（Caddy 使用）
 
-## 快速启动
+## 环境变量
 
-### 本地存储 + Caddy（推荐）
+Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.example`）。这些变量要么用于 Compose 的变量替换（镜像标签、端口等），要么会注入到容器的环境变量中。
+
+| 变量名 | 说明 | 默认值或示例 | 必填 |
+|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/<owner>/markdownbrain:latest` | 是 |
+| `JAVA_OPTS` | MarkdownBrain 容器的 JVM 参数 | `-Xms256m -Xmx512m` | 否 |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | 是否启用 Caddy 按需 TLS | `false` | 否 |
+| `S3_PUBLIC_URL` | S3 模式下浏览器加载资源的 base URL | `https://s3.your-domain.com` | 是（S3） |
+| `S3_ACCESS_KEY` | S3 Access Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
+| `S3_SECRET_KEY` | S3 Secret Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
+| `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 是（S3） |
+| `S3_PUBLIC_PORT` | S3 Compose 中 RustFS 暴露到宿主机的端口 | `9000` | 否 |
+
+## 快速开始（本地存储 + Caddy）
+
+1. 创建 `selfhosted/.env`。
 
 ```bash
-docker compose -f selfhosted/compose/docker-compose.local.yml up -d
-docker compose -f selfhosted/compose/docker-compose.local.yml logs -f
+cp selfhosted/.env.example selfhosted/.env
 ```
 
-### S3 兼容对象存储 + Caddy（包含 RustFS）
+2. 修改 `selfhosted/.env`。
 
-RustFS 在 Compose 内网启动。你仍需要一个浏览器可访问的资源域名/URL（用于加载图片/PDF 等）。
+- 生产环境建议固定版本：`MARKDOWNBRAIN_IMAGE=...:X.Y.Z`
+- 需要自动证书时设置：`CADDY_ON_DEMAND_TLS_ENABLED=true`
+
+3. 启动。
 
 ```bash
-export S3_PUBLIC_URL=https://s3.your-domain.com
-docker compose -f selfhosted/compose/docker-compose.s3.yml up -d
-docker compose -f selfhosted/compose/docker-compose.s3.yml logs -f
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
 ```
 
-## Console 访问（保持私有）
-
-这些 Compose 文件会把 `9090` 端口绑定到宿主机的 `127.0.0.1`。使用 SSH 隧道访问：
+4. 通过 SSH 隧道访问 Console。
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
 
-首次访问会跳转到 `/console/init`，用于创建第一个管理员账号。
+5. 初始化并发布。
 
-## 按需 TLS（可选）
+- 在 `/console/init` 创建第一个管理员账号。
+- 创建 Vault，并设置域名。
+- 复制 Vault 的 Publish Key，配置 Obsidian 插件。
+- 打开 `https://<你的域名>/`。
 
-设置 `CADDY_ON_DEMAND_TLS_ENABLED=true` 后，Caddy 会按需为你的域名自动签发证书。
+## S3 模式说明
 
-工作原理：
-- Caddy 会调用 `http://markdownbrain:9090/console/domain-check?domain=...`（ask）
-- 只有当域名已在 Console 的 vault 列表中存在时，MarkdownBrain 才返回 `200`
+在 `docker-compose.s3.yml` 中，RustFS 会暴露到宿主机端口 `${S3_PUBLIC_PORT:-9000}`。
 
-注意：
-- Console 端口必须保持私有（只允许 localhost 或内网访问）。
+- `S3_PUBLIC_URL` 必须能被浏览器直接访问（建议使用 TLS 或 CDN）。
+- 如果你不希望暴露 RustFS，请使用你自己的 S3 + CDN，并把 `S3_PUBLIC_URL` 设置为 CDN 的 base URL。
 
-## Obsidian 插件发布
+启动：
 
-插件请求 `${SERVER_URL}/obsidian/...`。本仓库提供的 Caddyfile 会把 `/obsidian/*` 转发到 console（`:9090`），而公开站点仍由 frontend（`:8080`）提供。
+```bash
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.s3.yml up -d
+```
 
-推荐插件 `Server URL`：
-- `https://notes.example.com`（与你的公开站点一致）
+## 按需 TLS 的工作方式
+
+当 `CADDY_ON_DEMAND_TLS_ENABLED=true` 时，Caddy 只会为已在 MarkdownBrain 中登记的域名签发证书：
+
+- Caddy 调用 `http://markdownbrain:9090/console/domain-check?domain=...`
+- 只有当域名存在于 Vault 列表中时，MarkdownBrain 才返回 `200`
 
 ## 升级
 
 ```bash
-git pull
-docker compose -f selfhosted/compose/docker-compose.local.yml up -d --build
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml pull
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
 ```
 
 数据库迁移会在服务启动时自动执行。
 
+## 备份
+
+持久化数据存放在挂载到 `/app/data` 的 Docker volume 中。
+
+至少备份：
+
+- SQLite：`markdownbrain.db`
+- Secrets：`.secrets.edn`
+
 ## 常见问题
 
-- Caddy TLS 失败：检查 DNS 是否已指向服务器，且 `80/443` 可从公网访问。
-- S3 模式资源加载失败：`S3_PUBLIC_URL` 必须能被浏览器直接访问。
+- TLS 失败：检查 DNS 是否指向服务器，且 `80/443` 可从公网访问。
+- S3 模式资源加载失败：确认 `S3_PUBLIC_URL` 可被浏览器直接访问。
 - 插件无法连接：确认公网可访问 `/obsidian/*`（由 Caddy 转发），以及 Publish Key 是否正确。
-

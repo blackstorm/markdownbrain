@@ -11,13 +11,13 @@
 
 export interface MarkdownBrainSettings {
   serverUrl: string;
-  syncKey: string;
+  publishKey: string;
   autoSync: boolean;
 }
 
 export const DEFAULT_SETTINGS: MarkdownBrainSettings = {
   serverUrl: "https://api.markdownbrain.com",
-  syncKey: "",
+  publishKey: "",
   autoSync: true,
 };
 
@@ -27,7 +27,7 @@ export const DEFAULT_SETTINGS: MarkdownBrainSettings = {
 
 export interface SyncConfig {
   serverUrl: string;
-  syncKey: string;
+  publishKey: string;
 }
 
 // =============================================================================

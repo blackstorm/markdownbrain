@@ -2,99 +2,126 @@
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-This directory contains production-ready Docker Compose setups and Caddy configs.
+This directory provides production-ready Docker Compose setups and Caddy configs.
 
-## What you get
+## Overview
 
-- Public site: notes are served from the **frontend** server (port `8080` in the container)
-- Publish API: the Obsidian plugin calls `/obsidian/*`, proxied to the **console** server (port `9090` in the container)
-- Admin UI: Console is intentionally **not** exposed publicly in the provided Compose files
+MarkdownBrain exposes two HTTP ports inside the container:
 
-## Directory layout
+- Frontend: `8080` (public site)
+- Console: `9090` (admin UI + publish API under `/obsidian/*`)
 
-- `selfhosted/compose/`: Docker Compose files
-- `selfhosted/caddy/`: Caddyfiles + entrypoint
+Security model (recommended):
+
+- Keep Console private (bound to `127.0.0.1` on the host).
+- Expose only the public site (`:80/:443`) through a reverse proxy (Caddy in this repo).
 
 ## Choose a deployment
 
-- `compose/docker-compose.minimal.yml`
-  - MarkdownBrain only, local storage
-  - For local testing / LAN use (no reverse proxy)
-- `compose/docker-compose.local.yml`
-  - MarkdownBrain + Caddy, local storage
-  - Recommended for a single-node VPS
+- `compose/docker-compose.local.yml` (recommended)
+  - MarkdownBrain + Caddy
+  - Local storage (no S3)
 - `compose/docker-compose.s3.yml`
   - MarkdownBrain + Caddy + RustFS (S3-compatible)
-  - Recommended if you want object storage (or replace RustFS with your own S3)
+  - Replace RustFS with your own S3 if you already have one
+- `compose/docker-compose.minimal.yml`
+  - MarkdownBrain only (no reverse proxy)
+  - For local testing / LAN
 
 ## Prerequisites
 
-- A Linux server / VPS with Docker + Docker Compose
-- A domain pointing to your server (A/AAAA record)
-- Ports `80` and `443` open (for Caddy TLS)
+- A Linux server with Docker + Docker Compose
+- A domain pointing to the server (A/AAAA record)
+- Ports `80`/`443` open (for Caddy)
 
-## Quickstart
+## Environment variables
 
-### Local storage + Caddy (recommended)
+Compose reads variables from `selfhosted/.env` (see `selfhosted/.env.example`). These variables are used either for Compose interpolation (image tags, ports) or passed into the containers.
+
+| Name | Description | Default / example | Required |
+|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/<owner>/markdownbrain:latest` | Yes |
+| `JAVA_OPTS` | Extra JVM args for the MarkdownBrain container | `-Xms256m -Xmx512m` | No |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable Caddy on-demand TLS | `false` | No |
+| `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
+| `S3_ACCESS_KEY` | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_SECRET_KEY` | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_BUCKET` | S3 bucket name | `markdownbrain` | Yes (S3) |
+| `S3_PUBLIC_PORT` | Host port for RustFS in the bundled S3 compose | `9000` | No |
+
+## Quickstart (local storage + Caddy)
+
+1. Create `selfhosted/.env`.
 
 ```bash
-docker compose -f selfhosted/compose/docker-compose.local.yml up -d
-docker compose -f selfhosted/compose/docker-compose.local.yml logs -f
+cp selfhosted/.env.example selfhosted/.env
 ```
 
-### S3-compatible storage + Caddy (RustFS included)
+2. Edit `selfhosted/.env`.
 
-RustFS is started inside the Compose network. You still need a public URL for browsers to fetch assets.
+- Pin a version for production (recommended): `MARKDOWNBRAIN_IMAGE=...:X.Y.Z`
+- Enable Caddy on-demand TLS if you want automatic certs: `CADDY_ON_DEMAND_TLS_ENABLED=true`
+
+3. Start.
 
 ```bash
-export S3_PUBLIC_URL=https://s3.your-domain.com
-docker compose -f selfhosted/compose/docker-compose.s3.yml up -d
-docker compose -f selfhosted/compose/docker-compose.s3.yml logs -f
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
 ```
 
-## Console access (private)
-
-In these Compose files, port `9090` is bound to `127.0.0.1` on the host. Access via SSH tunnel:
+4. Access Console via SSH tunnel.
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
 
-First run will redirect you to `/console/init` to create the initial admin user.
+5. Initialize and publish.
 
-## On-demand TLS (optional)
+- Create the first admin user at `/console/init`.
+- Create a vault and set its domain.
+- Copy the vault Publish Key and configure the Obsidian plugin.
+- Visit `https://<your-domain>/`.
 
-Set `CADDY_ON_DEMAND_TLS_ENABLED=true` to let Caddy automatically obtain certificates.
+## S3 mode notes
 
-How it works:
-- Caddy uses “ask” to call `http://markdownbrain:9090/console/domain-check?domain=...`
-- MarkdownBrain returns `200` only if the domain exists in your Console vault list
+In `docker-compose.s3.yml`, RustFS is exposed on host port `${S3_PUBLIC_PORT:-9000}`.
 
-Important:
-- Keep the console port private (localhost or internal network only).
+- `S3_PUBLIC_URL` must be reachable by browsers (recommended to put it behind TLS/CDN).
+- If you do not want to expose RustFS publicly, use your own S3 + CDN and set `S3_PUBLIC_URL` to the CDN base URL.
 
-## Obsidian plugin publishing
+Start:
 
-The plugin calls `${SERVER_URL}/obsidian/...`. In the provided Caddyfiles, `/obsidian/*` is proxied to the console server (`:9090`) while the public site stays on the frontend server (`:8080`).
+```bash
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.s3.yml up -d
+```
 
-Recommended plugin `Server URL`:
-- `https://notes.example.com` (same as your published site)
+## How on-demand TLS works
+
+When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy will only issue a certificate if MarkdownBrain confirms the domain:
+
+- Caddy calls `http://markdownbrain:9090/console/domain-check?domain=...`
+- MarkdownBrain returns `200` only if the domain exists in your vault list
 
 ## Upgrade
 
 ```bash
-# pull latest images (if you use image tags) or git pull (if you build locally)
-git pull
-
-# restart
-docker compose -f selfhosted/compose/docker-compose.local.yml up -d --build
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml pull
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
 ```
 
 Database migrations run automatically on server startup.
 
+## Backup
+
+Persisted data is stored in the Docker volume mounted at `/app/data`.
+
+At minimum, back up:
+
+- SQLite DB: `markdownbrain.db`
+- Secrets file: `.secrets.edn`
+
 ## Troubleshooting
 
-- Caddy TLS fails: verify DNS points to the server and ports `80/443` are reachable.
-- Assets don’t load on S3 mode: `S3_PUBLIC_URL` must be browser-accessible.
-- Plugin can’t connect: ensure `/obsidian/*` is reachable from the internet (via Caddy) and your Publish Key is correct.
+- TLS fails: verify DNS points to the server and ports `80/443` are reachable.
+- Assets fail to load in S3 mode: verify `S3_PUBLIC_URL` is browser-accessible.
+- Plugin cannot connect: ensure `/obsidian/*` is reachable (via Caddy) and your Publish Key is correct.

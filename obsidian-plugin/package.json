@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && npm run copy-files",
-    "copy-files": "mkdir -p dist && cp manifest.json dist/ && cp styles.css dist/ 2>/dev/null || true",
+    "copy-files": "mkdir -p dist && cp manifest.json dist/ && cp LICENSE dist/ && cp styles.css dist/ 2>/dev/null || true",
     "package": "npm run build && cd dist && zip -r ../markdownbrain-plugin.zip .",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
     "test": "vitest run",
@@ -18,7 +18,7 @@
   "keywords": [
     "obsidian",
     "plugin",
-    "sync"
+    "publish"
   ],
   "author": "",
   "license": "MIT",

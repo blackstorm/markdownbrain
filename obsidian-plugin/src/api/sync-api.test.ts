@@ -9,7 +9,7 @@ describe("SyncApiClient", () => {
 
   const config = {
     serverUrl: "https://api.example.com",
-    syncKey: "test-sync-key-123",
+    publishKey: "test-publish-key-123",
   };
 
   beforeEach(() => {
@@ -44,7 +44,7 @@ describe("SyncApiClient", () => {
       expect(mockHttpClient.request).toHaveBeenCalledWith({
         url: "https://api.example.com/obsidian/vault/info",
         method: "GET",
-        headers: { Authorization: "Bearer test-sync-key-123" },
+        headers: { Authorization: "Bearer test-publish-key-123" },
       });
     });
   });
@@ -70,7 +70,7 @@ describe("SyncApiClient", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer test-sync-key-123",
+          Authorization: "Bearer test-publish-key-123",
         },
         body: JSON.stringify({ notes: [], assets: [] }),
       });
@@ -93,7 +93,7 @@ describe("SyncApiClient", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer test-sync-key-123",
+          Authorization: "Bearer test-publish-key-123",
         },
         body: JSON.stringify({
           path: "test.md",
@@ -122,7 +122,7 @@ describe("SyncApiClient", () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer test-sync-key-123",
+          Authorization: "Bearer test-publish-key-123",
         },
         body: JSON.stringify({
           path: "images/test.png",
@@ -145,7 +145,7 @@ describe("SyncApiClient", () => {
 
       api.updateConfig({
         serverUrl: "https://new-api.example.com",
-        syncKey: "new-key",
+        publishKey: "new-key",
       });
 
       await api.getVaultInfo();
