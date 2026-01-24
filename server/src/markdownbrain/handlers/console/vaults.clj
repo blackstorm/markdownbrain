@@ -7,6 +7,7 @@
    [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
    [markdownbrain.utils :as utils]
+   [markdownbrain.utils.bytes :as utils.bytes]
    [selmer.parser :as selmer]))
 
 (defn- enrich-vault-data
@@ -26,7 +27,7 @@
            :publish-error (= publish-status "error")
            :publish-never (not (contains? #{"ok" "error"} publish-status))
            :notes notes
-           :storage-size (common/format-storage-size storage-bytes)
+           :storage-size (utils.bytes/format-storage-size storage-bytes)
            :logo-url logo-url)))
 
 (defn console-home

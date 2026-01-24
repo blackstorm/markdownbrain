@@ -54,4 +54,3 @@
 
 (def serve-console-asset common/serve-console-asset)
 (def console-asset-url common/console-asset-url)
-(def format-storage-size common/format-storage-size)

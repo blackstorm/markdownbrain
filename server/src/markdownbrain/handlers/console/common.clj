@@ -5,20 +5,13 @@
    [markdownbrain.db :as db]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
-   [markdownbrain.utils.bytes :as utils.bytes]
    [markdownbrain.utils.stream :as utils.stream]))
-
-(def format-storage-size
-  utils.bytes/format-storage-size)
 
 (defn console-asset-url
   "Generate console storage URL for an asset.
    Returns URL like /console/storage/{vault-id}/{object-key}"
   [vault-id object-key]
   (str "/console/storage/" vault-id "/" object-key))
-
-(def input-stream->bytes
-  utils.stream/input-stream->bytes)
 
 (defn serve-console-asset
   "Serve assets from storage for console panel.

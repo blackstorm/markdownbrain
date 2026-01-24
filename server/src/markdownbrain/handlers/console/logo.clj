@@ -9,7 +9,8 @@
    [markdownbrain.image-processing :as image-processing]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
-   [markdownbrain.utils :as utils]))
+   [markdownbrain.utils :as utils]
+   [markdownbrain.utils.stream :as utils.stream]))
 
 (def ^:private allowed-logo-types
   #{"image/png" "image/jpeg"})
@@ -167,7 +168,7 @@
       :else
       (let [result (object-store/get-object vault-id (:logo-object-key vault))]
         (if result
-          (let [body (common/input-stream->bytes (:Body result))
+          (let [body (utils.stream/input-stream->bytes (:Body result))
                 content-type (or (:ContentType result) "application/octet-stream")]
             {:status 200
              :headers {"Content-Type" content-type
@@ -203,7 +204,7 @@
             result (or (object-store/get-object vault-id favicon-key)
                        (object-store/get-object vault-id logo-key))]
         (if result
-          (let [body (common/input-stream->bytes (:Body result))
+          (let [body (utils.stream/input-stream->bytes (:Body result))
                 content-type (or (:ContentType result) "application/octet-stream")]
             {:status 200
              :headers {"Content-Type" content-type
