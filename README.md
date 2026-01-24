@@ -6,11 +6,13 @@
 
 **MarkdownBrain is a complete self-hosted solution for publishing [Obsidian](https://obsidian.md/) notes as websites.**
 
-Built with `Clojure` and `HTMX`, it supports multiple vault publishing, automatic incremental sync, link parsing, and backlink display—designed to deliver a seamless publishing experience for digital gardens, blogs, documentation, and tutorial sites.
+It supports multiple vaults, automatic incremental sync, link parsing, and backlink display—designed to deliver a seamless publishing experience for digital gardens, blogs, documentation, and tutorial sites.
+
+Built with `Clojure` and `HTMX` for a simple, fast, and maintainable architecture.
 
 ## Why MarkdownBrain
 
-- **Truly self-hosted** — No third-party platform dependencies; you own your data
+- **Truly self-hosted** — No SaaS or third-party platform dependencies; you own your data
 - **Obsidian-native** — Full support for internal links, backlinks, and wiki-style references
 - **Developer-friendly** — Flexible integration with local storage or S3-compatible backends
 - **One-click publishing** — Sync your existing vault to a live site in seconds
@@ -18,13 +20,13 @@ Built with `Clojure` and `HTMX`, it supports multiple vault publishing, automati
 ## Features
 
 - Fully self-hosted with complete control over deployment and data
-- Multiple independent vault publishing
+- Support for multiple independent vaults
 - Incremental and full sync modes for efficient publishing
-- Native support for Obsidian notes and related assets (images, attachments)
-- Automatic parsing of internal links and backlink structure
-- Built-in custom domain support with automatic HTTPS certificates
-- Compatible with local storage and S3-protocol object storage
-- Site logo and HTML customization
+- Native support for Obsidian notes and related assets
+- Automatic parsing of internal links and backlinks
+- Built-in custom domain support with automatic HTTPS
+- Compatibility with local storage and S3-compatible object storage
+- Customizable site logo and HTML templates
 
 ## Quickstart
 
@@ -42,7 +44,7 @@ docker run -d \
 ```
 
 - Public site: `http://<your-server>:8080`
-- Console: `http://localhost:9090/console` (bound to localhost by default; access via SSH tunnel, VPN, or other secure methods)
+- Console: `http://localhost:9090/console` (bound to localhost by default for security; access via SSH tunnel, VPN, or other secure methods)
 
 **Production deployment (with Caddy + auto TLS):**
 
@@ -96,7 +98,7 @@ Yes. MarkdownBrain automatically parses Obsidian internal links (`[[note]]`) and
 
 All assets referenced in your notes are uploaded alongside your content and served from the same domain or S3 storage.
 
-**Can I use my own domain?**
+**Can I use my own domain for each vault?**
 
 Yes. Each vault can have its own custom domain with automatic HTTPS via Caddy's on-demand TLS.
 
