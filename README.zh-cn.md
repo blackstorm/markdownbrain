@@ -1,9 +1,7 @@
 ![MarkdownBrain Logo](assets/markdownbrain.png)
 # MarkdownBrain
 
-[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE)
-[![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
+[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain) [![Top Language](https://img.shields.io/github/languages/top/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain) [![Last Commit](https://img.shields.io/github/last-commit/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/commits)
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
