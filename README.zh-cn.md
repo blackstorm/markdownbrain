@@ -35,7 +35,7 @@ cp selfhosted/.env.example selfhosted/.env
 4. 启动服务（本地存储 + Caddy，推荐）。
 
 ```bash
-docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.caddy.yml up -d
 ```
 
 5. 访问 Console（默认不对公网暴露）。

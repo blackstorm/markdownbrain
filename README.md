@@ -34,7 +34,7 @@ cp selfhosted/.env.example selfhosted/.env
 3. Start MarkdownBrain (local storage + Caddy, recommended).
 
 ```bash
-docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.local.yml up -d
+docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.caddy.yml up -d
 ```
 
 4. Access Console (private by default).

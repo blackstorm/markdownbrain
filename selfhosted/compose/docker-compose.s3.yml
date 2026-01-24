@@ -10,6 +10,7 @@ services:
     environment:
       - STORAGE_TYPE=s3
       - DATA_PATH=${DATA_PATH:-/app/data}
+      - MARKDOWNBRAIN_LOG_LEVEL=${MARKDOWNBRAIN_LOG_LEVEL:-INFO}
       - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
       - JAVA_OPTS=${JAVA_OPTS:-}
       - S3_ENDPOINT=http://rustfs:9000

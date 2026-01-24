@@ -9,6 +9,7 @@ services:
     environment:
       - STORAGE_TYPE=local
       - DATA_PATH=${DATA_PATH:-/app/data}
+      - MARKDOWNBRAIN_LOG_LEVEL=${MARKDOWNBRAIN_LOG_LEVEL:-INFO}
       - JAVA_OPTS=${JAVA_OPTS:-}
     restart: unless-stopped
 
