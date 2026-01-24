@@ -1,55 +1,62 @@
-.PHONY: help dev build test clean install backend-dev backend-build frontend-dev frontend-build plugin-dev plugin-build plugin-package
+.PHONY: \
+	help \
+	install backend-install assets-install plugin-install \
+	dev backend-dev backend-repl assets-dev plugin-dev \
+	build backend-build assets-build plugin-build plugin-package \
+	test backend-test plugin-test \
+	db-migrate db-pending db-create-migration db-reset \
+	clean
 
-# 默认目标
 help:
-	@echo "MarkdownBrain Development Commands"
+	@echo "MarkdownBrain - Developer commands"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev                              - 启动后端开发服务器（默认端口：8080/9090）"
-	@echo "  make dev FRONTEND_PORT=3000           - 使用自定义端口启动"
-	@echo "  make backend-dev                      - 启动后端开发服务器"
-	@echo "  make backend-repl     - 启动后端 REPL（不启动服务器）"
-	@echo "  make frontend-dev     - 启动前端 CSS watch 模式"
-	@echo "  make plugin-dev       - 启动 Obsidian 插件开发模式"
+	@echo "  make dev                           Start backend dev server (FRONTEND_PORT/CONSOLE_PORT)"
+	@echo "  make backend-repl                  Start backend REPL (no server)"
+	@echo "  make assets-dev                    Watch and rebuild Tailwind CSS (console + frontend)"
+	@echo "  make plugin-dev                    Watch Obsidian plugin (vaults/test)"
 	@echo ""
 	@echo "Build:"
-	@echo "  make build            - 构建所有项目（后端 + 前端 + 插件）"
-	@echo "  make backend-build    - 构建后端 uberjar"
-	@echo "  make frontend-build   - 构建前端 CSS"
-	@echo "  make plugin-build     - 构建 Obsidian 插件到 dist/"
-	@echo "  make plugin-package   - 打包插件为 zip 文件"
+	@echo "  make build                         Build backend + CSS + plugin"
+	@echo "  make backend-build                 Build backend uberjar"
+	@echo "  make assets-build                  Build Tailwind CSS (console + frontend)"
+	@echo "  make plugin-build                  Build Obsidian plugin to dist/"
+	@echo "  make plugin-package                Package plugin zip (markdownbrain-plugin.zip)"
 	@echo ""
 	@echo "Test:"
-	@echo "  make test             - 运行所有测试"
-	@echo "  make backend-test     - 运行后端测试"
+	@echo "  make test                          Run backend + plugin tests"
+	@echo "  make backend-test                  Run backend tests (clojure -M:test)"
+	@echo "  make plugin-test                   Run plugin tests (pnpm test)"
+	@echo ""
+	@echo "Database:"
+	@echo "  make db-migrate                    Run migrations (migratus)"
+	@echo "  make db-pending                    List pending migrations"
+	@echo "  make db-create-migration NAME=xxx  Create a new migration file"
+	@echo "  make db-reset                      Delete local DB and rerun migrations"
 	@echo ""
 	@echo "Maintenance:"
-	@echo "  make install          - 安装所有依赖"
-	@echo "  make clean                        - 清理构建产物"
-	@echo "  make db-migrate                   - 运行数据库迁移 (migratus)"
-	@echo "  make db-reset                     - 重置数据库"
-	@echo "  make db-pending                   - 查看待执行的迁移"
-	@echo "  make db-create-migration NAME=xxx - 创建新迁移文件"
+	@echo "  make install                       Install backend + assets + plugin dependencies"
+	@echo "  make clean                         Remove build outputs"
+	@echo ""
+	@echo "Notes:"
+	@echo "  - Plugin tasks require pnpm (Node.js 25 does not ship Corepack)."
+	@echo "    Install: npm install -g pnpm@10.17.1"
 
-# 安装依赖
-install: backend-install frontend-install plugin-install
+install: backend-install assets-install plugin-install
 
 backend-install:
 	@echo "Installing backend dependencies..."
 	@cd server && clojure -P -M:dev:test
 
-frontend-install:
-	@echo "Installing frontend dependencies..."
+assets-install:
+	@echo "Installing Tailwind CSS dependencies..."
 	@cd server && npm install
-	@cd server && npm run setup
 
 plugin-install:
 	@echo "Installing plugin dependencies..."
-	@cd obsidian-plugin && npm install
+	@cd obsidian-plugin && pnpm install --frozen-lockfile
 
-# 开发模式
-# 支持自定义端口: make dev FRONTEND_PORT=3000 CONSOLE_PORT=4000
-FRONTEND_PORT ?= 4000
+FRONTEND_PORT ?= 8080
 CONSOLE_PORT ?= 9090
 
 dev:
@@ -67,45 +74,49 @@ backend-repl:
 	@echo "Starting backend REPL..."
 	@cd server && clojure -M:repl
 
-frontend-dev:
-	@echo "Starting frontend CSS watch mode..."
-	@cd server && npm run watch:css
+assets-dev:
+	@echo "Starting Tailwind CSS watch mode..."
+	@cd server && npm run watch
 
 plugin-dev:
 	@echo "Starting Obsidian plugin development mode..."
-	@cd obsidian-plugin && npm run dev
+	@cd obsidian-plugin && pnpm dev
 
-# 构建
-build: backend-build frontend-build plugin-build
+build: backend-build assets-build plugin-build
 
 backend-build:
 	@echo "Building backend uberjar..."
 	@cd server && clojure -T:build uberjar
 	@echo "Backend built: server/target/server-standalone.jar"
 
-frontend-build:
-	@echo "Building frontend CSS..."
-	@cd server && npm run build:css
-	@echo "Frontend CSS built: server/resources/publics/frontend/css/frontend.css"
+assets-build:
+	@echo "Building Tailwind CSS..."
+	@cd server && npm run build
+	@echo "CSS built:"
+	@echo "  - server/resources/publics/console/css/app.css"
+	@echo "  - server/resources/publics/frontend/css/frontend.css"
 
 plugin-build:
 	@echo "Building Obsidian plugin..."
-	@cd obsidian-plugin && npm run build
+	@cd obsidian-plugin && pnpm build
 	@echo "Plugin built: obsidian-plugin/dist/"
 
 plugin-package:
 	@echo "Packaging Obsidian plugin..."
-	@cd obsidian-plugin && npm run package
+	@cd obsidian-plugin && pnpm package
 	@echo "Plugin packaged: obsidian-plugin/markdownbrain-plugin.zip"
 
-# 测试
-test: backend-test
+test: backend-test plugin-test
 
 backend-test:
 	@echo "Running backend tests..."
 	@cd server && clojure -M:test
 
-# 数据库操作
+plugin-test:
+	@echo "Running plugin tests..."
+	@cd obsidian-plugin && pnpm test
+
+# Database
 db-migrate:
 	@echo "Running database migrations..."
 	@cd server && clojure -M:dev -m markdownbrain.migrations migrate
@@ -124,24 +135,12 @@ db-create-migration:
 	@echo "Creating new migration..."
 	@cd server && clojure -M:dev -m markdownbrain.migrations create $(NAME)
 
-# 清理
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf server/target/
 	@rm -rf server/.cpcache/
 	@rm -rf obsidian-plugin/dist/
-	@rm -rf obsidian-plugin/node_modules/
 	@rm -f obsidian-plugin/main.js
 	@rm -f obsidian-plugin/main.js.map
 	@rm -f obsidian-plugin/*.zip
 	@echo "Clean complete"
-
-# 快速启动（用于日常开发）
-start: backend-dev
-
-# 发布准备
-release: clean install test build plugin-package
-	@echo ""
-	@echo "Release artifacts ready:"
-	@echo "  - Backend: server/target/server-standalone.jar"
-	@echo "  - Plugin: obsidian-plugin/markdownbrain-plugin.zip"

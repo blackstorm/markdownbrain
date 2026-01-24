@@ -1,3 +1,4 @@
+![MarkdownBrain Logo](assets/markdownbrain.png)
 # MarkdownBrain
 
 [English](README.md) | [简体中文](README.zh-cn.md)
