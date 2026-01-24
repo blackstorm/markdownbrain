@@ -18,78 +18,100 @@
   {"image/png" "png"
    "image/jpeg" "jpg"})
 
+(def ^:private min-logo-dimension 128)
+
 (defn upload-vault-logo
   "Upload a logo image for a vault.
    Expects multipart form data with 'logo' file field.
    Validates: vault ownership, file type (png/jpg only), max size (2MB), min dimensions (128x128).
    Stores original logo (for website) and generates 32x32 favicon."
   [request]
-  (let [tenant-id (get-in request [:session :tenant-id])
-        vault-id (get-in request [:path-params :id])
-        vault (db/get-vault-by-id vault-id)
-        file (or (get-in request [:multipart-params "logo"])
-                 (get-in request [:params :logo]))]
-    (cond
-      (nil? vault)
-      {:status 404
-       :body {:success false :error "Vault not found"}}
-
-      (not= (:tenant-id vault) tenant-id)
-      {:status 403
-       :body {:success false :error "Permission denied"}}
-
-      (nil? file)
-      {:status 400
-       :body {:success false :error "No file uploaded"}}
-
-      (not (contains? allowed-logo-types (:content-type file)))
-      {:status 400
-       :body {:success false
-              :error (str "Invalid file type. Allowed: PNG, JPEG. Got: " (:content-type file))}}
-
-      (or (zero? (:size file)) (> (:size file) (* 2 1024 1024)))
-      {:status 400
-       :body {:success false :error (if (zero? (:size file))
-                                      "File is empty. Please upload a valid image file."
-                                      "File too large. Maximum size is 2MB.")}}
-
-      :else
-      (let [extension (get logo-extension-map (:content-type file) "png")
-            content (with-open [in (io/input-stream (:tempfile file))]
-                      (let [baos (java.io.ByteArrayOutputStream.)]
-                        (io/copy in baos)
-                        (.toByteArray baos)))
-            content-hash (utils/sha256-hex content 16)
-            content-type (:content-type file)
-            logo-object-key (object-store/logo-object-key content-hash extension)]
-
-        ;; Delete old logo and favicon if exists
-        (when-let [old-key (:logo-object-key vault)]
-          (when (not= old-key logo-object-key)
-            (let [old-extension (last (str/split old-key #"\."))]
+  (letfn [(error [status message]
+            {:status status
+             :body {:success false
+                    :error message}})
+          (rollback! [vault-id object-keys]
+            (doseq [object-key object-keys]
               (try
-                (object-store/delete-object! vault-id (str old-key "@favicon." old-extension))
+                (object-store/delete-object! vault-id object-key)
                 (catch Exception e
-                  (log/debug "Failed to delete old favicon for vault" vault-id ":" (.getMessage e))))
-              (object-store/delete-object! vault-id old-key))))
+                  (log/debug "Rollback delete failed:" (.getMessage e))))))]
+    (let [tenant-id (get-in request [:session :tenant-id])
+          vault-id (get-in request [:path-params :id])
+          vault (db/get-vault-by-id vault-id)
+          file (or (get-in request [:multipart-params "logo"])
+                   (get-in request [:params :logo]))]
+      (cond
+        (nil? vault)
+        (error 404 "Vault not found")
 
-        ;; Upload original logo
-        (object-store/put-object! vault-id logo-object-key content content-type)
+        (not= (:tenant-id vault) tenant-id)
+        (error 403 "Permission denied")
 
-        ;; Generate and upload favicon (optional, fails gracefully)
-        (try
-          (when-let [favicon (image-processing/generate-favicon
-                               content content-type content-hash extension)]
-            (object-store/put-object! vault-id (:object-key favicon)
-                                      (:bytes favicon) content-type))
-          (catch Exception e
-            (log/warn "Favicon generation failed:" (.getMessage e))))
+        (nil? file)
+        (error 400 "No file uploaded")
 
-        ;; Update database with logo key
-        (db/update-vault-logo! vault-id logo-object-key)
+        (not (contains? allowed-logo-types (:content-type file)))
+        (error 400 (str "Invalid file type. Allowed: PNG, JPEG. Got: " (:content-type file)))
 
-        (resp/success {:message "Logo uploaded successfully"
-                       :logo-url (common/console-asset-url vault-id logo-object-key)})))))
+        (or (zero? (:size file)) (> (:size file) (* 2 1024 1024)))
+        (error 400 (if (zero? (:size file))
+                     "File is empty. Please upload a valid image file."
+                     "File too large. Maximum size is 2MB."))
+
+        :else
+        (let [extension (get logo-extension-map (:content-type file) "png")
+              content-type (:content-type file)
+              content (with-open [in (io/input-stream (:tempfile file))]
+                        (let [baos (java.io.ByteArrayOutputStream.)]
+                          (io/copy in baos)
+                          (.toByteArray baos)))
+              dims (image-processing/get-image-dimensions content)]
+          (cond
+            (nil? dims)
+            (error 400 "Invalid image file")
+
+            (< (min (first dims) (second dims)) min-logo-dimension)
+            (error 400 (format "Image too small. Minimum size is %dx%d."
+                               min-logo-dimension min-logo-dimension))
+
+            :else
+            (let [content-hash (utils/sha256-hex content 16)
+                  logo-object-key (object-store/logo-object-key content-hash extension)
+                  favicon (image-processing/generate-favicon content content-type content-hash extension)]
+              (if-not favicon
+                (error 500 "Failed to generate favicon")
+                (let [favicon-object-key (:object-key favicon)
+                      logo-put (object-store/put-object! vault-id logo-object-key content content-type)]
+                  (if-not logo-put
+                    (error 500 "Failed to store logo")
+                    (let [favicon-put (object-store/put-object! vault-id favicon-object-key
+                                                               (:bytes favicon) content-type)]
+                      (if-not favicon-put
+                        (do
+                          (rollback! vault-id [logo-object-key])
+                          (error 500 "Failed to store favicon"))
+                        (try
+                          (db/update-vault-logo! vault-id logo-object-key)
+
+                          (when-let [old-key (:logo-object-key vault)]
+                            (when (not= old-key logo-object-key)
+                              (let [old-extension (last (str/split old-key #"\."))]
+                                (try
+                                  (object-store/delete-object! vault-id (str old-key "@favicon." old-extension))
+                                  (catch Exception e
+                                    (log/debug "Failed to delete old favicon for vault" vault-id ":" (.getMessage e))))
+                                (try
+                                  (object-store/delete-object! vault-id old-key)
+                                  (catch Exception e
+                                    (log/debug "Failed to delete old logo for vault" vault-id ":" (.getMessage e)))))))
+
+                          (resp/success {:message "Logo uploaded successfully"
+                                         :logo-url (common/console-asset-url vault-id logo-object-key)})
+                          (catch Exception e
+                            (rollback! vault-id [logo-object-key favicon-object-key])
+                            (log/error "Failed to update vault logo:" (.getMessage e))
+                            (error 500 "Failed to update vault logo")))))))))))))))
 
 (defn delete-vault-logo
   "Remove the logo and favicon for a vault."

@@ -16,6 +16,21 @@
     (let [domain (first (str/split host #":"))]
       (db/get-vault-by-domain domain))))
 
+(defn- query-param
+  [request param-name]
+  (or (get-in request [:query-params param-name])
+      (get-in request [:params param-name])
+      (get-in request [:params (keyword param-name)])
+      (when-let [qs (:query-string request)]
+        (some (fn [pair]
+                (let [[k v] (str/split pair #"=" 2)]
+                  (when (= k param-name)
+                    (when v
+                      (try
+                        (java.net.URLDecoder/decode v "UTF-8")
+                        (catch Exception _ v))))))
+              (str/split qs #"&")))))
+
 (defn parse-path-ids
   [path]
   (if (or (nil? path) (= path "/") (= path ""))
@@ -106,6 +121,19 @@
     (let [filename (last (str/split logo-object-key #"/"))]
       (first (str/split filename #"\.")))))
 
+(defn- public-vault
+  [vault]
+  (let [vault-id (:id vault)
+        logo-object-key (:logo-object-key vault)
+        logo-hash (extract-logo-hash logo-object-key)]
+    (cond-> vault
+      logo-object-key
+      (assoc :logo-url (object-store/public-asset-url vault-id logo-object-key)
+             :favicon-version (java.net.URLEncoder/encode logo-object-key "UTF-8"))
+
+      logo-hash
+      (assoc :logo-hash logo-hash))))
+
 (defn get-note
   [request]
   (let [path (get-in request [:path-params :path] "/")
@@ -116,7 +144,8 @@
     (if-not vault
       {:status 404 :body "Site not found"}
 
-      (let [vault-id (:id vault)]
+      (let [vault-id (:id vault)
+            vault (public-vault vault)]
           (if (empty? path-client-ids)
           (if-let [root-client-id (:root-note-id vault)]
             (if-let [root-note (db/get-note-for-frontend vault-id root-client-id)]
@@ -201,9 +230,7 @@
   "Serve vault favicon (32x32) for public access.
    Route: GET /favicon.ico
    
-   Uses short cache (1 hour) + ETag for cache validation.
-   Falls back to original logo if favicon doesn't exist.
-   Returns 404 if no logo is set."
+   Redirects to a versioned favicon URL."
   [request]
   (let [vault (get-current-vault request)]
     (cond
@@ -222,29 +249,19 @@
       :else
       (let [vault-id (:id vault)
             logo-key (:logo-object-key vault)
-            extension (last (str/split logo-key #"\."))
-            favicon-key (str logo-key "@favicon." extension)
             current-hash (extract-logo-hash logo-key)
             etag (str "\"" current-hash "\"")
-            if-none-match (get-in request [:headers "if-none-match"])]
-        (if (= if-none-match etag)
-          {:status 304
-           :headers {"ETag" etag
-                     "Cache-Control" "public, max-age=3600"}}
-          (let [result (or (object-store/get-object vault-id favicon-key)
-                           (object-store/get-object vault-id logo-key))]
-            (if result
-              (let [body (input-stream->bytes (:Body result))
-                    content-type (or (:ContentType result) "application/octet-stream")]
-                (log/debug "Serving favicon for vault:" vault-id)
-                {:status 200
-                 :headers {"Content-Type" content-type
-                           "Cache-Control" "public, max-age=3600"
-                           "ETag" etag}
-                 :body body})
-              {:status 404
-               :headers {"Content-Type" "text/plain"}
-               :body "Not found"})))))))
+            version (query-param request "v")
+            cache-control (if version
+                            "public, max-age=31536000, immutable"
+                            "public, max-age=300")
+            extension (last (str/split logo-key #"\."))
+            favicon-key (str logo-key "@favicon." extension)
+            location (object-store/public-asset-url vault-id favicon-key)]
+        {:status 302
+         :headers {"Location" location
+                   "Cache-Control" cache-control
+                   "ETag" etag}}))))
 
 (defn serve-asset
   "Serve assets from local storage.

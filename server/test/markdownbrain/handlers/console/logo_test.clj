@@ -21,7 +21,7 @@
           _ (db/create-user! user-id tenant-id "logo-console" "hash")
           vault-id (utils/generate-uuid)
           _ (db/create-vault! vault-id tenant-id "Logo Vault" "logo.com" (utils/generate-uuid))
-          logo-bytes (create-test-png 100 100)
+          logo-bytes (create-test-png 128 128)
           logo-file (create-temp-file logo-bytes "image/png")
           uploaded-logo-key (atom nil)
           uploaded-favicon-key (atom nil)]
@@ -33,7 +33,8 @@
                                                (when (= vid vault-id)
                                                  (if (str/includes? key "@favicon.")
                                                    (reset! uploaded-favicon-key key)
-                                                   (reset! uploaded-logo-key key))))
+                                                   (reset! uploaded-logo-key key)))
+                                               true)
                     object-store/delete-object! (fn [vid key] nil)]
 
         (let [request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
@@ -61,13 +62,15 @@
           _ (db/create-vault! vault-id tenant-id "Logo Replace Vault" "logoreplace.com" (utils/generate-uuid))
           deleted-keys (atom [])
           first-logo-key "site/logo/oldhash.png"
-          logo-bytes (create-test-png 100 100)
+          logo-bytes (create-test-png 128 128)
           logo-file (create-temp-file logo-bytes "image/png")]
 
       (db/update-vault-logo! vault-id first-logo-key)
 
-      (with-redefs [image-processing/generate-favicon (fn [& _] nil)
-                    object-store/put-object! (fn [vid key content content-type] nil)
+      (with-redefs [image-processing/generate-favicon (fn [& _]
+                                                        {:object-key "site/logo/new.png@favicon.png"
+                                                         :bytes (byte-array [1 2 3])})
+                    object-store/put-object! (fn [vid key content content-type] true)
                     object-store/delete-object! (fn [vid key]
                                                   (swap! deleted-keys conj key))]
 
@@ -75,15 +78,17 @@
                                                  tenant-id user-id)
                           (assoc :path-params {:id vault-id})
                           (assoc :multipart-params {"logo" logo-file}))
-              _ (logo/upload-vault-logo request)]
+              response (logo/upload-vault-logo request)]
 
+          (is (= 200 (:status response)))
+          (is (true? (get-in response [:body :success])))
           (is (some #(str/includes? % "@favicon.") @deleted-keys)
               "Old favicon should be deleted")
           (is (some #(= % first-logo-key) @deleted-keys)
               "Old logo should be deleted"))))))
 
 (deftest test-upload-vault-logo-small-image
-  (testing "Small images that cannot generate favicon still work"
+  (testing "Small images are rejected"
     (let [tenant-id (utils/generate-uuid)
           _ (db/create-tenant! tenant-id "Test Org")
           user-id (utils/generate-uuid)
@@ -95,13 +100,16 @@
           uploaded-logo-key (atom nil)
           uploaded-favicon-key (atom nil)]
 
-      (with-redefs [image-processing/generate-favicon (fn [& _] nil)
-                    object-store/put-object! (fn [vid key content content-type]
-                                               (when (= vid vault-id)
-                                                 (if (str/includes? key "@favicon.")
-                                                   (reset! uploaded-favicon-key key)
-                                                   (reset! uploaded-logo-key key))))
-                    object-store/delete-object! (fn [vid key] nil)]
+	      (with-redefs [image-processing/generate-favicon (fn [& _]
+	                                                        (throw (ex-info "generate-favicon should not be called" {})))
+	                    object-store/put-object! (fn [vid key content content-type]
+	                                               (when (= vid vault-id)
+	                                                 (if (str/includes? key "@favicon.")
+	                                                   (reset! uploaded-favicon-key key)
+	                                                   (reset! uploaded-logo-key key)))
+	                                               true)
+	                    object-store/delete-object! (fn [vid key]
+	                                                  (throw (ex-info "delete-object! should not be called" {})))]
 
         (let [request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                                  tenant-id user-id)
@@ -109,10 +117,12 @@
                           (assoc :multipart-params {"logo" logo-file}))
               response (logo/upload-vault-logo request)]
 
-          (is (= 200 (:status response)))
-          (is (true? (get-in response [:body :success])))
-          (is @uploaded-logo-key "Original logo should be uploaded")
-          (is (nil? @uploaded-favicon-key) "Favicon should not be generated for tiny images"))))))
+          (is (= 400 (:status response)))
+          (is (str/includes? (get-in response [:body :error]) "Image too small"))
+          (is (nil? @uploaded-logo-key) "Logo should not be uploaded")
+          (is (nil? @uploaded-favicon-key) "Favicon should not be uploaded")
+          (is (nil? (:logo-object-key (db/get-vault-by-id vault-id)))
+              "Database should not be updated"))))))
 
 (deftest test-upload-vault-logo-validation
   (testing "Upload without file returns 400"

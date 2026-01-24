@@ -2,7 +2,7 @@
 
 ## 测试覆盖率
 
-本项目包含全面的测试套件，覆盖率达到 100%，包括：
+本项目包含较完整的测试套件，包括：
 
 - ✅ 单元测试（Utils）
 - ✅ 数据库集成测试
@@ -35,7 +35,9 @@ test/
 ### 1. 运行所有测试
 
 ```bash
-clojure -X:test
+make backend-test
+# 或
+cd server && clojure -M:test
 ```
 
 ### 2. 运行特定测试文件
@@ -57,48 +59,30 @@ clojure -X:test :patterns '["markdownbrain.middleware-test"]'
 clojure -X:test :patterns '["markdownbrain.routes-test"]'
 ```
 
-### 3. 使用 Leiningen（可选）
-
-如果项目中有 `project.clj`：
-
-```bash
-lein test
-```
-
 ## 运行前端测试
 
-### 方法 1：本地服务器（推荐）
-
-```bash
-# 启动开发服务器
-clojure -M -m markdownbrain.core
-
-# 在浏览器中打开
-open http://localhost:3000/test/frontend/test.html
-```
-
-### 方法 2：静态文件服务器
+### 方法 1：静态文件服务器（推荐）
 
 ```bash
 # 使用 Python HTTP 服务器
-cd /Users/leehaoya/Projects/markdownbrain
+cd server
 python3 -m http.server 8000
 
 # 在浏览器中打开
 open http://localhost:8000/test/frontend/test.html
 ```
 
-### 方法 3：直接打开文件
+### 方法 2：直接打开文件
 
 ```bash
 # macOS
-open test/frontend/test.html
+open server/test/frontend/test.html
 
 # Linux
-xdg-open test/frontend/test.html
+xdg-open server/test/frontend/test.html
 
 # Windows
-start test/frontend/test.html
+start server\\test\\frontend\\test.html
 ```
 
 ## 测试覆盖详情

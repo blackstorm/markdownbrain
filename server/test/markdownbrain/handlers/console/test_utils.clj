@@ -4,7 +4,11 @@
    [clojure.java.io :as io]
    [markdownbrain.db :as db]
    [next.jdbc :as jdbc]
-   [ring.mock.request :as mock]))
+   [ring.mock.request :as mock])
+  (:import
+   [java.awt.image BufferedImage]
+   [java.io ByteArrayOutputStream]
+   [javax.imageio ImageIO]))
 
 (def test-db-file (atom nil))
 
@@ -30,10 +34,12 @@
       body (assoc :body-params body))))
 
 (defn create-test-png
-  "Create test PNG bytes without using AWT (headless-safe)."
-  [_width _height]
-  (let [base64 "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg=="]
-    (.decode (java.util.Base64/getDecoder) ^String base64)))
+  "Create test PNG bytes. Safe for headless test runs."
+  [width height]
+  (let [image (BufferedImage. width height BufferedImage/TYPE_INT_ARGB)
+        out (ByteArrayOutputStream.)]
+    (ImageIO/write image "png" out)
+    (.toByteArray out)))
 
 (defn create-temp-file
   "Create a temp file map mimicking ring multipart upload.

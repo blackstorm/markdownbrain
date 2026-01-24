@@ -77,25 +77,25 @@
     <span class="section-label">Publish Status</span>
     <div>
       {% if vault.publish-ok %}
-        <div class="flex items-center gap-2 text-sm">
+        <div class="flex items-center gap-2 text-sm text-[var(--success)]">
           <i data-lucide="check-circle" class="icon-xs"></i>
-          <span>OK</span>
+          <span class="font-medium">OK</span>
         </div>
       {% else %}
         {% if vault.publish-error %}
-          <div class="flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-2 text-sm text-[var(--error)]">
             <i data-lucide="alert-circle" class="icon-xs"></i>
-            <span>Error</span>
+            <span class="font-medium">Error</span>
           </div>
         {% else %}
-          <div class="flex items-center gap-2 text-sm">
+          <div class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
             <i data-lucide="clock" class="icon-xs"></i>
             <span>Never</span>
           </div>
         {% endif %}
       {% endif %}
 
-      <div class="text-xs text-(--text-tertiary) mt-2">
+      <div class="text-xs text-[var(--text-tertiary)] mt-2">
         Last publish:
         {% if vault.last-publish-at %}
           <span data-utc-datetime="{{vault.last-publish-at}}">{{vault.last-publish-at}}</span>

@@ -1,167 +1,112 @@
 # MarkdownBrain
 
-将 Obsidian 笔记同步发布为网站的多租户平台。支持自定义域名和自动 SSL 证书。
+[English](README.md) | [简体中文](README.zh-cn.md)
 
-## 功能特性
+Publish your Obsidian vault as a website you can self-host.
 
-- Obsidian 插件实时同步笔记到服务器
-- 多租户架构，支持多个独立站点
-- 自定义域名，自动获取 SSL 证书
-- 内部链接自动解析
-- 反向链接展示
+MarkdownBrain includes:
+- a **Console** (admin UI) to manage sites/domains/publish keys
+- a **Frontend** (public site) to browse published notes
+- an **Obsidian plugin** that publishes notes/assets to your server
 
-## 第三方字体与前端资源
+## MVP Features
 
-本项目在前端静态资源中使用了第三方字体与 JS 库。这些第三方资源各自遵循其原始授权协议，**不**包含在本项目的许可证范围内。
+- Publish Markdown notes + attachments (images/PDF/audio/video)
+- Custom domain per vault
+- On-demand TLS via Caddy (optional)
+- Internal links + backlinks
+- Per-vault publish key (renewable)
+- Console shows last publish status/time/error (snapshot)
 
-- Fonts: Inter, Geist, JetBrains Mono, Merriweather（见 `server/resources/publics/shared/fonts/<font>/license.txt`）
-- JS: htmx, highlight.js, KaTeX, lucide（见 `server/resources/publics/shared/licenses/*.txt`）
-- 详细清单与版本信息见 `THIRD_PARTY_NOTICES.md`
+## Quickstart (Development)
 
-## 快速开始
-
-### 开发环境
+Prereqs: Java (Temurin 21+ recommended), Clojure CLI, Node.js (for CSS build), Make.
 
 ```bash
-# 安装依赖
 make install
-
-# 启动开发服务器
 make dev
-
 # Frontend: http://localhost:8080
-# Console: http://localhost:9090
+# Console:  http://localhost:9090/console
 ```
 
-### 其他开发命令
+Other useful commands:
 
 ```bash
-make frontend-dev    # CSS watch 模式
-make plugin-dev      # Obsidian 插件开发模式
-make test            # 运行测试
-make build           # 构建所有项目
+make backend-test
+make frontend-dev
+make plugin-dev
+make build
 ```
 
-## 部署指南
+## Quickstart (Self-host)
 
-### 前置条件
+See `selfhosted/README.md` for a detailed guide.
 
-- Docker 和 Docker Compose
-- 域名已解析到服务器 IP
-- 服务器 80/443 端口可用
-
-### 环境变量
-
-| 变量 | 说明 | 必填 |
-|------|------|------|
-| `S3_PUBLIC_URL` | S3 存储公开访问地址 (用于直接访问图片等资源) | 是 |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | 启用 Caddy 自动 SSL 证书 (默认 `false`) | 否 |
-| `SESSION_SECRET` | Session 加密密钥 | 否 (自动生成) |
-| `DB_PATH` | SQLite 数据库路径 (默认 `data/markdownbrain.db`) | 否 |
-| `S3_BUCKET` | S3 存储桶名称 | 否 (默认 `markdownbrain`) |
-| `S3_ACCESS_KEY` | RustFS 访问密钥 | 否 (默认 `rustfsadmin`) |
-| `S3_SECRET_KEY` | RustFS 密钥 | 否 (默认 `rustfsadmin`) |
-
-> **注意**: 
-> - `S3_PUBLIC_URL` 是浏览器可直接访问的 S3 地址。图片、PDF 等资源会直接从此 URL 加载，不经过应用服务器。
-> - `CADDY_ON_DEMAND_TLS_ENABLED=true` 时，Caddy 会自动为配置的域名获取 Let's Encrypt 证书。如果你使用 Cloudflare 或其他方式管理 SSL，保持默认值 `false` 即可。
-> - `SESSION_SECRET` 自动生成并保存到 `data/.secrets.edn`（与 `DB_PATH` 同目录）。
-
-### 部署步骤
-
-1. 克隆项目
+Local storage + Caddy (recommended for single-node):
 
 ```bash
-git clone https://github.com/example/markdownbrain.git
-cd markdownbrain
+docker compose -f selfhosted/compose/docker-compose.local.yml up -d
 ```
 
-2. 设置环境变量
+S3-compatible storage + Caddy:
 
 ```bash
-export S3_PUBLIC_URL=https://s3.your-domain.com  # 替换为你的 S3 公开访问地址
-
-# 可选：启用自动 SSL 证书 (如果不使用 Cloudflare 等外部 SSL)
-export CADDY_ON_DEMAND_TLS_ENABLED=true
+export S3_PUBLIC_URL=https://s3.your-domain.com
+docker compose -f selfhosted/compose/docker-compose.s3.yml up -d
 ```
 
-3. 启动服务
-
-```bash
-docker compose up -d
-```
-
-4. 查看日志
-
-```bash
-docker compose logs -f
-```
-
-### 访问 Console 面板
-
-Console 端口 (9090) 仅绑定到 localhost，务必不要对公网开放。通过 SSH 隧道访问：
+Console is bound to `127.0.0.1:9090` in the provided Compose files. Access it via SSH tunnel:
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server
+open http://localhost:9090/console
 ```
 
-然后在本地浏览器访问 `http://localhost:9090/console`
+## Configuration
 
-### 添加站点域名
+MarkdownBrain reads env vars from the environment and `server/.env` (development).
 
-1. 登录 Console 面板
-2. 创建新站点，填写域名（如 `notes.example.com`）
-3. 将域名 DNS 解析到服务器 IP
-4. 如果启用了 `CADDY_ON_DEMAND_TLS_ENABLED`，Caddy 会自动为该域名获取 SSL 证书
+| Env var | Description | Required |
+|---|---|---|
+| `ENVIRONMENT` | `development` or `production` | No |
+| `HOST` | Bind host (defaults to `0.0.0.0`) | No |
+| `FRONTEND_PORT` | Public frontend port (default `8080`) | No |
+| `CONSOLE_PORT` | Console port (default `9090`) | No |
+| `DB_PATH` | SQLite DB path (default `data/markdownbrain.db`) | No |
+| `SESSION_SECRET` | Console session secret (auto-generated if omitted) | No |
+| `STORAGE_TYPE` | `local` or `s3` | No |
+| `LOCAL_STORAGE_PATH` | Local object storage path (default `./data/storage`) | No |
+| `S3_ENDPOINT` | S3 endpoint (required when `STORAGE_TYPE=s3`) | Yes (S3) |
+| `S3_ACCESS_KEY` | S3 access key | Yes (S3) |
+| `S3_SECRET_KEY` | S3 secret key | Yes (S3) |
+| `S3_REGION` | S3 region (default `us-east-1`) | No |
+| `S3_BUCKET` | S3 bucket (default `markdownbrain`) | No |
+| `S3_PUBLIC_URL` | Public base URL for browser asset loading | Yes (S3) |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | `true` to enable Caddy on-demand TLS | No |
 
-## Obsidian 插件
+Notes:
+- `S3_PUBLIC_URL` must be reachable by browsers. Assets are loaded directly from it (not proxied via the app).
+- If `SESSION_SECRET` is omitted, it is generated and stored in `data/.secrets.edn` next to the DB file.
 
-### 安装
+## Obsidian Plugin
 
-1. 从 Release 下载 `markdownbrain-plugin.zip`
-2. 解压到 `.obsidian/plugins/markdownbrain/`
-3. 在 Obsidian 设置中启用插件
+- Plugin docs: `obsidian-plugin/README.md`
+- Install (from release): unzip `markdownbrain-plugin.zip` into `.obsidian/plugins/markdownbrain/`
+- Configure:
+  - Server URL: your MarkdownBrain base URL
+  - Publish Key: copy from Console → your vault card
 
-### 配置
+## Repository Layout
 
-1. 在 Console 面板创建站点，获取 Publish Key
-2. 在插件设置中填写：
-   - Server URL: `https://your-console-domain.com`
-   - Publish Key: 从 Console 面板复制
+- `server/`: Clojure backend + templates + static assets
+- `obsidian-plugin/`: Obsidian plugin (TypeScript)
+- `selfhosted/`: Docker Compose + Caddy configs
 
-### 同步
+## Third-party assets
 
-- 自动同步：文件修改后自动同步
-- 手动同步：命令面板执行 `MarkdownBrain: Sync All`
+This repository ships third-party fonts and frontend libraries under their own licenses.
+See `THIRD_PARTY_NOTICES.md` and files under `server/resources/publics/shared/`.
 
-## 架构
+## License
 
-```
-                    ┌─────────────┐
-                    │   Caddy     │
-                    │  (80/443)   │
-                    └──────┬──────┘
-                           │
-              ┌────────────┴────────────┐
-              │                         │
-              ▼                         ▼
-    ┌─────────────────┐      ┌─────────────────┐
-    │  Frontend:8080  │      │  Console:9090     │
-    │  (公开访问)      │      │  (仅 localhost) │
-    └─────────────────┘      └─────────────────┘
-              │                         │
-              └────────────┬────────────┘
-                           │
-              ┌────────────┴────────────┐
-              │                         │
-              ▼                         ▼
-       ┌─────────────┐         ┌─────────────┐
-       │   SQLite    │         │   RustFS    │◄──── 浏览器直接访问
-       │   (数据库)   │         │  (对象存储)  │      (S3_PUBLIC_URL)
-       └─────────────┘         └─────────────┘
-
-资源访问流程:
-- 图片/PDF/音视频等资源直接从 S3 存储加载
-- 浏览器通过 S3_PUBLIC_URL 直接请求，不经过应用服务器
-- 减少服务器带宽消耗，提高加载速度
-```
+MIT. See `LICENSE.md`.

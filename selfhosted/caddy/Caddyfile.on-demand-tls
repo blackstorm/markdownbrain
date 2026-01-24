@@ -14,9 +14,24 @@ https:// {
 	tls {
 		on_demand
 	}
-	reverse_proxy markdownbrain:8080
+
+	@obsidian path /obsidian/*
+	handle @obsidian {
+		reverse_proxy markdownbrain:9090
+	}
+
+	handle {
+		reverse_proxy markdownbrain:8080
+	}
 }
 
 :80 {
-	reverse_proxy markdownbrain:8080
+	@obsidian path /obsidian/*
+	handle @obsidian {
+		reverse_proxy markdownbrain:9090
+	}
+
+	handle {
+		reverse_proxy markdownbrain:8080
+	}
 }
