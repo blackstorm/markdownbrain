@@ -16,6 +16,17 @@ Security model (recommended):
 - Keep Console private (bound to `127.0.0.1` on the host).
 - Expose only the public site (`:80/:443`) through a reverse proxy (Caddy in this repo).
 
+## Quick deploy (one command)
+
+For a quick trial (no reverse proxy, local storage), run:
+
+```bash
+docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/leehaoya/markdownbrain:latest
+```
+
+- Public site: `http://<your-server>:8080/`
+- Console (SSH tunnel): `ssh -L 9090:localhost:9090 user@your-server`, then open `http://localhost:9090/console`
+
 ## Choose a deployment
 
 - `compose/docker-compose.local.yml` (recommended)

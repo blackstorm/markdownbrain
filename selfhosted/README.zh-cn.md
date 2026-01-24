@@ -16,6 +16,17 @@ MarkdownBrain 在容器内提供两个端口：
 - Console 保持私有（宿主机只绑定 `127.0.0.1`）。
 - 只对外暴露公开站点（通过本仓库提供的 Caddy 转发到 `8080`/`9090`）。
 
+## 快速部署（一行命令）
+
+用于快速试用（不含反向代理、本地存储），执行：
+
+```bash
+docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/leehaoya/markdownbrain:latest
+```
+
+- 公开站点：`http://<你的服务器>:8080/`
+- Console（SSH 隧道）：`ssh -L 9090:localhost:9090 user@your-server`，然后打开 `http://localhost:9090/console`
+
 ## 选择部署方式
 
 - `compose/docker-compose.local.yml`（推荐）
