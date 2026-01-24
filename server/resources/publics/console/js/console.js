@@ -7,10 +7,10 @@
 function copyToClipboard(text) {
   if (navigator.clipboard) {
     navigator.clipboard.writeText(text).then(() => {
-      showNotification('已复制到剪贴板', 'success');
+      showNotification('Copied to clipboard', 'success');
     }).catch(err => {
       console.error('Failed to copy:', err);
-      showNotification('复制失败', 'error');
+      showNotification('Copy failed', 'error');
     });
   } else {
     // Fallback for older browsers
@@ -22,10 +22,10 @@ function copyToClipboard(text) {
     textArea.select();
     try {
       document.execCommand('copy');
-      showNotification('已复制到剪贴板', 'success');
+      showNotification('Copied to clipboard', 'success');
     } catch (err) {
       console.error('Failed to copy:', err);
-      showNotification('复制失败', 'error');
+      showNotification('Copy failed', 'error');
     }
     document.body.removeChild(textArea);
   }
@@ -70,7 +70,7 @@ function formatDate(dateStr) {
   if (!dateStr) return '';
 
   const date = new Date(dateStr);
-  return date.toLocaleDateString('zh-CN', {
+  return date.toLocaleString(undefined, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

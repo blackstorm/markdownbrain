@@ -437,7 +437,7 @@
    输入: 路径、显示文本
    输出: HTML 字符串"
   [path display-text]
-  (format "<span class=\"internal-link broken\" title=\"文档不存在: %s\">%s</span>"
+  (format "<span class=\"internal-link broken\" title=\"Note not found: %s\">%s</span>"
           (str/escape path {\< "&lt;" \> "&gt;" \" "&quot;"})
           (str/escape display-text {\< "&lt;" \> "&gt;" \" "&quot;"})))
 

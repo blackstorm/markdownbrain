@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -37,7 +37,7 @@
       // Handle HTMX errors gracefully
       document.body.addEventListener('htmx:responseError', (event) => {
         if (typeof showNotification !== 'undefined') {
-          showNotification('操作失败，请重试', 'error');
+          showNotification('Operation failed. Please try again.', 'error');
         }
       });
     </script>

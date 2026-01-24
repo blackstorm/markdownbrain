@@ -4,7 +4,7 @@
   - title: modal title (required)
   - close-fn: JavaScript function name to close modal (required)
   - form-attrs: additional form attributes (optional)
-  - submit-text: submit button text (default: "提交")
+  - submit-text: submit button text (default: "Submit")
   - show-cancel: show cancel button (default: true)
 -->
 <div id="{{id}}" class="modal-backdrop" onclick="if(event.target === this) {{close-fn}}()">
@@ -22,11 +22,11 @@
             </div>
             <div class="modal-footer">
                 {% if show-cancel|default:true %}
-                <button type="button" class="btn" onclick="{{close-fn}}()">取消</button>
+                <button type="button" class="btn" onclick="{{close-fn}}()">Cancel</button>
                 {% endif %}
                 <button type="submit" class="btn btn-primary">
                     <span class="spinner {{id}}-spinner"></span>
-                    <span>{{submit-text|default:"提交"}}</span>
+                    <span>{{submit-text|default:"Submit"}}</span>
                 </button>
             </div>
         </form>

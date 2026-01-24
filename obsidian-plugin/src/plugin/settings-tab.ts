@@ -13,11 +13,11 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
     const { containerEl } = this;
 
     containerEl.empty();
-    containerEl.createEl("h2", { text: "MarkdownBrain 设置" });
+    containerEl.createEl("h2", { text: "MarkdownBrain Settings" });
 
     new Setting(containerEl)
-      .setName("服务器地址")
-      .setDesc("MarkdownBrain 服务器 API 地址")
+      .setName("Server URL")
+      .setDesc("MarkdownBrain server API base URL")
       .addText((text) =>
         text
           .setPlaceholder("https://api.markdownbrain.com")
@@ -30,7 +30,7 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Publish Key")
-      .setDesc("从 Console 获取的发布密钥（Publish Key）")
+      .setDesc("Publish Key from MarkdownBrain Console")
       .addText((text) =>
         text
           .setPlaceholder("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
@@ -42,51 +42,51 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("测试连接")
-      .setDesc("测试与服务器的连接（30秒超时）")
+      .setName("Test connection")
+      .setDesc("Test connectivity to the server (30s timeout)")
       .addButton((button) =>
-        button.setButtonText("测试").onClick(async () => {
+        button.setButtonText("Test").onClick(async () => {
           button.setDisabled(true);
-          button.setButtonText("测试中...");
+          button.setButtonText("Testing...");
 
-          new Notice("正在测试连接...");
+          new Notice("Testing connection...");
 
           const result = await this.plugin.syncClient.getVaultInfo();
 
           button.setDisabled(false);
-          button.setButtonText("测试");
+          button.setButtonText("Test");
 
           if (result.success && result.vault) {
             new Notice(
-              `✅ 连接成功！\n` +
+              `Connection successful.\n` +
                 `Vault: ${result.vault.name}\n` +
-                `Domain: ${result.vault.domain || "未设置"}`,
+                `Domain: ${result.vault.domain || "Not set"}`,
               5000,
             );
           } else {
-            new Notice(`❌ 连接失败: ${result.error || "Unknown error"}`, 5000);
+            new Notice(`Connection failed: ${result.error || "Unknown error"}`, 5000);
           }
         }),
       );
 
     new Setting(containerEl)
-      .setName("批量同步")
-      .setDesc("手动同步所有 Markdown 文件到服务器")
+      .setName("Full sync")
+      .setDesc("Manually sync all Markdown files to the server")
       .addButton((button) =>
-        button.setButtonText("开始同步").onClick(async () => {
+        button.setButtonText("Start sync").onClick(async () => {
           button.setDisabled(true);
-          button.setButtonText("同步中...");
+          button.setButtonText("Syncing...");
 
           await this.plugin.fullSync();
 
           button.setDisabled(false);
-          button.setButtonText("开始同步");
+          button.setButtonText("Start sync");
         }),
       );
 
     new Setting(containerEl)
-      .setName("自动同步")
-      .setDesc("文件修改时自动同步到服务器")
+      .setName("Auto sync")
+      .setDesc("Automatically sync on file changes")
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.autoSync).onChange(async (value) => {
           this.plugin.settings.autoSync = value;
