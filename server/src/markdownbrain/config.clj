@@ -48,12 +48,11 @@
         _ (.nextBytes (SecureRandom.) bytes)]
     (apply str (map #(format "%02x" %) bytes))))
 
+(defn- data-path []
+  (or (getenv "DATA_PATH") "data"))
+
 (defn- secrets-file []
-  (let [db-path (or (getenv "DB_PATH") "data/markdownbrain.db")
-        data-dir (.getParent (io/file db-path))]
-    (if data-dir
-      (io/file data-dir ".secrets.edn")
-      (io/file ".secrets.edn"))))
+  (io/file (data-path) ".secrets.edn"))
 
 (defn- load-secrets []
   (let [f (secrets-file)]
@@ -99,7 +98,7 @@
 
    :database
    {:jdbcUrl (str "jdbc:sqlite:" 
-                  (or (getenv "DB_PATH") "data/markdownbrain.db")
+                  (.getPath (io/file (data-path) "markdownbrain.db"))
                   "?journal_mode=WAL&foreign_keys=ON")}
 
    :s3
@@ -112,7 +111,8 @@
 
    :storage
    {:type (keyword (or (getenv "STORAGE_TYPE") "local"))
-    :local-path (or (getenv "LOCAL_STORAGE_PATH") "./data/storage")}
+    :local-path (or (getenv "LOCAL_STORAGE_PATH")
+                    (.getPath (io/file (data-path) "storage")))}
 
    :environment
    (keyword (or (getenv "ENVIRONMENT") "development"))})

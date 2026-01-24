@@ -65,7 +65,7 @@ make dev
 
 ### Docker image (GHCR)
 
-- Image: `ghcr.io/<owner>/markdownbrain`
+- Image: `ghcr.io/blackstorm/markdownbrain`
 - Tags:
   - `edge`, `sha-<7>` on `main`
   - `X.Y.Z`, `X.Y`, `X`, `latest` on git tag `vX.Y.Z`
@@ -84,7 +84,12 @@ make dev
 
 ## Configuration
 
-MarkdownBrain reads configuration from environment variables. In development, it also reads `server/.env`.
+MarkdownBrain reads configuration from environment variables.
+
+- Development: when running from `server/`, it also loads `.env` (for example `server/.env`).
+- Docker: the server only loads `.env` if a `.env` file exists in the container working directory; most deployments should pass env vars via Docker Compose `environment:` or `--env-file`.
+
+### MarkdownBrain (server) environment variables
 
 | Name | Description | Default | Required |
 |---|---|---|---|
@@ -92,23 +97,38 @@ MarkdownBrain reads configuration from environment variables. In development, it
 | `HOST` | Bind host for both servers | `0.0.0.0` | No |
 | `FRONTEND_PORT` | Frontend server port | `8080` | No |
 | `CONSOLE_PORT` | Console server port | `9090` | No |
-| `DB_PATH` | SQLite DB path | `data/markdownbrain.db` | No |
-| `SESSION_SECRET` | Console session secret (hex string) | auto-generated | No |
+| `DATA_PATH` | Base data directory (DB, secrets, local storage) | `data` (Docker image: `/app/data`) | No |
+| `SESSION_SECRET` | Console session secret (string) | auto-generated | No |
 | `STORAGE_TYPE` | Storage backend: `local` or `s3` | `local` | No |
-| `LOCAL_STORAGE_PATH` | Local storage path when `STORAGE_TYPE=local` | `./data/storage` | No |
+| `LOCAL_STORAGE_PATH` | Local storage path when `STORAGE_TYPE=local` | `${DATA_PATH}/storage` | No |
 | `S3_ENDPOINT` | S3 endpoint URL when `STORAGE_TYPE=s3` | - | Yes (S3) |
 | `S3_ACCESS_KEY` | S3 access key when `STORAGE_TYPE=s3` | - | Yes (S3) |
 | `S3_SECRET_KEY` | S3 secret key when `STORAGE_TYPE=s3` | - | Yes (S3) |
 | `S3_REGION` | S3 region | `us-east-1` | No |
 | `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
 | `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets | - | Yes (S3) |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable Caddy on-demand TLS integration | `false` | No |
-| `JAVA_OPTS` | Extra JVM args (Docker runtime) | empty | No |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable `/console/domain-check` for Caddy on-demand TLS | `false` | No |
 
 Notes:
 
-- If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `data/.secrets.edn` next to the DB.
+- Default DB path is `${DATA_PATH}/markdownbrain.db`.
+- If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
 - In production, set `ENVIRONMENT=production` to enable secure cookies.
+
+### Docker runtime environment variables
+
+| Name | Description | Default | Required |
+|---|---|---|---|
+| `JAVA_OPTS` | Extra JVM args for the container | empty | No |
+
+### Self-hosting (Compose) environment variables
+
+These are used by the `selfhosted/` Docker Compose setup:
+
+| Name | Description | Default | Required |
+|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
+| `S3_PUBLIC_PORT` | Host port for bundled RustFS (S3 compose only) | `9000` | No |
 
 ## License
 

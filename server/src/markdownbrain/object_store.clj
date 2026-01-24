@@ -3,7 +3,7 @@
 
    Configuration:
    - STORAGE_TYPE: 's3' or 'local' (default: 'local')
-   - LOCAL_STORAGE_PATH: path for local storage (default: './data/storage')
+   - LOCAL_STORAGE_PATH: path for local storage (default: '${DATA_PATH}/storage')
    - S3_* env vars for S3 backend
 
    Usage:

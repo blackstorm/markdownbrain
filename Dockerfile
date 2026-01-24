@@ -37,7 +37,7 @@ USER markdownbrain
 
 ENV FRONTEND_PORT=8080
 ENV CONSOLE_PORT=9090
-ENV DB_PATH=/app/data/markdownbrain.db
+ENV DATA_PATH=/app/data
 ENV ENVIRONMENT=production
 ENV JAVA_OPTS=""
 

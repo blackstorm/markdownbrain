@@ -21,7 +21,7 @@ MarkdownBrain 在容器内提供两个端口：
 用于快速试用（不含反向代理、本地存储），执行：
 
 ```bash
-docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/leehaoya/markdownbrain:latest
+docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/markdownbrain:latest
 ```
 
 - 公开站点：`http://<你的服务器>:8080/`
@@ -47,18 +47,41 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 
 ## 环境变量
 
-Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.example`）。这些变量要么用于 Compose 的变量替换（镜像标签、端口等），要么会注入到容器的环境变量中。
+Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.example`）。
 
-| 变量名 | 说明 | 默认值或示例 | 必填 |
-|---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/<owner>/markdownbrain:latest` | 是 |
-| `JAVA_OPTS` | MarkdownBrain 容器的 JVM 参数 | `-Xms256m -Xmx512m` | 否 |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | 是否启用 Caddy 按需 TLS | `false` | 否 |
-| `S3_PUBLIC_URL` | S3 模式下浏览器加载资源的 base URL | `https://s3.your-domain.com` | 是（S3） |
-| `S3_ACCESS_KEY` | S3 Access Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
-| `S3_SECRET_KEY` | S3 Secret Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
-| `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 是（S3） |
-| `S3_PUBLIC_PORT` | S3 Compose 中 RustFS 暴露到宿主机的端口 | `9000` | 否 |
+这里存在两层变量：
+
+- Compose 变量：由 Docker Compose 使用（镜像标签、端口等）。
+- MarkdownBrain 变量：注入到 `markdownbrain` 容器中（服务端读取并生效）。
+
+服务端完整配置说明见 [../README.md](../README.md#configuration)。
+
+| 变量名 | 作用对象 | 说明 | 默认值或示例 | 必填 |
+|---|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Compose | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
+| `DATA_PATH` | MarkdownBrain | 容器内的数据目录 | `/app/data` | 否 |
+| `JAVA_OPTS` | MarkdownBrain | MarkdownBrain 容器的 JVM 参数 | `-Xms256m -Xmx512m` | 否 |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | 是否启用 Caddy 按需 TLS 集成 | `false` | 否 |
+| `S3_PUBLIC_URL` | MarkdownBrain | S3 模式下浏览器加载资源的 base URL | `https://s3.your-domain.com` | 是（S3） |
+| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 Access Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
+| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 Secret Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
+| `S3_BUCKET` | MarkdownBrain | S3 Bucket 名称 | `markdownbrain` | 是（S3） |
+| `S3_PUBLIC_PORT` | Compose | S3 Compose 中 RustFS 暴露到宿主机的端口 | `9000` | 否 |
+
+### Compose 默认会设置的变量
+
+本仓库提供的 compose 文件已经设置了关键的 MarkdownBrain 变量：
+
+- `compose/docker-compose.local.yml` 与 `compose/docker-compose.minimal.yml`
+  - `STORAGE_TYPE=local`
+- `compose/docker-compose.s3.yml`
+  - `STORAGE_TYPE=s3`
+  - `S3_ENDPOINT=http://rustfs:9000`（也可以改成你自己的 S3 Endpoint）
+
+通常不需要额外设置 `DATA_PATH` 或 `LOCAL_STORAGE_PATH`。因为容器会持久化 `/app/data`，而默认值本来就在这个目录中：
+
+- 默认数据库：`/app/data/markdownbrain.db`
+- 默认本地存储：`/app/data/storage`
 
 ## 快速开始（本地存储 + Caddy）
 

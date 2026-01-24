@@ -66,7 +66,7 @@ make dev
 
 ### Docker 镜像（GHCR）
 
-- 镜像：`ghcr.io/<owner>/markdownbrain`
+- 镜像：`ghcr.io/blackstorm/markdownbrain`
 - 标签规则：
   - `main` 分支：`edge`、`sha-<7>`
   - git tag `vX.Y.Z`：`X.Y.Z`、`X.Y`、`X`、`latest`
@@ -85,7 +85,12 @@ make dev
 
 ## 配置
 
-MarkdownBrain 从环境变量读取配置。在开发环境中，也会读取 `server/.env`。
+MarkdownBrain 从环境变量读取配置。
+
+- 开发环境：通常从 `server/` 启动，也会读取 `.env`（例如 `server/.env`）。
+- Docker：只有当容器工作目录下存在 `.env` 时服务端才会读取；大多数部署建议通过 Docker Compose 的 `environment:` 或 `--env-file` 传入环境变量。
+
+### MarkdownBrain（服务端）环境变量
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |---|---|---|---|
@@ -93,23 +98,38 @@ MarkdownBrain 从环境变量读取配置。在开发环境中，也会读取 `s
 | `HOST` | 监听地址（前台与 Console 共用） | `0.0.0.0` | 否 |
 | `FRONTEND_PORT` | Frontend 端口 | `8080` | 否 |
 | `CONSOLE_PORT` | Console 端口 | `9090` | 否 |
-| `DB_PATH` | SQLite 数据库路径 | `data/markdownbrain.db` | 否 |
-| `SESSION_SECRET` | Console session 密钥（hex 字符串） | 自动生成 | 否 |
+| `DATA_PATH` | 数据目录（DB、secrets、本地存储） | `data`（Docker 镜像：`/app/data`） | 否 |
+| `SESSION_SECRET` | Console session 密钥（字符串） | 自动生成 | 否 |
 | `STORAGE_TYPE` | 存储类型：`local` 或 `s3` | `local` | 否 |
-| `LOCAL_STORAGE_PATH` | `STORAGE_TYPE=local` 时的本地存储目录 | `./data/storage` | 否 |
+| `LOCAL_STORAGE_PATH` | `STORAGE_TYPE=local` 时的本地存储目录 | `${DATA_PATH}/storage` | 否 |
 | `S3_ENDPOINT` | `STORAGE_TYPE=s3` 时的 S3 Endpoint | - | 是（S3） |
 | `S3_ACCESS_KEY` | `STORAGE_TYPE=s3` 时的 S3 Access Key | - | 是（S3） |
 | `S3_SECRET_KEY` | `STORAGE_TYPE=s3` 时的 S3 Secret Key | - | 是（S3） |
 | `S3_REGION` | S3 Region | `us-east-1` | 否 |
 | `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 否 |
 | `S3_PUBLIC_URL` | 浏览器加载资源的 base URL | - | 是（S3） |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | 是否启用 Caddy 按需 TLS 集成 | `false` | 否 |
-| `JAVA_OPTS` | JVM 参数（Docker 运行时） | 空 | 否 |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | 为 Caddy 按需 TLS 启用 `/console/domain-check` | `false` | 否 |
 
 说明：
 
-- 如果未设置 `SESSION_SECRET`，MarkdownBrain 会自动生成，并保存在与数据库同目录的 `data/.secrets.edn` 中。
+- 数据库默认路径为 `${DATA_PATH}/markdownbrain.db`。
+- 如果未设置 `SESSION_SECRET`，MarkdownBrain 会自动生成，并保存在 `${DATA_PATH}/.secrets.edn` 中。
 - 生产环境建议设置 `ENVIRONMENT=production`，以启用安全 Cookie。
+
+### Docker 运行时环境变量
+
+| 变量名 | 说明 | 默认值 | 必填 |
+|---|---|---|---|
+| `JAVA_OPTS` | 容器的 JVM 参数 | 空 | 否 |
+
+### Selfhost（Compose）环境变量
+
+这些变量用于 `selfhosted/` 的 Docker Compose 部署：
+
+| 变量名 | 说明 | 默认值 | 必填 |
+|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
+| `S3_PUBLIC_PORT` | 内置 RustFS 的宿主机端口（仅 S3 compose） | `9000` | 否 |
 
 ## License
 

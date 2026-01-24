@@ -21,7 +21,7 @@ Security model (recommended):
 For a quick trial (no reverse proxy, local storage), run:
 
 ```bash
-docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/leehaoya/markdownbrain:latest
+docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/markdownbrain:latest
 ```
 
 - Public site: `http://<your-server>:8080/`
@@ -47,18 +47,41 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 
 ## Environment variables
 
-Compose reads variables from `selfhosted/.env` (see `selfhosted/.env.example`). These variables are used either for Compose interpolation (image tags, ports) or passed into the containers.
+Compose reads variables from `selfhosted/.env` (see `selfhosted/.env.example`).
 
-| Name | Description | Default / example | Required |
-|---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/<owner>/markdownbrain:latest` | Yes |
-| `JAVA_OPTS` | Extra JVM args for the MarkdownBrain container | `-Xms256m -Xmx512m` | No |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable Caddy on-demand TLS | `false` | No |
-| `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
-| `S3_ACCESS_KEY` | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
-| `S3_SECRET_KEY` | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
-| `S3_BUCKET` | S3 bucket name | `markdownbrain` | Yes (S3) |
-| `S3_PUBLIC_PORT` | Host port for RustFS in the bundled S3 compose | `9000` | No |
+There are two “layers” of variables:
+
+- Compose variables: used by Docker Compose itself (image tags, ports).
+- MarkdownBrain variables: passed into the `markdownbrain` container (the server reads them).
+
+For the full MarkdownBrain server configuration reference, see [../README.md](../README.md#configuration).
+
+| Name | Used by | Description | Default / example | Required |
+|---|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Compose | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
+| `DATA_PATH` | MarkdownBrain | Base data directory inside the container | `/app/data` | No |
+| `JAVA_OPTS` | MarkdownBrain | Extra JVM args for the MarkdownBrain container | `-Xms256m -Xmx512m` | No |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | Enable Caddy on-demand TLS integration | `false` | No |
+| `S3_PUBLIC_URL` | MarkdownBrain | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
+| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_BUCKET` | MarkdownBrain | S3 bucket name | `markdownbrain` | Yes (S3) |
+| `S3_PUBLIC_PORT` | Compose | Host port for RustFS in the bundled S3 compose | `9000` | No |
+
+### What Compose sets by default
+
+The provided compose files already set key MarkdownBrain variables:
+
+- `compose/docker-compose.local.yml` and `compose/docker-compose.minimal.yml`
+  - `STORAGE_TYPE=local`
+- `compose/docker-compose.s3.yml`
+  - `STORAGE_TYPE=s3`
+  - `S3_ENDPOINT=http://rustfs:9000` (or change it to your own S3 endpoint)
+
+You usually do not need to set `DATA_PATH` or `LOCAL_STORAGE_PATH` because the container persists `/app/data` and the defaults already live there:
+
+- Default DB: `/app/data/markdownbrain.db`
+- Default local storage: `/app/data/storage`
 
 ## Quickstart (local storage + Caddy)
 
