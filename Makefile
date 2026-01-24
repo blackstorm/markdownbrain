@@ -63,12 +63,12 @@ dev:
 	@echo "Starting backend development server..."
 	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
 	@echo "Use Ctrl+C to stop"
-	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) clojure -M:dev
+	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
 
 backend-dev:
 	@echo "Starting backend development server..."
 	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
-	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) clojure -M:dev
+	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
 
 backend-repl:
 	@echo "Starting backend REPL..."

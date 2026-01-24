@@ -1,4 +1,5 @@
 <configuration>
+    <property name="MARKDOWNBRAIN_LOG_LEVEL" value="${MARKDOWNBRAIN_LOG_LEVEL:-DEBUG}" />
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
@@ -9,7 +10,7 @@
         <appender-ref ref="STDOUT" />
     </root>
 
-    <logger name="markdownbrain" level="DEBUG" />
+    <logger name="markdownbrain" level="${MARKDOWNBRAIN_LOG_LEVEL}" />
 
     <logger name="org.sqlite" level="INFO" />
 </configuration>

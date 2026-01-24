@@ -109,6 +109,7 @@ MarkdownBrain 从环境变量读取配置。
 | `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 否 |
 | `S3_PUBLIC_URL` | 浏览器加载资源的 base URL | - | 是（S3） |
 | `CADDY_ON_DEMAND_TLS_ENABLED` | 为 Caddy 按需 TLS 启用 `/console/domain-check` | `false` | 否 |
+| `MARKDOWNBRAIN_LOG_LEVEL` | 应用日志级别（Logback） | `DEBUG` | 否 |
 
 说明：
 

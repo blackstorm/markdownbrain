@@ -108,6 +108,7 @@ MarkdownBrain reads configuration from environment variables.
 | `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
 | `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets | - | Yes (S3) |
 | `CADDY_ON_DEMAND_TLS_ENABLED` | Enable `/console/domain-check` for Caddy on-demand TLS | `false` | No |
+| `MARKDOWNBRAIN_LOG_LEVEL` | App log level (Logback) | `DEBUG` | No |
 
 Notes:
 
