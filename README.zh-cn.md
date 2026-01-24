@@ -5,6 +5,24 @@
 
 将 Obsidian 笔记发布为你可以自托管的网站。
 
+## 目录
+
+- [它是什么](#toc-它是什么)
+- [MVP 范围](#toc-mvp)
+- [快速开始（自托管）](#toc-quickstart-self-host)
+- [快速开始（开发）](#toc-quickstart-development)
+- [发布产物](#toc-releases)
+  - [Docker 镜像（GHCR）](#toc-docker-image-ghcr)
+  - [Obsidian 插件](#toc-obsidian-plugin)
+- [文档](#toc-documentation)
+- [配置](#toc-configuration)
+  - [MarkdownBrain（服务端）环境变量](#toc-config-server-env)
+  - [Docker 运行时环境变量](#toc-config-docker-runtime-env)
+  - [Selfhost（Compose）环境变量](#toc-config-compose-env)
+- [License](#toc-license)
+- [第三方声明](#toc-third-party-notices)
+
+<a id="toc-它是什么"></a>
 ## 它是什么
 
 MarkdownBrain 是一套面向个人自托管的 Obsidian 发布栈：
@@ -13,6 +31,7 @@ MarkdownBrain 是一套面向个人自托管的 Obsidian 发布栈：
 - Frontend（公开站点）：展示已发布的笔记、反向链接和资源文件
 - Obsidian 插件：把笔记与资源发布到你的服务器
 
+<a id="toc-mvp"></a>
 ## MVP 范围
 
 - 发布 Markdown 笔记与附件
@@ -22,6 +41,7 @@ MarkdownBrain 是一套面向个人自托管的 Obsidian 发布栈：
 - 每个 Vault 一个 Publish Key（可随时 Renew）
 - Console 展示最近一次发布状态、时间和错误原因（快照）
 
+<a id="toc-quickstart-self-host"></a>
 ## 快速开始（自托管）
 
 1. 准备一台 Linux 服务器，安装 Docker 与 Docker Compose。
@@ -50,6 +70,7 @@ open http://localhost:9090/console
 
 完整部署说明：[selfhosted/README.md](selfhosted/README.md)。
 
+<a id="toc-quickstart-development"></a>
 ## 快速开始（开发）
 
 依赖：Java 25（Temurin）、Clojure CLI、Node.js 25、pnpm、Make。
@@ -62,8 +83,10 @@ make dev
 - Frontend：`http://localhost:8080`
 - Console：`http://localhost:9090/console`
 
+<a id="toc-releases"></a>
 ## 发布产物
 
+<a id="toc-docker-image-ghcr"></a>
 ### Docker 镜像（GHCR）
 
 - 镜像：`ghcr.io/blackstorm/markdownbrain`
@@ -71,11 +94,13 @@ make dev
   - `main` 分支：`edge`、`sha-<7>`
   - git tag `vX.Y.Z`：`X.Y.Z`、`X.Y`、`X`、`latest`
 
+<a id="toc-obsidian-plugin"></a>
 ### Obsidian 插件
 
 - 从 GitHub Releases 下载 `markdownbrain-plugin.zip`。
 - 解压到 `.obsidian/plugins/markdownbrain/`。
 
+<a id="toc-documentation"></a>
 ## 文档
 
 - 自托管：[selfhosted/README.md](selfhosted/README.md)
@@ -83,6 +108,7 @@ make dev
 - 测试：[server/test/README.md](server/test/README.md)
 - UI 规范：[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
 
+<a id="toc-configuration"></a>
 ## 配置
 
 MarkdownBrain 从环境变量读取配置。
@@ -90,6 +116,7 @@ MarkdownBrain 从环境变量读取配置。
 - 开发环境：通常从 `server/` 启动，也会读取 `.env`（例如 `server/.env`）。
 - Docker：只有当容器工作目录下存在 `.env` 时服务端才会读取；大多数部署建议通过 Docker Compose 的 `environment:` 或 `--env-file` 传入环境变量。
 
+<a id="toc-config-server-env"></a>
 ### MarkdownBrain（服务端）环境变量
 
 | 变量名 | 说明 | 默认值 | 必填 |
@@ -117,12 +144,14 @@ MarkdownBrain 从环境变量读取配置。
 - 如果未设置 `SESSION_SECRET`，MarkdownBrain 会自动生成，并保存在 `${DATA_PATH}/.secrets.edn` 中。
 - 生产环境建议设置 `ENVIRONMENT=production`，以启用安全 Cookie。
 
+<a id="toc-config-docker-runtime-env"></a>
 ### Docker 运行时环境变量
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |---|---|---|---|
 | `JAVA_OPTS` | 容器的 JVM 参数 | 空 | 否 |
 
+<a id="toc-config-compose-env"></a>
 ### Selfhost（Compose）环境变量
 
 这些变量用于 `selfhosted/` 的 Docker Compose 部署：
@@ -132,12 +161,14 @@ MarkdownBrain 从环境变量读取配置。
 | `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
 | `S3_PUBLIC_PORT` | 内置 RustFS 的宿主机端口（仅 S3 compose） | `9000` | 否 |
 
+<a id="toc-license"></a>
 ## License
 
 - 服务端（`server/`）：`AGPL-3.0-or-later`（见 `LICENSE`）
 - Obsidian 插件（`obsidian-plugin/`）：MIT（见 `obsidian-plugin/LICENSE`）
 - 部署配置（`selfhosted/`）：MIT（见 `selfhosted/LICENSE`）
 
+<a id="toc-third-party-notices"></a>
 ## 第三方声明
 
 本仓库包含第三方字体与前端库，这些资源遵循其各自的授权协议，不包含在本项目的许可证范围内。

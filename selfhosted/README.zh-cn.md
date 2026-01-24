@@ -4,6 +4,25 @@
 
 本目录提供生产可用的 Docker Compose 部署方案。
 
+## 目录
+
+- [概览](#toc-overview)
+- [快速部署（一行命令）](#toc-quick-deploy)
+- [选择部署方式](#toc-choose-deployment)
+- [前置条件](#toc-prerequisites)
+- [环境变量](#toc-environment-variables)
+  - [Compose 默认会设置的变量](#toc-compose-defaults)
+- [快速开始（推荐：Caddy）](#toc-quickstart-caddy)
+- [Minimal 模式（不含 Caddy）](#toc-minimal)
+- [S3 模式（Caddy + RustFS）](#toc-s3)
+- [Caddy 目录（文件作用与使用场景）](#toc-caddy-files)
+- [按需 TLS 的工作方式](#toc-on-demand-tls)
+  - [Cloudflare 说明（按需 TLS 场景）](#toc-cloudflare)
+- [升级](#toc-upgrade)
+- [备份](#toc-backup)
+- [常见问题](#toc-troubleshooting)
+
+<a id="toc-overview"></a>
 ## 概览
 
 MarkdownBrain 在容器内提供两个端口：
@@ -16,6 +35,7 @@ MarkdownBrain 在容器内提供两个端口：
 - Console 保持私有（宿主机只绑定 `127.0.0.1`）。
 - 只对外暴露公开站点（通过本仓库提供的 Caddy 转发到 `8080`/`9090`）。
 
+<a id="toc-quick-deploy"></a>
 ## 快速部署（一行命令）
 
 用于快速试用（不含反向代理、本地存储），执行：
@@ -27,6 +47,7 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 - 公开站点：`http://<你的服务器>:8080/`
 - Console（SSH 隧道）：`ssh -L 9090:localhost:9090 user@your-server`，然后打开 `http://localhost:9090/console`
 
+<a id="toc-choose-deployment"></a>
 ## 选择部署方式
 
 - `minimal`（仅 MarkdownBrain）
@@ -36,12 +57,14 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 - `s3`（MarkdownBrain + Caddy + RustFS）
   - Compose 文件：`selfhosted/compose/docker-compose.s3.yml`
 
+<a id="toc-prerequisites"></a>
 ## 前置条件
 
 - 一台 Linux 服务器，已安装 Docker 与 Docker Compose
 - 一个域名，A/AAAA 记录指向服务器
 - 放行 `80/443` 端口（Caddy 使用）
 
+<a id="toc-environment-variables"></a>
 ## 环境变量
 
 Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.example`）。
@@ -66,6 +89,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 | `S3_BUCKET` | MarkdownBrain | S3 Bucket 名称 | `markdownbrain` | 是（S3） |
 | `S3_PUBLIC_PORT` | Compose | S3 Compose 中 RustFS 暴露到宿主机的端口 | `9000` | 否 |
 
+<a id="toc-compose-defaults"></a>
 ### Compose 默认会设置的变量
 
 本仓库提供的 compose 文件已经设置了关键的 MarkdownBrain 变量：
@@ -87,6 +111,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 - 默认数据库：`/app/data/markdownbrain.db`
 - 默认本地存储：`/app/data/storage`
 
+<a id="toc-quickstart-caddy"></a>
 ## 快速开始（推荐：Caddy）
 
 1. 创建 `selfhosted/.env`。
@@ -120,6 +145,7 @@ open http://localhost:9090/console
 - 复制 Vault 的 Publish Key，配置 Obsidian 插件。
 - 打开 `https://<你的域名>/`。
 
+<a id="toc-minimal"></a>
 ## Minimal 模式（不含 Caddy）
 
 当你已经有自己的反向代理 / TLS 时可以使用：
@@ -130,6 +156,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.m
 
 - 公开站点：`http://<你的服务器>:8080/`
 
+<a id="toc-s3"></a>
 ## S3 模式（Caddy + RustFS）
 
 该模式包含内置的 S3 兼容对象存储（RustFS）。RustFS 会暴露到宿主机端口 `${S3_PUBLIC_PORT:-9000}`。
@@ -143,6 +170,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.m
 docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.s3.yml up -d
 ```
 
+<a id="toc-caddy-files"></a>
 ## Caddy 目录（文件作用与使用场景）
 
 Caddy 相关文件在 `selfhosted/caddy/`：
@@ -161,6 +189,7 @@ Caddy 相关文件在 `selfhosted/caddy/`：
 - `selfhosted/caddy/caddy-entrypoint.sh`
   - 根据 `CADDY_ON_DEMAND_TLS_ENABLED` 自动选择 `Caddyfile.simple` 或 `Caddyfile.on-demand-tls`。
 
+<a id="toc-on-demand-tls"></a>
 ## 按需 TLS 的工作方式
 
 当 `CADDY_ON_DEMAND_TLS_ENABLED=true` 时，Caddy 只会为已在 MarkdownBrain 中登记的域名签发证书：
@@ -168,6 +197,7 @@ Caddy 相关文件在 `selfhosted/caddy/`：
 - Caddy 调用 `http://markdownbrain:9090/console/domain-check?domain=...`
 - 只有当域名存在于 Vault 列表中时，MarkdownBrain 才返回 `200`
 
+<a id="toc-cloudflare"></a>
 ### Cloudflare 说明（按需 TLS 场景）
 
 按需 TLS 需要公网（证书签发机构）能直接访问你的服务器 `80/443` 端口。如果你开启了 Cloudflare 代理，Cloudflare 会在边缘终止 TLS，证书校验流程可能无法直达你的源站。
@@ -181,6 +211,7 @@ Caddy 相关文件在 `selfhosted/caddy/`：
 
 如果你必须开启 Cloudflare 代理，请使用 `selfhosted/caddy/Caddyfile.simple`，让 Cloudflare 负责边缘 HTTPS（Caddy 仅监听 `:80`）；或者改用 DNS-01 签发方案（本仓库未提供）。
 
+<a id="toc-upgrade"></a>
 ## 升级
 
 ```bash
@@ -190,6 +221,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.c
 
 数据库迁移会在服务启动时自动执行。
 
+<a id="toc-backup"></a>
 ## 备份
 
 持久化数据存放在挂载到 `/app/data` 的 Docker volume 中。
@@ -199,6 +231,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.c
 - SQLite：`markdownbrain.db`
 - Secrets：`.secrets.edn`
 
+<a id="toc-troubleshooting"></a>
 ## 常见问题
 
 - TLS 失败：检查 DNS 是否指向服务器，且 `80/443` 可从公网访问。

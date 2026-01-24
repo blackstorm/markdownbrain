@@ -5,6 +5,24 @@
 
 Publish your Obsidian vault as a website you can self-host.
 
+## Table of contents
+
+- [What it is](#toc-what-it-is)
+- [MVP scope](#toc-mvp-scope)
+- [Quickstart (self-host)](#toc-quickstart-self-host)
+- [Quickstart (development)](#toc-quickstart-development)
+- [Releases](#toc-releases)
+  - [Docker image (GHCR)](#toc-docker-image-ghcr)
+  - [Obsidian plugin](#toc-obsidian-plugin)
+- [Documentation](#toc-documentation)
+- [Configuration](#toc-configuration)
+  - [MarkdownBrain (server) environment variables](#toc-config-server-env)
+  - [Docker runtime environment variables](#toc-config-docker-runtime-env)
+  - [Self-hosting (Compose) environment variables](#toc-config-compose-env)
+- [License](#toc-license)
+- [Third-party notices](#toc-third-party-notices)
+
+<a id="toc-what-it-is"></a>
 ## What it is
 
 MarkdownBrain is a personal publishing stack for Obsidian:
@@ -13,6 +31,7 @@ MarkdownBrain is a personal publishing stack for Obsidian:
 - Frontend: serve the public site (notes, backlinks, assets)
 - Obsidian plugin: publish notes and assets to your server
 
+<a id="toc-mvp-scope"></a>
 ## MVP scope
 
 - Publish Markdown notes and attachments
@@ -22,6 +41,7 @@ MarkdownBrain is a personal publishing stack for Obsidian:
 - Per-vault Publish Key (renewable)
 - Console shows last publish status, time, and error (snapshot)
 
+<a id="toc-quickstart-self-host"></a>
 ## Quickstart (self-host)
 
 1. Prepare a Linux server with Docker + Docker Compose, a domain (A/AAAA), and open ports `80/443`.
@@ -49,6 +69,7 @@ open http://localhost:9090/console
 
 Full guide: [selfhosted/README.md](selfhosted/README.md).
 
+<a id="toc-quickstart-development"></a>
 ## Quickstart (development)
 
 Prereqs: Java 25 (Temurin), Clojure CLI, Node.js 25, pnpm, Make.
@@ -61,8 +82,10 @@ make dev
 - Frontend: `http://localhost:8080`
 - Console: `http://localhost:9090/console`
 
+<a id="toc-releases"></a>
 ## Releases
 
+<a id="toc-docker-image-ghcr"></a>
 ### Docker image (GHCR)
 
 - Image: `ghcr.io/blackstorm/markdownbrain`
@@ -70,11 +93,13 @@ make dev
   - `edge`, `sha-<7>` on `main`
   - `X.Y.Z`, `X.Y`, `X`, `latest` on git tag `vX.Y.Z`
 
+<a id="toc-obsidian-plugin"></a>
 ### Obsidian plugin
 
 - Download `markdownbrain-plugin.zip` from GitHub Releases.
 - Unzip into `.obsidian/plugins/markdownbrain/`.
 
+<a id="toc-documentation"></a>
 ## Documentation
 
 - Self-hosting: [selfhosted/README.md](selfhosted/README.md)
@@ -82,6 +107,7 @@ make dev
 - Tests: [server/test/README.md](server/test/README.md)
 - UI guidelines: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
 
+<a id="toc-configuration"></a>
 ## Configuration
 
 MarkdownBrain reads configuration from environment variables.
@@ -89,6 +115,7 @@ MarkdownBrain reads configuration from environment variables.
 - Development: when running from `server/`, it also loads `.env` (for example `server/.env`).
 - Docker: the server only loads `.env` if a `.env` file exists in the container working directory; most deployments should pass env vars via Docker Compose `environment:` or `--env-file`.
 
+<a id="toc-config-server-env"></a>
 ### MarkdownBrain (server) environment variables
 
 | Name | Description | Default | Required |
@@ -116,12 +143,14 @@ Notes:
 - If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
 - In production, set `ENVIRONMENT=production` to enable secure cookies.
 
+<a id="toc-config-docker-runtime-env"></a>
 ### Docker runtime environment variables
 
 | Name | Description | Default | Required |
 |---|---|---|---|
 | `JAVA_OPTS` | Extra JVM args for the container | empty | No |
 
+<a id="toc-config-compose-env"></a>
 ### Self-hosting (Compose) environment variables
 
 These are used by the `selfhosted/` Docker Compose setup:
@@ -131,12 +160,14 @@ These are used by the `selfhosted/` Docker Compose setup:
 | `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
 | `S3_PUBLIC_PORT` | Host port for bundled RustFS (S3 compose only) | `9000` | No |
 
+<a id="toc-license"></a>
 ## License
 
 - Server (`server/`): `AGPL-3.0-or-later` (see `LICENSE`)
 - Obsidian plugin (`obsidian-plugin/`): MIT (see `obsidian-plugin/LICENSE`)
 - Deployment configs (`selfhosted/`): MIT (see `selfhosted/LICENSE`)
 
+<a id="toc-third-party-notices"></a>
 ## Third-party notices
 
 This repository bundles third-party fonts and frontend libraries under their own licenses.

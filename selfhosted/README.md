@@ -4,6 +4,25 @@
 
 This directory provides production-ready Docker Compose setups.
 
+## Table of contents
+
+- [Overview](#toc-overview)
+- [Quick deploy (one command)](#toc-quick-deploy)
+- [Choose a deployment](#toc-choose-deployment)
+- [Prerequisites](#toc-prerequisites)
+- [Environment variables](#toc-environment-variables)
+  - [What Compose sets by default](#toc-compose-defaults)
+- [Quickstart (recommended: Caddy)](#toc-quickstart-caddy)
+- [Minimal mode (no Caddy)](#toc-minimal)
+- [S3 mode (Caddy + RustFS)](#toc-s3)
+- [Caddy files (when to use which)](#toc-caddy-files)
+- [How on-demand TLS works](#toc-on-demand-tls)
+  - [Cloudflare notes (when using on-demand TLS)](#toc-cloudflare)
+- [Upgrade](#toc-upgrade)
+- [Backup](#toc-backup)
+- [Troubleshooting](#toc-troubleshooting)
+
+<a id="toc-overview"></a>
 ## Overview
 
 MarkdownBrain exposes two HTTP ports inside the container:
@@ -16,6 +35,7 @@ Security model (recommended):
 - Keep Console private (bound to `127.0.0.1` on the host).
 - Expose only the public site (`:80/:443`) through a reverse proxy (Caddy in this repo).
 
+<a id="toc-quick-deploy"></a>
 ## Quick deploy (one command)
 
 For a quick trial (no reverse proxy, local storage), run:
@@ -27,6 +47,7 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 - Public site: `http://<your-server>:8080/`
 - Console (SSH tunnel): `ssh -L 9090:localhost:9090 user@your-server`, then open `http://localhost:9090/console`
 
+<a id="toc-choose-deployment"></a>
 ## Choose a deployment
 
 - `minimal` (MarkdownBrain only)
@@ -36,12 +57,14 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 - `s3` (MarkdownBrain + Caddy + RustFS)
   - Compose file: `selfhosted/compose/docker-compose.s3.yml`
 
+<a id="toc-prerequisites"></a>
 ## Prerequisites
 
 - A Linux server with Docker + Docker Compose
 - A domain pointing to the server (A/AAAA record)
 - Ports `80`/`443` open (for Caddy)
 
+<a id="toc-environment-variables"></a>
 ## Environment variables
 
 Compose reads variables from `selfhosted/.env` (see `selfhosted/.env.example`).
@@ -66,6 +89,7 @@ For the full MarkdownBrain server configuration reference, see [../README.md](..
 | `S3_BUCKET` | MarkdownBrain | S3 bucket name | `markdownbrain` | Yes (S3) |
 | `S3_PUBLIC_PORT` | Compose | Host port for RustFS in the bundled S3 compose | `9000` | No |
 
+<a id="toc-compose-defaults"></a>
 ### What Compose sets by default
 
 The provided compose files already set key MarkdownBrain variables:
@@ -87,6 +111,7 @@ You usually do not need to set `DATA_PATH` or `LOCAL_STORAGE_PATH` because the c
 - Default DB: `/app/data/markdownbrain.db`
 - Default local storage: `/app/data/storage`
 
+<a id="toc-quickstart-caddy"></a>
 ## Quickstart (recommended: Caddy)
 
 1. Create `selfhosted/.env`.
@@ -120,6 +145,7 @@ open http://localhost:9090/console
 - Copy the vault Publish Key and configure the Obsidian plugin.
 - Visit `https://<your-domain>/`.
 
+<a id="toc-minimal"></a>
 ## Minimal mode (no Caddy)
 
 Use this when you already have a reverse proxy / TLS in front:
@@ -130,6 +156,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.m
 
 - Public site: `http://<your-server>:8080/`
 
+<a id="toc-s3"></a>
 ## S3 mode (Caddy + RustFS)
 
 This mode includes a bundled S3-compatible storage service (RustFS). RustFS is exposed on host port `${S3_PUBLIC_PORT:-9000}`.
@@ -143,6 +170,7 @@ Start:
 docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.s3.yml up -d
 ```
 
+<a id="toc-caddy-files"></a>
 ## Caddy files (when to use which)
 
 The Caddy setup lives in `selfhosted/caddy/`:
@@ -161,6 +189,7 @@ The Caddy setup lives in `selfhosted/caddy/`:
 - `selfhosted/caddy/caddy-entrypoint.sh`
   - Small wrapper that selects `Caddyfile.simple` vs `Caddyfile.on-demand-tls` based on `CADDY_ON_DEMAND_TLS_ENABLED`.
 
+<a id="toc-on-demand-tls"></a>
 ## How on-demand TLS works
 
 When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy will only issue a certificate if MarkdownBrain confirms the domain:
@@ -168,6 +197,7 @@ When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy will only issue a certificate if 
 - Caddy calls `http://markdownbrain:9090/console/domain-check?domain=...`
 - MarkdownBrain returns `200` only if the domain exists in your vault list
 
+<a id="toc-cloudflare"></a>
 ### Cloudflare notes (when using on-demand TLS)
 
 On-demand TLS requires the public internet (ACME CA) to reach your server directly on ports `80/443`. If you enable Cloudflare proxy, Cloudflare terminates TLS and ACME challenges may not reach your origin.
@@ -181,6 +211,7 @@ Recommended setup:
 
 If you must keep Cloudflare proxy enabled, use `selfhosted/caddy/Caddyfile.simple` and let Cloudflare handle HTTPS at the edge (Caddy stays on `:80`), or switch to a DNS-01 challenge setup (not provided in this repo).
 
+<a id="toc-upgrade"></a>
 ## Upgrade
 
 ```bash
@@ -190,6 +221,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.c
 
 Database migrations run automatically on server startup.
 
+<a id="toc-backup"></a>
 ## Backup
 
 Persisted data is stored in the Docker volume mounted at `/app/data`.
@@ -199,6 +231,7 @@ At minimum, back up:
 - SQLite DB: `markdownbrain.db`
 - Secrets file: `.secrets.edn`
 
+<a id="toc-troubleshooting"></a>
 ## Troubleshooting
 
 - TLS fails: verify DNS points to the server and ports `80/443` are reachable.

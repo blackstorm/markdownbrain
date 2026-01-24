@@ -2,6 +2,14 @@
 
 本目录包含 MarkdownBrain 的后端测试与少量前端测试入口。
 
+## 目录
+
+- [测试结构](#toc-structure)
+- [运行后端测试](#toc-backend-tests)
+- [运行指定测试](#toc-specific-tests)
+- [运行前端脚本测试（手动）](#toc-frontend-tests)
+
+<a id="toc-structure"></a>
 ## 测试结构
 
 ```
@@ -10,6 +18,7 @@ server/test/
 └── frontend/test.html             # 前端脚本测试（手动）
 ```
 
+<a id="toc-backend-tests"></a>
 ## 运行后端测试
 
 在仓库根目录运行：
@@ -25,6 +34,7 @@ cd server
 clojure -M:test
 ```
 
+<a id="toc-specific-tests"></a>
 ## 运行指定测试
 
 ```bash
@@ -34,6 +44,7 @@ clojure -X:test :patterns '["markdownbrain.db-test"]'
 clojure -X:test :patterns '["markdownbrain.handlers.*"]'
 ```
 
+<a id="toc-frontend-tests"></a>
 ## 运行前端脚本测试（手动）
 
 方式一：启动静态文件服务器。
