@@ -69,6 +69,14 @@
   (testing "generates key from client_id with extension"
     (is (= "assets/abc123.png"
            (store/asset-object-key "abc123" "png"))))
+
+  (testing "generates key from client_id without extension"
+    (is (= "assets/abc123"
+           (store/asset-object-key "abc123"))))
+
+  (testing "omits extension when it sanitizes to empty"
+    (is (= "assets/abc123"
+           (store/asset-object-key "abc123" ".."))))
   
   (testing "handles UUID format with extension"
     (is (= "assets/550e8400-e29b-41d4-a716-446655440000.webp"
@@ -79,6 +87,20 @@
     (is (= "assets/client-id.gif" (store/asset-object-key "client-id" "gif")))
     (is (= "assets/client-id.svg" (store/asset-object-key "client-id" "svg")))
     (is (= "assets/client-id.pdf" (store/asset-object-key "client-id" "pdf")))))
+
+(deftest test-extension-from-path
+  (testing "extracts extension from typical paths"
+    (is (= "png" (store/extension-from-path "assets/photo.png")))
+    (is (= "png" (store/extension-from-path "assets/photo.PNG")))
+    (is (= "gz" (store/extension-from-path "backup/archive.tar.gz"))))
+
+  (testing "returns nil when no extension"
+    (is (nil? (store/extension-from-path "assets/README")))
+    (is (nil? (store/extension-from-path "assets/.gitignore"))))
+
+  (testing "sanitizes extension"
+    (is (= "x-icon" (store/extension-from-path "assets/favicon.x-icon")))
+    (is (= "bin" (or (store/extension-from-path "assets/file.%$#") "bin")))))
 
 (deftest test-logo-object-key
   (testing "generates key with content hash and extension"
@@ -95,23 +117,6 @@
     (is (= "site/logo/e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.png"
            (store/logo-object-key "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" "png")))))
 
-(deftest test-content-type->extension
-  (testing "maps common image content types"
-    (is (= "png" (store/content-type->extension "image/png")))
-    (is (= "jpg" (store/content-type->extension "image/jpeg")))
-    (is (= "gif" (store/content-type->extension "image/gif")))
-    (is (= "webp" (store/content-type->extension "image/webp")))
-    (is (= "svg" (store/content-type->extension "image/svg+xml"))))
-  
-  (testing "maps document content types"
-    (is (= "pdf" (store/content-type->extension "application/pdf")))
-    (is (= "json" (store/content-type->extension "application/json"))))
-  
-  (testing "defaults to bin for unknown types"
-    (is (= "bin" (store/content-type->extension "application/octet-stream")))
-    (is (= "bin" (store/content-type->extension "unknown/type")))
-    (is (= "bin" (store/content-type->extension nil)))))
-
 ;; =============================================================================
 ;; S3 Client Mock Tests (using with-redefs)
 ;; =============================================================================
@@ -124,4 +129,3 @@
 ;; =============================================================================
 ;; Logo Thumbnail Cache Tests
 ;; =============================================================================
-

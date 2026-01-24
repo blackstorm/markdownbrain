@@ -7,6 +7,7 @@
    [markdownbrain.markdown :as md]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.response :as resp]
+   [markdownbrain.utils.stream :as utils.stream]
    [selmer.parser :as selmer])
   (:import [java.io InputStream]))
 
@@ -212,17 +213,6 @@
                   (resp/html response-body))))))))))
 
 ;; ============================================================
-;; Asset Serving (Local Storage Only)
-;; ============================================================
-
-(defn- input-stream->bytes
-  "Convert InputStream to byte array."
-  [^InputStream is]
-  (let [baos (java.io.ByteArrayOutputStream.)]
-    (clojure.java.io/copy is baos)
-    (.toByteArray baos)))
-
-;; ============================================================
 ;; Logo & Favicon Serving
 ;; ============================================================
 
@@ -297,7 +287,7 @@
       (let [vault-id (:id vault)
             result (object-store/get-object vault-id path)]
         (if result
-          (let [body (input-stream->bytes (:Body result))
+          (let [body (utils.stream/input-stream->bytes (:Body result))
                 content-type (or (:ContentType result) "application/octet-stream")]
             (log/debug "Serving asset:" path "for vault:" vault-id)
             {:status 200

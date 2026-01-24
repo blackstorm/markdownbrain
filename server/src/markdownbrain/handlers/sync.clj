@@ -394,7 +394,7 @@
                              (let [content-bytes (decode-base64 content)]
                                (if (nil? content-bytes)
                                  (resp/bad-request "Missing asset content")
-                                 (let [extension (object-store/content-type->extension asset-content-type)
+                                 (let [extension (object-store/extension-from-path asset-path)
                                        object-key (object-store/asset-object-key asset-id extension)
                                        asset-size (or size (alength ^bytes content-bytes))]
                                    (when (config/development?)

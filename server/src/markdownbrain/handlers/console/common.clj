@@ -1,21 +1,15 @@
 (ns markdownbrain.handlers.console.common
   "Shared utilities for console handlers."
   (:require
-   [clojure.java.io :as io]
    [clojure.string :as str]
    [markdownbrain.db :as db]
    [markdownbrain.object-store :as object-store]
-   [markdownbrain.response :as resp]))
+   [markdownbrain.response :as resp]
+   [markdownbrain.utils.bytes :as utils.bytes]
+   [markdownbrain.utils.stream :as utils.stream]))
 
-(defn format-storage-size
-  "Format bytes into human-readable size string."
-  [bytes]
-  (cond
-    (nil? bytes) "0 B"
-    (< bytes 1024) (str bytes " B")
-    (< bytes (* 1024 1024)) (format "%.1f KB" (/ bytes 1024.0))
-    (< bytes (* 1024 1024 1024)) (format "%.1f MB" (/ bytes (* 1024.0 1024)))
-    :else (format "%.2f GB" (/ bytes (* 1024.0 1024 1024)))))
+(def format-storage-size
+  utils.bytes/format-storage-size)
 
 (defn console-asset-url
   "Generate console storage URL for an asset.
@@ -23,12 +17,8 @@
   [vault-id object-key]
   (str "/console/storage/" vault-id "/" object-key))
 
-(defn input-stream->bytes
-  "Convert InputStream to byte array."
-  [is]
-  (let [baos (java.io.ByteArrayOutputStream.)]
-    (io/copy is baos)
-    (.toByteArray baos)))
+(def input-stream->bytes
+  utils.stream/input-stream->bytes)
 
 (defn serve-console-asset
   "Serve assets from storage for console panel.
@@ -54,7 +44,7 @@
       :else
       (let [result (object-store/get-object vault-id path)]
         (if result
-          (let [body (input-stream->bytes (:Body result))
+          (let [body (utils.stream/input-stream->bytes (:Body result))
                 content-type (or (:ContentType result) "application/octet-stream")]
             {:status 200
              :headers {"Content-Type" content-type

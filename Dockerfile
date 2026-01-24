@@ -1,4 +1,4 @@
-FROM node:20-alpine AS frontend-builder
+FROM node:25-bookworm-slim AS frontend-builder
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci
@@ -7,8 +7,9 @@ COPY server/resources/templates ./resources/templates
 RUN mkdir -p resources/publics/console/css resources/publics/frontend/css
 RUN npm run build
 
-FROM clojure:temurin-21-tools-deps-alpine AS backend-builder
+FROM clojure:temurin-25-tools-deps AS backend-builder
 WORKDIR /app/server
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 COPY server/deps.edn server/build.clj ./
 RUN clojure -P -T:build
 COPY server/src ./src
@@ -18,28 +19,33 @@ COPY --from=frontend-builder /app/server/resources/publics/frontend/css/frontend
 RUN clojure -T:build uberjar
 
 # Stage 3: Runtime
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 
-RUN addgroup -g 1000 mdbrain && \
-    adduser -u 1000 -G mdbrain -s /bin/sh -D mdbrain && \
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g 1000 markdownbrain && \
+    useradd -m -u 1000 -g 1000 -s /bin/sh markdownbrain && \
     mkdir -p /app/data && \
-    chown -R mdbrain:mdbrain /app
+    chown -R markdownbrain:markdownbrain /app
 
-COPY --from=backend-builder --chown=mdbrain:mdbrain /app/server/target/server-standalone.jar ./app.jar
+COPY --from=backend-builder --chown=markdownbrain:markdownbrain /app/server/target/server-standalone.jar ./app.jar
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
-USER mdbrain
+USER markdownbrain
 
 ENV FRONTEND_PORT=8080
 ENV CONSOLE_PORT=9090
 ENV DB_PATH=/app/data/markdownbrain.db
 ENV ENVIRONMENT=production
+ENV JAVA_OPTS=""
 
 EXPOSE 8080 9090
 
 VOLUME ["/app/data"]
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:9090/console/health || exit 1
+    CMD curl -fsS http://localhost:9090/console/health >/dev/null || exit 1
 
-CMD ["java", "-Djava.awt.headless=true", "-jar", "app.jar"]
+CMD ["./docker-entrypoint.sh"]

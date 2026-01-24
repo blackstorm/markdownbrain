@@ -50,6 +50,8 @@
       "gif" "image/gif"
       "webp" "image/webp"
       "svg" "image/svg+xml"
+      "bmp" "image/bmp"
+      "ico" "image/x-icon"
       "pdf" "application/pdf"
       "md" "text/markdown"
       "txt" "text/plain"
@@ -57,6 +59,7 @@
       "html" "text/html"
       "css" "text/css"
       "js" "application/javascript"
+      "ogg" "audio/ogg"
       "application/octet-stream")))
 
 ;; ============================================================

@@ -76,34 +76,45 @@
                    [])
            (str/join "/")))))
 
-(def ^:private content-type-extension-map
-  "Map from content-type to file extension."
-  {"image/png" "png"
-   "image/jpeg" "jpg"
-   "image/gif" "gif"
-   "image/webp" "webp"
-   "image/svg+xml" "svg"
-   "application/pdf" "pdf"
-   "application/json" "json"
-   "text/plain" "txt"
-   "text/markdown" "md"
-   "text/html" "html"
-   "text/css" "css"
-   "application/javascript" "js"
-   "video/mp4" "mp4"
-   "video/webm" "webm"
-   "audio/mpeg" "mp3"
-   "audio/wav" "wav"})
+(defn- sanitize-extension
+  "Keep extension URL/key safe (letters, digits, '-', '_', '+')."
+  [extension]
+  (when extension
+    (let [s (-> (str extension)
+                (str/trim)
+                (str/lower-case))
+          s (if (str/starts-with? s ".") (subs s 1) s)
+          filtered (->> s
+                        (filter (fn [ch]
+                                  (or (Character/isLetterOrDigit ^char ch)
+                                      (= ch \-)
+                                      (= ch \_)
+                                      (= ch \+))))
+                        (apply str))
+          trimmed (when (seq filtered)
+                    (subs filtered 0 (min 32 (count filtered))))]
+      (when (seq trimmed) trimmed))))
 
-(defn content-type->extension
-  "Convert content-type to file extension. Returns 'bin' for unknown types."
-  [content-type]
-  (get content-type-extension-map content-type "bin"))
+(defn extension-from-path
+  "Extract a safe extension from a path (no dot, lowercase) or nil.
+   Example: \"assets/photo.PNG\" -> \"png\"."
+  [path]
+  (when path
+    (let [p (str path)
+          slash-idx (.lastIndexOf p "/")
+          filename (if (neg? slash-idx) p (subs p (inc slash-idx)))
+          dot-idx (.lastIndexOf filename ".")]
+      (when (and (pos? dot-idx) (< (inc dot-idx) (count filename)))
+        (sanitize-extension (subs filename (inc dot-idx)))))))
 
 (defn asset-object-key
-  "Generate object key for an asset based on client_id and extension."
-  [client-id extension]
-  (str "assets/" client-id "." extension))
+  "Generate object key for an asset based on client_id and optional extension."
+  ([client-id]
+   (str "assets/" client-id))
+  ([client-id extension]
+   (if-let [ext (sanitize-extension extension)]
+     (str "assets/" client-id "." ext)
+     (asset-object-key client-id))))
 
 (defn logo-object-key
   "Generate object key for a site logo using content hash and extension."
@@ -165,23 +176,10 @@
             (let [create-fn (resolve 'markdownbrain.object-store.s3/create-s3-store)]
               (set-store! (create-fn))
               (log/info "S3 storage initialized successfully")))
-      :local (do
-               (require 'markdownbrain.object-store.local)
-               (let [create-fn (resolve 'markdownbrain.object-store.local/create-local-store)]
-                 (set-store! (create-fn))
-                 (log/info "Local storage initialized successfully")))
+              :local (do
+                       (require 'markdownbrain.object-store.local)
+                       (let [create-fn (resolve 'markdownbrain.object-store.local/create-local-store)]
+                         (set-store! (create-fn))
+                         (log/info "Local storage initialized successfully")))
       (throw (ex-info (str "Unknown storage type: " storage-type)
                       {:storage-type storage-type})))))
-
-;; ============================================================
-;; Legacy compatibility - ensure-bucket! (now no-op for local)
-;; ============================================================
-
-(defn ensure-bucket!
-  "Ensure storage is ready. For S3, creates bucket if needed.
-   For local, creates directory if needed.
-   DEPRECATED: Use init-storage! instead."
-  []
-  (log/warn "ensure-bucket! is deprecated. Use init-storage! instead.")
-  (when-not @store*
-    (init-storage!)))

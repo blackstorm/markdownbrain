@@ -11,11 +11,14 @@
    [ring.middleware.session.cookie :as cookie]
    [ring.util.response :as response]))
 
+(def ^:private session-cookie-name
+  "markdownbrain-session")
+
 (defn wrap-session-middleware [handler]
   (session/wrap-session
     handler
     {:store (cookie/cookie-store {:key (config/session-secret)})
-     :cookie-name "mdbrain-session"
+     :cookie-name session-cookie-name
      :cookie-attrs {:max-age (* 60 60 24 7)
                     :http-only true
                     :same-site :lax
