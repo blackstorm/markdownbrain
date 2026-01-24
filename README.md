@@ -47,7 +47,7 @@ open http://localhost:9090/console
 5. Create the first admin user at `/console/init`, then create a vault and copy its Publish Key.
 6. Install and configure the Obsidian plugin.
 
-Full guide: `selfhosted/README.md`.
+Full guide: [selfhosted/README.md](selfhosted/README.md).
 
 ## Quickstart (development)
 
@@ -77,10 +77,10 @@ make dev
 
 ## Documentation
 
-- Self-hosting: `selfhosted/README.md`
-- Obsidian plugin: `obsidian-plugin/README.md`
-- Tests: `server/test/README.md`
-- UI guidelines: `DESIGN_SYSTEM.md`
+- Self-hosting: [selfhosted/README.md](selfhosted/README.md)
+- Obsidian plugin: [obsidian-plugin/README.md](obsidian-plugin/README.md)
+- Tests: [server/test/README.md](server/test/README.md)
+- UI guidelines: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
 
 ## Configuration
 
@@ -119,4 +119,4 @@ Notes:
 ## Third-party notices
 
 This repository bundles third-party fonts and frontend libraries under their own licenses.
-See `THIRD_PARTY_NOTICES.md`.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

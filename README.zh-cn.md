@@ -48,7 +48,7 @@ open http://localhost:9090/console
 6. 首次访问会跳转到 `/console/init`，创建第一个管理员账号。
 7. 创建 Vault，复制 Publish Key，并配置 Obsidian 插件。
 
-完整部署说明：`selfhosted/README.md`。
+完整部署说明：[selfhosted/README.md](selfhosted/README.md)。
 
 ## 快速开始（开发）
 
@@ -78,10 +78,10 @@ make dev
 
 ## 文档
 
-- 自托管：`selfhosted/README.md`
-- 插件：`obsidian-plugin/README.md`
-- 测试：`server/test/README.md`
-- UI 规范：`DESIGN_SYSTEM.md`
+- 自托管：[selfhosted/README.md](selfhosted/README.md)
+- 插件：[obsidian-plugin/README.md](obsidian-plugin/README.md)
+- 测试：[server/test/README.md](server/test/README.md)
+- UI 规范：[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
 
 ## 配置
 
@@ -120,4 +120,4 @@ MarkdownBrain 从环境变量读取配置。在开发环境中，也会读取 `s
 ## 第三方声明
 
 本仓库包含第三方字体与前端库，这些资源遵循其各自的授权协议，不包含在本项目的许可证范围内。
-详见 `THIRD_PARTY_NOTICES.md`。
+详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

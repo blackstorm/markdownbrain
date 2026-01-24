@@ -18,7 +18,7 @@ Obsidian → Settings → Community plugins → MarkdownBrain:
 - Publish Key: copy from MarkdownBrain Console → your vault card
 - Auto publish: publish on file changes
 
-The plugin calls `${serverUrl}/obsidian/...` endpoints. For self-hosting, your reverse proxy must route `/obsidian/*` to MarkdownBrain Console (see `selfhosted/README.md`).
+The plugin calls `${serverUrl}/obsidian/...` endpoints. For self-hosting, your reverse proxy must route `/obsidian/*` to MarkdownBrain Console (see [selfhosted/README.md](../selfhosted/README.md)).
 
 ## Commands
 

@@ -18,7 +18,7 @@ Obsidian → 设置 → 社区插件 → MarkdownBrain：
 - Publish Key：从 MarkdownBrain Console 复制
 - 自动发布：文件变更时自动发布
 
-插件会请求 `${serverUrl}/obsidian/...` 接口。自托管时，需要让反向代理把 `/obsidian/*` 转发到 MarkdownBrain 的 Console 端口（参考 `selfhosted/README.md`）。
+插件会请求 `${serverUrl}/obsidian/...` 接口。自托管时，需要让反向代理把 `/obsidian/*` 转发到 MarkdownBrain 的 Console 端口（参考 [selfhosted/README.md](../selfhosted/README.md)）。
 
 ## 命令
 

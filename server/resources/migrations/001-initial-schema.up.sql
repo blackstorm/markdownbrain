@@ -1,5 +1,5 @@
--- MarkdownBrain Database Schema
--- Single migration file for MVP (no backward compatibility needed)
+-- MarkdownBrain Database Schema (MVP)
+-- Initial schema migration (squashed)
 
 -- Tenants table (one per user/organization)
 CREATE TABLE IF NOT EXISTS tenants (
@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS vaults (
   root_note_id TEXT,
   logo_object_key TEXT,
   custom_head_html TEXT,
+  last_publish_at TIMESTAMP,
+  last_publish_status TEXT NOT NULL DEFAULT 'never',
+  last_publish_error_code TEXT,
+  last_publish_error_message TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
