@@ -109,4 +109,6 @@ See `THIRD_PARTY_NOTICES.md` and files under `server/resources/publics/shared/`.
 
 ## License
 
-MIT. See `LICENSE.md`.
+- Server (`server/`): `AGPL-3.0` (see `LICENSE`).
+- Obsidian plugin (`obsidian-plugin/`): MIT (see `obsidian-plugin/LICENSE`).
+- Deployment configs (`selfhosted/`): MIT (see `selfhosted/LICENSE`).

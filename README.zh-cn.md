@@ -109,4 +109,6 @@ MarkdownBrain 从环境变量与 `server/.env`（开发环境）读取配置。
 
 ## License
 
-MIT，详见 `LICENSE.md`。
+- 服务端（`server/`）：`AGPL-3.0-or-later`（见 `LICENSE`）。
+- Obsidian 插件（`obsidian-plugin/`）：MIT（见 `obsidian-plugin/LICENSE`）。
+- 部署配置（`selfhosted/`）：MIT（见 `selfhosted/LICENSE`）。

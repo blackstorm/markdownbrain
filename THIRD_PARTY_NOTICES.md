@@ -15,7 +15,13 @@ This project bundles third-party fonts and JavaScript libraries. These component
 
 | Name | Version | License | Source | Local License |
 | --- | --- | --- | --- | --- |
-| htmx | 2.0.8 | BSD 2-Clause | https://htmx.org/ | `server/resources/publics/shared/licenses/htmx.txt` |
+| htmx | 2.0.8 | 0BSD | https://htmx.org/ | `server/resources/publics/shared/licenses/htmx.txt` |
 | highlight.js | 11.9.0 | BSD 3-Clause | https://highlightjs.org/ | `server/resources/publics/shared/licenses/highlight.js.txt` |
 | KaTeX | 0.16.9 | MIT | https://katex.org/ | `server/resources/publics/shared/licenses/katex.txt` |
 | lucide | 0.562.0 | ISC | https://lucide.dev/ | `server/resources/publics/shared/licenses/lucide.txt` |
+
+## CSS Libraries
+
+| Name | Version | License | Source | Local Reference |
+| --- | --- | --- | --- | --- |
+| Tailwind CSS | 4.1.18 | MIT | https://tailwindcss.com/ | Included via license header in `server/resources/publics/frontend/css/frontend.css` |
