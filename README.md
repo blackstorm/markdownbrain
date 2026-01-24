@@ -1,24 +1,13 @@
 ![MarkdownBrain Logo](assets/markdownbrain.png)
 # MarkdownBrain
 
+[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
+
 [English](README.md) | [简体中文](README.zh-cn.md)
 
 Publish your Obsidian vault as a website you can self-host.
-
-## Table of contents
-
-- [What it is](#toc-what-it-is)
-- [MVP scope](#toc-mvp-scope)
-- [Quickstart (self-host)](#toc-quickstart-self-host)
-- [Quickstart (development)](#toc-quickstart-development)
-- [Releases](#toc-releases)
-  - [Docker image (GHCR)](#toc-docker-image-ghcr)
-  - [Obsidian plugin](#toc-obsidian-plugin)
-- [Documentation](#toc-documentation)
-- [Configuration](#toc-configuration)
-  - [Environment variables (overview)](#toc-config-server-env)
-- [License](#toc-license)
-- [Third-party notices](#toc-third-party-notices)
 
 <a id="toc-what-it-is"></a>
 ## What it is
@@ -29,8 +18,8 @@ MarkdownBrain is a personal publishing stack for Obsidian:
 - Frontend: serve the public site (notes, backlinks, assets)
 - Obsidian plugin: publish notes and assets to your server
 
-<a id="toc-mvp-scope"></a>
-## MVP scope
+<a id="toc-features"></a>
+## Features
 
 - Publish Markdown notes and attachments
 - Internal links and backlinks
@@ -39,8 +28,8 @@ MarkdownBrain is a personal publishing stack for Obsidian:
 - Per-vault Publish Key (renewable)
 - Console shows last publish status, time, and error (snapshot)
 
-<a id="toc-quickstart-self-host"></a>
-## Quickstart (self-host)
+<a id="toc-quickstart"></a>
+## Quickstart
 
 1. Prepare a Linux server with Docker + Docker Compose, a domain (A/AAAA), and open ports `80/443`.
 2. Create an env file.
@@ -67,8 +56,34 @@ open http://localhost:9090/console
 
 Full guide: [selfhosted/README.md](selfhosted/README.md).
 
+<a id="toc-configuration"></a>
+### Configuration
+
+MarkdownBrain reads configuration from environment variables.
+
+- Development: when running from `server/`, it also loads `.env` (for example `server/.env`).
+- Docker: the server only loads `.env` if a `.env` file exists in the container working directory; most deployments should pass env vars via Docker Compose `environment:` or `--env-file`.
+
+<a id="toc-config-server-env"></a>
+#### Environment variables (overview)
+
+| Name | Used by | Description | Default / example | Required |
+|---|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Compose | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
+| `DATA_PATH` | MarkdownBrain | Base data directory inside the container | `/app/data` | No |
+| `JAVA_OPTS` | MarkdownBrain | Extra JVM args for the container | `-Xms256m -Xmx512m` | No |
+| `MARKDOWNBRAIN_LOG_LEVEL` | MarkdownBrain | App log level (Logback) | `INFO` | No |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | Enable Caddy on-demand TLS integration | `false` | No |
+| `S3_PUBLIC_URL` | MarkdownBrain | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
+| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_BUCKET` | MarkdownBrain | S3 bucket name | `markdownbrain` | Yes (S3) |
+| `S3_PUBLIC_PORT` | Compose | Host port for RustFS in the bundled S3 compose | `9000` | No |
+
+Full reference (all server env vars, defaults, and when to use them): [selfhosted/README.md](selfhosted/README.md#toc-environment-variables).
+
 <a id="toc-quickstart-development"></a>
-## Quickstart (development)
+## Development
 
 Prereqs: Java 25 (Temurin), Clojure CLI, Node.js 25, pnpm, Make.
 
@@ -96,40 +111,6 @@ make dev
 
 - Download `markdownbrain-plugin.zip` from GitHub Releases.
 - Unzip into `.obsidian/plugins/markdownbrain/`.
-
-<a id="toc-documentation"></a>
-## Documentation
-
-- Self-hosting: [selfhosted/README.md](selfhosted/README.md)
-- Obsidian plugin: [obsidian-plugin/README.md](obsidian-plugin/README.md)
-- Tests: [server/test/README.md](server/test/README.md)
-- UI guidelines: [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md)
-
-<a id="toc-configuration"></a>
-## Configuration
-
-MarkdownBrain reads configuration from environment variables.
-
-- Development: when running from `server/`, it also loads `.env` (for example `server/.env`).
-- Docker: the server only loads `.env` if a `.env` file exists in the container working directory; most deployments should pass env vars via Docker Compose `environment:` or `--env-file`.
-
-<a id="toc-config-server-env"></a>
-### Environment variables (overview)
-
-| Name | Used by | Description | Default / example | Required |
-|---|---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | Compose | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
-| `DATA_PATH` | MarkdownBrain | Base data directory inside the container | `/app/data` | No |
-| `JAVA_OPTS` | MarkdownBrain | Extra JVM args for the container | `-Xms256m -Xmx512m` | No |
-| `MARKDOWNBRAIN_LOG_LEVEL` | MarkdownBrain | App log level (Logback) | `INFO` | No |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | Enable Caddy on-demand TLS integration | `false` | No |
-| `S3_PUBLIC_URL` | MarkdownBrain | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
-| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
-| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
-| `S3_BUCKET` | MarkdownBrain | S3 bucket name | `markdownbrain` | Yes (S3) |
-| `S3_PUBLIC_PORT` | Compose | Host port for RustFS in the bundled S3 compose | `9000` | No |
-
-Full reference (all server env vars, defaults, and when to use them): [selfhosted/README.md](selfhosted/README.md#toc-environment-variables).
 
 <a id="toc-license"></a>
 ## License
