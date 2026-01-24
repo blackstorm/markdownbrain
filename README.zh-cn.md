@@ -16,9 +16,7 @@
   - [Obsidian 插件](#toc-obsidian-plugin)
 - [文档](#toc-documentation)
 - [配置](#toc-configuration)
-  - [MarkdownBrain（服务端）环境变量](#toc-config-server-env)
-  - [Docker 运行时环境变量](#toc-config-docker-runtime-env)
-  - [Selfhost（Compose）环境变量](#toc-config-compose-env)
+  - [环境变量（概览）](#toc-config-server-env)
 - [License](#toc-license)
 - [第三方声明](#toc-third-party-notices)
 
@@ -106,7 +104,7 @@ make dev
 - 自托管：[selfhosted/README.md](selfhosted/README.md)
 - 插件：[obsidian-plugin/README.md](obsidian-plugin/README.md)
 - 测试：[server/test/README.md](server/test/README.md)
-- UI 规范：[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
+- UI 规范：[design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md)
 
 <a id="toc-configuration"></a>
 ## 配置
@@ -117,49 +115,22 @@ MarkdownBrain 从环境变量读取配置。
 - Docker：只有当容器工作目录下存在 `.env` 时服务端才会读取；大多数部署建议通过 Docker Compose 的 `environment:` 或 `--env-file` 传入环境变量。
 
 <a id="toc-config-server-env"></a>
-### MarkdownBrain（服务端）环境变量
+### 环境变量（概览）
 
-| 变量名 | 说明 | 默认值 | 必填 |
-|---|---|---|---|
-| `ENVIRONMENT` | `development` 或 `production` | `development` | 否 |
-| `HOST` | 监听地址（前台与 Console 共用） | `0.0.0.0` | 否 |
-| `FRONTEND_PORT` | Frontend 端口 | `8080` | 否 |
-| `CONSOLE_PORT` | Console 端口 | `9090` | 否 |
-| `DATA_PATH` | 数据目录（DB、secrets、本地存储） | `data`（Docker 镜像：`/app/data`） | 否 |
-| `SESSION_SECRET` | Console session 密钥（字符串） | 自动生成 | 否 |
-| `STORAGE_TYPE` | 存储类型：`local` 或 `s3` | `local` | 否 |
-| `LOCAL_STORAGE_PATH` | `STORAGE_TYPE=local` 时的本地存储目录 | `${DATA_PATH}/storage` | 否 |
-| `S3_ENDPOINT` | `STORAGE_TYPE=s3` 时的 S3 Endpoint | - | 是（S3） |
-| `S3_ACCESS_KEY` | `STORAGE_TYPE=s3` 时的 S3 Access Key | - | 是（S3） |
-| `S3_SECRET_KEY` | `STORAGE_TYPE=s3` 时的 S3 Secret Key | - | 是（S3） |
-| `S3_REGION` | S3 Region | `us-east-1` | 否 |
-| `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 否 |
-| `S3_PUBLIC_URL` | 浏览器加载资源的 base URL | - | 是（S3） |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | 为 Caddy 按需 TLS 启用 `/console/domain-check` | `false` | 否 |
-| `MARKDOWNBRAIN_LOG_LEVEL` | 应用日志级别（Logback） | `DEBUG` | 否 |
+| 变量名 | 作用对象 | 说明 | 默认值或示例 | 必填 |
+|---|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Compose | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
+| `DATA_PATH` | MarkdownBrain | 容器内的数据目录 | `/app/data` | 否 |
+| `JAVA_OPTS` | MarkdownBrain | 容器的 JVM 参数 | `-Xms256m -Xmx512m` | 否 |
+| `MARKDOWNBRAIN_LOG_LEVEL` | MarkdownBrain | 应用日志级别（Logback） | `INFO` | 否 |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | 是否启用 Caddy 按需 TLS 集成 | `false` | 否 |
+| `S3_PUBLIC_URL` | MarkdownBrain | S3 模式下浏览器加载资源的 base URL | `https://s3.your-domain.com` | 是（S3） |
+| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 Access Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
+| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 Secret Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
+| `S3_BUCKET` | MarkdownBrain | S3 Bucket 名称 | `markdownbrain` | 是（S3） |
+| `S3_PUBLIC_PORT` | Compose | S3 Compose 中 RustFS 暴露到宿主机的端口 | `9000` | 否 |
 
-说明：
-
-- 数据库默认路径为 `${DATA_PATH}/markdownbrain.db`。
-- 如果未设置 `SESSION_SECRET`，MarkdownBrain 会自动生成，并保存在 `${DATA_PATH}/.secrets.edn` 中。
-- 生产环境建议设置 `ENVIRONMENT=production`，以启用安全 Cookie。
-
-<a id="toc-config-docker-runtime-env"></a>
-### Docker 运行时环境变量
-
-| 变量名 | 说明 | 默认值 | 必填 |
-|---|---|---|---|
-| `JAVA_OPTS` | 容器的 JVM 参数 | 空 | 否 |
-
-<a id="toc-config-compose-env"></a>
-### Selfhost（Compose）环境变量
-
-这些变量用于 `selfhosted/` 的 Docker Compose 部署：
-
-| 变量名 | 说明 | 默认值 | 必填 |
-|---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
-| `S3_PUBLIC_PORT` | 内置 RustFS 的宿主机端口（仅 S3 compose） | `9000` | 否 |
+完整说明（服务端全部环境变量、默认值、使用场景）：[selfhosted/README.zh-cn.md](selfhosted/README.zh-cn.md#toc-environment-variables)。
 
 <a id="toc-license"></a>
 ## License

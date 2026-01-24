@@ -11,6 +11,9 @@ This directory provides production-ready Docker Compose setups.
 - [Choose a deployment](#toc-choose-deployment)
 - [Prerequisites](#toc-prerequisites)
 - [Environment variables](#toc-environment-variables)
+  - [Compose variables](#toc-compose-vars)
+  - [MarkdownBrain server variables](#toc-server-vars)
+  - [Docker runtime variables](#toc-docker-runtime-vars)
   - [What Compose sets by default](#toc-compose-defaults)
 - [Quickstart (recommended: Caddy)](#toc-quickstart-caddy)
 - [Minimal mode (no Caddy)](#toc-minimal)
@@ -74,20 +77,50 @@ There are two “layers” of variables:
 - Compose variables: used by Docker Compose itself (image tags, ports).
 - MarkdownBrain variables: passed into the `markdownbrain` container (the server reads them).
 
-For the full MarkdownBrain server configuration reference, see [../README.md](../README.md#configuration).
+For a short overview table, see [../README.md](../README.md#toc-configuration).
 
-| Name | Used by | Description | Default / example | Required |
-|---|---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | Compose | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
-| `DATA_PATH` | MarkdownBrain | Base data directory inside the container | `/app/data` | No |
-| `JAVA_OPTS` | MarkdownBrain | Extra JVM args for the MarkdownBrain container | `-Xms256m -Xmx512m` | No |
-| `MARKDOWNBRAIN_LOG_LEVEL` | MarkdownBrain | App log level (Logback) | `INFO` | No |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | Enable Caddy on-demand TLS integration | `false` | No |
-| `S3_PUBLIC_URL` | MarkdownBrain | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
-| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
-| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
-| `S3_BUCKET` | MarkdownBrain | S3 bucket name | `markdownbrain` | Yes (S3) |
-| `S3_PUBLIC_PORT` | Compose | Host port for RustFS in the bundled S3 compose | `9000` | No |
+<a id="toc-compose-vars"></a>
+### Compose variables
+
+| Name | Description | Default / example | Required |
+|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
+| `S3_PUBLIC_PORT` | Host port for bundled RustFS (S3 mode only) | `9000` | No |
+
+<a id="toc-server-vars"></a>
+### MarkdownBrain server variables
+
+| Name | Description | Default | Required |
+|---|---|---|---|
+| `ENVIRONMENT` | `development` or `production` | `development` | No |
+| `HOST` | Bind host for both servers | `0.0.0.0` | No |
+| `FRONTEND_PORT` | Frontend server port | `8080` | No |
+| `CONSOLE_PORT` | Console server port | `9090` | No |
+| `DATA_PATH` | Base data directory (DB, secrets, local storage) | `data` (Docker image: `/app/data`) | No |
+| `SESSION_SECRET` | Console session secret (string) | auto-generated | No |
+| `STORAGE_TYPE` | Storage backend: `local` or `s3` | `local` | No |
+| `LOCAL_STORAGE_PATH` | Local storage path when `STORAGE_TYPE=local` | `${DATA_PATH}/storage` | No |
+| `S3_ENDPOINT` | S3 endpoint URL when `STORAGE_TYPE=s3` | - | Yes (S3) |
+| `S3_ACCESS_KEY` | S3 access key when `STORAGE_TYPE=s3` | - | Yes (S3) |
+| `S3_SECRET_KEY` | S3 secret key when `STORAGE_TYPE=s3` | - | Yes (S3) |
+| `S3_REGION` | S3 region | `us-east-1` | No |
+| `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
+| `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets | - | Yes (S3) |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable `/console/domain-check` for Caddy on-demand TLS | `false` | No |
+| `MARKDOWNBRAIN_LOG_LEVEL` | App log level (Logback) | `INFO` (Docker image) | No |
+
+Notes:
+
+- Default DB path is `${DATA_PATH}/markdownbrain.db`.
+- If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
+- In production, set `ENVIRONMENT=production` to enable secure cookies.
+
+<a id="toc-docker-runtime-vars"></a>
+### Docker runtime variables
+
+| Name | Description | Default | Required |
+|---|---|---|---|
+| `JAVA_OPTS` | Extra JVM args for the container | empty | No |
 
 <a id="toc-compose-defaults"></a>
 ### What Compose sets by default

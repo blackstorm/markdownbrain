@@ -16,9 +16,7 @@ Publish your Obsidian vault as a website you can self-host.
   - [Obsidian plugin](#toc-obsidian-plugin)
 - [Documentation](#toc-documentation)
 - [Configuration](#toc-configuration)
-  - [MarkdownBrain (server) environment variables](#toc-config-server-env)
-  - [Docker runtime environment variables](#toc-config-docker-runtime-env)
-  - [Self-hosting (Compose) environment variables](#toc-config-compose-env)
+  - [Environment variables (overview)](#toc-config-server-env)
 - [License](#toc-license)
 - [Third-party notices](#toc-third-party-notices)
 
@@ -105,7 +103,7 @@ make dev
 - Self-hosting: [selfhosted/README.md](selfhosted/README.md)
 - Obsidian plugin: [obsidian-plugin/README.md](obsidian-plugin/README.md)
 - Tests: [server/test/README.md](server/test/README.md)
-- UI guidelines: [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md)
+- UI guidelines: [design/DESIGN_SYSTEM.md](design/DESIGN_SYSTEM.md)
 
 <a id="toc-configuration"></a>
 ## Configuration
@@ -116,49 +114,22 @@ MarkdownBrain reads configuration from environment variables.
 - Docker: the server only loads `.env` if a `.env` file exists in the container working directory; most deployments should pass env vars via Docker Compose `environment:` or `--env-file`.
 
 <a id="toc-config-server-env"></a>
-### MarkdownBrain (server) environment variables
+### Environment variables (overview)
 
-| Name | Description | Default | Required |
-|---|---|---|---|
-| `ENVIRONMENT` | `development` or `production` | `development` | No |
-| `HOST` | Bind host for both servers | `0.0.0.0` | No |
-| `FRONTEND_PORT` | Frontend server port | `8080` | No |
-| `CONSOLE_PORT` | Console server port | `9090` | No |
-| `DATA_PATH` | Base data directory (DB, secrets, local storage) | `data` (Docker image: `/app/data`) | No |
-| `SESSION_SECRET` | Console session secret (string) | auto-generated | No |
-| `STORAGE_TYPE` | Storage backend: `local` or `s3` | `local` | No |
-| `LOCAL_STORAGE_PATH` | Local storage path when `STORAGE_TYPE=local` | `${DATA_PATH}/storage` | No |
-| `S3_ENDPOINT` | S3 endpoint URL when `STORAGE_TYPE=s3` | - | Yes (S3) |
-| `S3_ACCESS_KEY` | S3 access key when `STORAGE_TYPE=s3` | - | Yes (S3) |
-| `S3_SECRET_KEY` | S3 secret key when `STORAGE_TYPE=s3` | - | Yes (S3) |
-| `S3_REGION` | S3 region | `us-east-1` | No |
-| `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
-| `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets | - | Yes (S3) |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable `/console/domain-check` for Caddy on-demand TLS | `false` | No |
-| `MARKDOWNBRAIN_LOG_LEVEL` | App log level (Logback) | `DEBUG` | No |
+| Name | Used by | Description | Default / example | Required |
+|---|---|---|---|---|
+| `MARKDOWNBRAIN_IMAGE` | Compose | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
+| `DATA_PATH` | MarkdownBrain | Base data directory inside the container | `/app/data` | No |
+| `JAVA_OPTS` | MarkdownBrain | Extra JVM args for the container | `-Xms256m -Xmx512m` | No |
+| `MARKDOWNBRAIN_LOG_LEVEL` | MarkdownBrain | App log level (Logback) | `INFO` | No |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Caddy + MarkdownBrain | Enable Caddy on-demand TLS integration | `false` | No |
+| `S3_PUBLIC_URL` | MarkdownBrain | Public base URL for browsers to fetch assets in S3 mode | `https://s3.your-domain.com` | Yes (S3) |
+| `S3_ACCESS_KEY` | MarkdownBrain + RustFS | S3 access key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_SECRET_KEY` | MarkdownBrain + RustFS | S3 secret key (RustFS or your S3) | `rustfsadmin` | Yes (S3) |
+| `S3_BUCKET` | MarkdownBrain | S3 bucket name | `markdownbrain` | Yes (S3) |
+| `S3_PUBLIC_PORT` | Compose | Host port for RustFS in the bundled S3 compose | `9000` | No |
 
-Notes:
-
-- Default DB path is `${DATA_PATH}/markdownbrain.db`.
-- If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
-- In production, set `ENVIRONMENT=production` to enable secure cookies.
-
-<a id="toc-config-docker-runtime-env"></a>
-### Docker runtime environment variables
-
-| Name | Description | Default | Required |
-|---|---|---|---|
-| `JAVA_OPTS` | Extra JVM args for the container | empty | No |
-
-<a id="toc-config-compose-env"></a>
-### Self-hosting (Compose) environment variables
-
-These are used by the `selfhosted/` Docker Compose setup:
-
-| Name | Description | Default | Required |
-|---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
-| `S3_PUBLIC_PORT` | Host port for bundled RustFS (S3 compose only) | `9000` | No |
+Full reference (all server env vars, defaults, and when to use them): [selfhosted/README.md](selfhosted/README.md#toc-environment-variables).
 
 <a id="toc-license"></a>
 ## License
