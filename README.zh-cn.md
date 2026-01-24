@@ -1,79 +1,105 @@
 # MarkdownBrain
 
-[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE) [![Top Language](https://img.shields.io/github/languages/top/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain) [![Last Commit](https://img.shields.io/github/last-commit/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/commits) [![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
+[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-MarkdownBrain 是一套用于发布 [Obsidian](https://obsidian.md/) 笔记的自托管解决方案，采用 `Clojure` 和 `HTMX` 作为核心技术栈，可将你的笔记转换为精美的网站，适合用于构建数字花园、博客、文档或教程。它由 Obsidian 插件和后端 Console 组成：插件用于将本地内容发布到服务器，Console 则负责 Vault、域名等管理工作；如果你已经有现成的笔记库，只需点击一次同步按钮，即可快速完成网站创建。
+**MarkdownBrain 是一套将 [Obsidian](https://obsidian.md/) 笔记发布为可自托管网站的完整解决方案。**
 
-<a id="toc-features"></a>
+采用 `Clojure` 和 `HTMX` 作为核心技术栈，支持多 Vault 发布、自动增量同步、链接解析、反向链接展示等功能，旨在为数字花园、博客、文档和教程站点提供无缝发布体验。
+
+## 为什么选择 MarkdownBrain
+
+- **真正自托管** — 不依赖第三方平台，数据完全由你掌控
+- **Obsidian 原生支持** — 完整支持内部链接、反向链接和 Wiki 风格引用
+- **开发者友好** — 灵活集成本地存储或 S3 兼容存储后端
+- **一键发布** — 已有笔记库？点击同步即可秒级上线
+
 ## 功能
 
 - 完全自托管，部署与数据完全可控
-- 支持无限 Vault 的独立发布
-- 提供增量与全量两种发布模式
-- 原生支持 Obsidian 笔记、附件与资源文件
-- 自动解析 Obsidian 内部链接与反向链接结构
+- 支持多 Vault 独立发布
+- 提供增量与全量两种同步模式，发布更高效
+- 原生支持 Obsidian 笔记及相关资源文件（图片、附件）
+- 自动解析内部链接与反向链接结构
 - 内置自定义域名支持，自动完成 HTTPS 证书配置
 - 兼容本地存储及 S3 协议对象存储
 - 支持站点 Logo 与 HTML 自定义
 
-<a id="toc-quickstart"></a>
 ## 快速开始
 
-1. 准备一台 Linux 服务器，安装 Docker 与 Docker Compose。
-2. 准备一个域名（A/AAAA 记录指向服务器），并放行 `80/443` 端口。
-3. 创建环境变量文件。
+**一条命令快速体验：**
 
 ```bash
+docker run -d \
+  --name markdownbrain \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -p 127.0.0.1:9090:9090 \
+  -v markdownbrain:/app/data \
+  -e STORAGE_TYPE=local \
+  ghcr.io/blackstorm/markdownbrain:latest
+```
+
+- 公开站点：`http://<你的服务器>:8080`
+- 管理后台：`http://localhost:9090/console`（默认仅绑定本地，可通过 SSH 隧道、VPN 或其他安全方式访问）
+
+**生产环境部署（Caddy + 自动 TLS）：**
+
+```bash
+# 1. 克隆并配置
+git clone https://github.com/blackstorm/markdownbrain.git
+cd markdownbrain
 cp selfhosted/.env.example selfhosted/.env
-```
 
-4. 启动服务（本地存储 + Caddy，推荐）。
+# 2. 启动服务
+docker compose --env-file selfhosted/.env \
+  -f selfhosted/compose/docker-compose.caddy.yml up -d
 
-```bash
-docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.caddy.yml up -d
-```
-
-5. 访问 Console（默认不对公网暴露）。
-
-```bash
+# 3. 通过 SSH 隧道访问 Console
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
 
-6. 首次访问会跳转到 `/console/init`，创建第一个管理员账号。
-7. 创建 Vault，复制 Publish Key，并配置 Obsidian 插件。
+然后在 `/console/init` 创建管理员账号，设置 Vault，安装 Obsidian 插件即可。
 
-完整部署说明：[selfhosted/README.md](selfhosted/README.md)。
+完整部署指南：[selfhosted/README.zh-cn.md](selfhosted/README.zh-cn.md)
 
-<a id="toc-configuration"></a>
-### 配置
+## 配置
 
-MarkdownBrain 从环境变量读取配置。
+MarkdownBrain 通过环境变量读取配置。
 
-- 开发环境：通常从 `server/` 启动，也会读取 `.env`（例如 `server/.env`）。
-- Docker：只有当容器工作目录下存在 `.env` 时服务端才会读取；大多数部署建议通过 Docker Compose 的 `environment:` 或 `--env-file` 传入环境变量。
-
-<a id="toc-config-server-env"></a>
-#### 环境变量（概览）
-
-| 变量名 | 说明 | 默认值或示例 | 必填 |
+| 变量名 | 说明 | 默认值 | 必填 |
 |---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
-| `DATA_PATH` | 容器内的数据目录 | `/app/data` | 否 |
-| `JAVA_OPTS` | 容器的 JVM 参数 | `-Xms256m -Xmx512m` | 否 |
-| `MARKDOWNBRAIN_LOG_LEVEL` | 应用日志级别（Logback） | `INFO` | 否 |
-| `CADDY_ON_DEMAND_TLS_ENABLED` | 是否启用 Caddy 按需 TLS 集成 | `false` | 否 |
-| `S3_PUBLIC_URL` | S3 模式下浏览器加载资源的 base URL | `https://s3.your-domain.com` | 是（S3） |
-| `S3_ACCESS_KEY` | S3 Access Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
-| `S3_SECRET_KEY` | S3 Secret Key（RustFS 或你的 S3） | `rustfsadmin` | 是（S3） |
-| `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 是（S3） |
-| `S3_PUBLIC_PORT` | S3 Compose 中 RustFS 暴露到宿主机的端口 | `9000` | 否 |
+| `STORAGE_TYPE` | 存储后端：`local` 或 `s3` | `local` | 否 |
+| `DATA_PATH` | 数据目录 | `/app/data` | 否 |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | 启用自动 HTTPS 证书 | `false` | 否 |
+| `S3_ENDPOINT` | S3 端点地址 | — | 是（S3） |
+| `S3_ACCESS_KEY` | S3 访问密钥 | — | 是（S3） |
+| `S3_SECRET_KEY` | S3 私有密钥 | — | 是（S3） |
+| `S3_BUCKET` | S3 存储桶名称 | `markdownbrain` | 否 |
+| `S3_PUBLIC_URL` | 浏览器加载资源的公开 URL | — | 是（S3） |
 
-完整说明（服务端全部环境变量、默认值、使用场景）：[selfhosted/README.zh-cn.md](selfhosted/README.zh-cn.md#toc-environment-variables)。
+完整参考：[selfhosted/README.zh-cn.md](selfhosted/README.zh-cn.md#toc-environment-variables)
 
-<a id="toc-quickstart-development"></a>
+## 常见问题
+
+**支持哪些存储后端？**
+
+本地文件系统存储，以及任何 S3 兼容的对象存储（AWS S3、MinIO、RustFS、Cloudflare R2 等）。
+
+**是否支持反向链接？**
+
+支持。MarkdownBrain 自动解析 Obsidian 内部链接（`[[笔记]]`），并在每个页面展示反向链接。
+
+**图片和附件如何处理？**
+
+笔记中引用的所有资源文件会随内容一起上传，并从同一域名或 S3 存储提供服务。
+
+**可以使用自定义域名吗？**
+
+可以。每个 Vault 都可以配置独立域名，通过 Caddy 的按需 TLS 自动获取 HTTPS 证书。
+
 ## 开发
 
 依赖：Java 25（Temurin）、Clojure CLI、Node.js 25、pnpm、Make。
@@ -86,32 +112,25 @@ make dev
 - Frontend：`http://localhost:8080`
 - Console：`http://localhost:9090/console`
 
-<a id="toc-releases"></a>
 ## 发布产物
 
-<a id="toc-docker-image-ghcr"></a>
-### Docker 镜像（GHCR）
+### Docker 镜像
 
 - 镜像：`ghcr.io/blackstorm/markdownbrain`
-- 标签规则：
-  - `main` 分支：`edge`、`sha-<7>`
-  - git tag `vX.Y.Z`：`X.Y.Z`、`X.Y`、`X`、`latest`
+- 标签：`latest`、`X.Y.Z`、`edge`（main 分支）
 
-<a id="toc-obsidian-plugin"></a>
 ### Obsidian 插件
 
-- 从 GitHub Releases 下载 `markdownbrain-plugin.zip`。
-- 解压到 `.obsidian/plugins/markdownbrain/`。
+从 [GitHub Releases](https://github.com/blackstorm/markdownbrain/releases) 下载 `markdownbrain-plugin.zip`，解压到 `.obsidian/plugins/markdownbrain/`。
 
-<a id="toc-license"></a>
-## License
+## 贡献
 
-- 服务端（`server/`）：`AGPL-3.0-or-later`（见 `LICENSE`）
-- Obsidian 插件（`obsidian-plugin/`）：MIT（见 `obsidian-plugin/LICENSE`）
-- 部署配置（`selfhosted/`）：MIT（见 `selfhosted/LICENSE`）
+欢迎提交 Issue 和 Pull Request！
 
-<a id="toc-third-party-notices"></a>
-## 第三方声明
+## 许可证
 
-本仓库包含第三方字体与前端库，这些资源遵循其各自的授权协议，不包含在本项目的许可证范围内。
-详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- 服务端（`server/`）：AGPL-3.0-or-later
+- Obsidian 插件（`obsidian-plugin/`）：MIT
+- 部署配置（`selfhosted/`）：MIT
+
+第三方许可证详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
