@@ -245,9 +245,11 @@
             cache-control (if version
                             "public, max-age=31536000, immutable"
                             "public, max-age=300")
-            extension (last (str/split logo-key #"\."))
-            favicon-key (str logo-key "@favicon." extension)
-            location (object-store/public-asset-url vault-id favicon-key)]
+            favicon-key (object-store/favicon-object-key logo-key)
+            asset-key (if (and favicon-key (object-store/object-exists? vault-id favicon-key))
+                        favicon-key
+                        logo-key)
+            location (object-store/public-asset-url vault-id asset-key)]
         {:status 302
          :headers {"Location" location
                    "Cache-Control" cache-control

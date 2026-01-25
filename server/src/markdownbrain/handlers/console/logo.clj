@@ -97,15 +97,15 @@
 
                           (when-let [old-key (:logo-object-key vault)]
                             (when (not= old-key logo-object-key)
-                              (let [old-extension (last (str/split old-key #"\."))]
+                              (when-let [old-favicon-key (object-store/favicon-object-key old-key)]
                                 (try
-                                  (object-store/delete-object! vault-id (str old-key "@favicon." old-extension))
+                                  (object-store/delete-object! vault-id old-favicon-key)
                                   (catch Exception e
-                                    (log/debug "Failed to delete old favicon for vault" vault-id ":" (.getMessage e))))
-                                (try
-                                  (object-store/delete-object! vault-id old-key)
-                                  (catch Exception e
-                                    (log/debug "Failed to delete old logo for vault" vault-id ":" (.getMessage e)))))))
+                                    (log/debug "Failed to delete old favicon for vault" vault-id ":" (.getMessage e)))))
+                              (try
+                                (object-store/delete-object! vault-id old-key)
+                                (catch Exception e
+                                  (log/debug "Failed to delete old logo for vault" vault-id ":" (.getMessage e))))))
 
                           (resp/success {:message "Logo uploaded successfully"
                                          :logo-url (common/console-asset-url vault-id logo-object-key)})
@@ -135,12 +135,13 @@
 
       :else
       (let [logo-key (:logo-object-key vault)
-            extension (last (str/split logo-key #"\."))]
+            favicon-key (object-store/favicon-object-key logo-key)]
         ;; Delete favicon from storage
-        (try
-          (object-store/delete-object! vault-id (str logo-key "@favicon." extension))
-          (catch Exception e
-            (log/debug "Failed to delete favicon for vault" vault-id ":" (.getMessage e))))
+        (when favicon-key
+          (try
+            (object-store/delete-object! vault-id favicon-key)
+            (catch Exception e
+              (log/debug "Failed to delete favicon for vault" vault-id ":" (.getMessage e)))))
         ;; Delete original logo from storage
         (object-store/delete-object! vault-id logo-key)
         ;; Clear DB reference
@@ -198,10 +199,10 @@
 
       :else
       (let [logo-key (:logo-object-key vault)
-            extension (last (str/split logo-key #"\."))
-            favicon-key (str logo-key "@favicon." extension)
+            favicon-key (object-store/favicon-object-key logo-key)
             ;; Try favicon first, fallback to original logo
-            result (or (object-store/get-object vault-id favicon-key)
+            result (or (when favicon-key
+                         (object-store/get-object vault-id favicon-key))
                        (object-store/get-object vault-id logo-key))]
         (if result
           (let [body (utils.stream/input-stream->bytes (:Body result))

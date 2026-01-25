@@ -110,11 +110,21 @@ export class App {
   vault: Vault;
   metadataCache: MetadataCache;
   fileManager: FileManager;
+  workspace: {
+    onLayoutReady: (callback: () => any) => void;
+    getActiveFile: () => TFile | null;
+  };
 
   constructor() {
     this.vault = new Vault();
     this.metadataCache = new MetadataCache();
     this.fileManager = new FileManager(this.vault);
+    this.workspace = {
+      onLayoutReady: (callback) => {
+        callback();
+      },
+      getActiveFile: () => null,
+    };
   }
 }
 

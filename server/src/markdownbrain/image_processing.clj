@@ -65,7 +65,7 @@
   "Generate 32x32 favicon for a logo.
    Returns nil if image is too small or format is unsupported.
    
-   Object key format: site/logo/{hash}.{ext}@favicon.{ext}
+   Object key format: site/logo/{hash}.favicon.{ext}
    This matches how serve-favicon constructs the key from logo-object-key."
   [bytes content-type content-hash extension]
   (let [format (format-from-content-type content-type)
@@ -73,7 +73,7 @@
     (when (and format (can-generate-thumbnail? original-dims favicon-size))
       (try
         (let [thumb-bytes (generate-square-thumbnail bytes favicon-size format)
-              object-key (str "site/logo/" content-hash "." extension "@favicon." extension)]
+              object-key (str "site/logo/" content-hash ".favicon." extension)]
           (log/debug "Generated favicon:" favicon-size "x" favicon-size)
           {:object-key object-key
            :bytes thumb-bytes})

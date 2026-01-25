@@ -1,7 +1,7 @@
 import type { App, TFile } from "obsidian";
 import { beforeEach, describe, expect, test } from "vitest";
 import { MockApp, MockTFile } from "../test/setup";
-import { getOrCreateClientId } from "./client-id";
+import { ensureClientId, getClientId, getOrCreateClientId } from "./client-id";
 
 describe("getOrCreateClientId", () => {
   let mockApp: MockApp;
@@ -181,5 +181,125 @@ markdownbrain-id:    abc-123-with-spaces
 
       expect(fileId).toBe("abc-123-with-spaces");
     });
+  });
+});
+
+describe("getClientId", () => {
+  let mockApp: MockApp;
+  let mockFile: MockTFile;
+  let app: App;
+  let file: TFile;
+
+  beforeEach(() => {
+    mockApp = new MockApp();
+    mockFile = new MockTFile("test.md");
+    app = mockApp as unknown as App;
+    file = mockFile as unknown as TFile;
+  });
+
+  test("returns existing ID from cache", async () => {
+    const content = `---
+markdownbrain-id: existing-id
+---
+# Content`;
+    mockApp.vault.setFileContent("test.md", content);
+    mockApp.metadataCache.setFileCache("test.md", {
+      frontmatter: { "markdownbrain-id": "existing-id" },
+    });
+
+    const id = await getClientId(file, app);
+    expect(id).toBe("existing-id");
+  });
+
+  test("returns existing ID from content when cache is empty", async () => {
+    const content = `---
+markdownbrain-id: content-id
+---
+# Content`;
+    mockApp.vault.setFileContent("test.md", content);
+
+    const id = await getClientId(file, app);
+    expect(id).toBe("content-id");
+  });
+
+  test("returns null when no ID exists", async () => {
+    mockApp.vault.setFileContent("test.md", "# No frontmatter");
+
+    const id = await getClientId(file, app);
+    expect(id).toBeNull();
+  });
+
+  test("returns null when frontmatter exists but no ID", async () => {
+    const content = `---
+title: Test
+---
+# Content`;
+    mockApp.vault.setFileContent("test.md", content);
+
+    const id = await getClientId(file, app);
+    expect(id).toBeNull();
+  });
+
+  test("does not write to file", async () => {
+    const content = "# No frontmatter";
+    mockApp.vault.setFileContent("test.md", content);
+
+    await getClientId(file, app);
+
+    const afterContent = await mockApp.vault.read(mockFile);
+    expect(afterContent).toBe(content);
+    expect(afterContent).not.toContain("markdownbrain-id");
+  });
+});
+
+describe("ensureClientId", () => {
+  let mockApp: MockApp;
+  let mockFile: MockTFile;
+  let app: App;
+  let file: TFile;
+
+  beforeEach(() => {
+    mockApp = new MockApp();
+    mockFile = new MockTFile("test.md");
+    app = mockApp as unknown as App;
+    file = mockFile as unknown as TFile;
+  });
+
+  test("returns existing ID without writing", async () => {
+    const content = `---
+markdownbrain-id: existing-id
+---
+# Content`;
+    mockApp.vault.setFileContent("test.md", content);
+
+    const id = await ensureClientId(file, app);
+
+    expect(id).toBe("existing-id");
+    const afterContent = await mockApp.vault.read(mockFile);
+    expect(afterContent).toBe(content);
+  });
+
+  test("generates and writes new ID when missing", async () => {
+    mockApp.vault.setFileContent("test.md", "# No frontmatter");
+
+    const id = await ensureClientId(file, app);
+
+    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    const afterContent = await mockApp.vault.read(mockFile);
+    expect(afterContent).toContain(`markdownbrain-id: ${id}`);
+  });
+
+  test("adds ID to existing frontmatter", async () => {
+    const content = `---
+title: Test
+---
+# Content`;
+    mockApp.vault.setFileContent("test.md", content);
+
+    const id = await ensureClientId(file, app);
+
+    const afterContent = await mockApp.vault.read(mockFile);
+    expect(afterContent).toContain("title: Test");
+    expect(afterContent).toContain(`markdownbrain-id: ${id}`);
   });
 });

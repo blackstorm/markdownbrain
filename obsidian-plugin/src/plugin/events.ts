@@ -1,45 +1,43 @@
 import { type App, TFile } from "obsidian";
 import { isAssetFile } from "../utils";
+import type { CachedMetadataLike } from "../services";
 
-export type FileEventCallback = (file: TFile, action: "create" | "modify") => void;
 export type FileDeleteCallback = (file: TFile) => void;
 export type FileRenameCallback = (file: TFile, oldPath: string) => void;
 export type AssetEventCallback = (file: TFile, action: "create" | "modify") => void;
 export type AssetDeleteCallback = (file: TFile) => void;
 export type AssetRenameCallback = (file: TFile, oldPath: string) => void;
-export type MetadataResolvedCallback = () => void;
+export type MarkdownCacheChangedCallback = (
+  file: TFile,
+  data: string,
+  cache: CachedMetadataLike | null,
+) => void;
+export type MarkdownCreatedCallback = (file: TFile) => void;
 
 export type ResourceEventCallback = AssetEventCallback;
 export type ResourceDeleteCallback = AssetDeleteCallback;
 export type ResourceRenameCallback = AssetRenameCallback;
 
 export interface EventHandlers {
-  onFileChange: FileEventCallback;
   onFileDelete: FileDeleteCallback;
   onFileRename: FileRenameCallback;
   onAssetChange: AssetEventCallback;
   onAssetDelete: AssetDeleteCallback;
   onAssetRename: AssetRenameCallback;
-  onMetadataResolved: MetadataResolvedCallback;
-}
-
-export interface PendingSyncsManager {
-  add(path: string): void;
-  clear(): void;
-  forEach(callback: (path: string) => void): void;
+  onMarkdownCacheChanged: MarkdownCacheChangedCallback;
+  onMarkdownCreated: MarkdownCreatedCallback;
 }
 
 export function registerFileEvents(
   app: App,
   handlers: EventHandlers,
-  pendingSyncs: PendingSyncsManager,
   registerEvent: (event: ReturnType<typeof app.vault.on>) => void,
 ): void {
   registerEvent(
     app.vault.on("create", (file) => {
       if (file instanceof TFile) {
         if (file.extension === "md") {
-          handlers.onFileChange(file, "create");
+          handlers.onMarkdownCreated(file);
         } else if (isAssetFile(file)) {
           handlers.onAssetChange(file, "create");
         }
@@ -50,9 +48,7 @@ export function registerFileEvents(
   registerEvent(
     app.vault.on("modify", (file) => {
       if (file instanceof TFile) {
-        if (file.extension === "md") {
-          pendingSyncs.add(file.path);
-        } else if (isAssetFile(file)) {
+        if (isAssetFile(file)) {
           handlers.onAssetChange(file, "modify");
         }
       }
@@ -60,15 +56,14 @@ export function registerFileEvents(
   );
 
   registerEvent(
-    app.metadataCache.on("resolved", () => {
-      pendingSyncs.forEach((filePath) => {
-        const file = app.vault.getAbstractFileByPath(filePath);
-        if (file instanceof TFile) {
-          handlers.onFileChange(file, "modify");
-        }
-      });
-      pendingSyncs.clear();
-      handlers.onMetadataResolved();
+    app.metadataCache.on("changed", (file, data, cache) => {
+      if (file instanceof TFile && file.extension === "md") {
+        handlers.onMarkdownCacheChanged(
+          file,
+          String(data ?? ""),
+          (cache ?? null) as CachedMetadataLike | null,
+        );
+      }
     }),
   );
 

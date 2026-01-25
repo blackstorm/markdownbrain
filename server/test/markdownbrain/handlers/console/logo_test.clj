@@ -27,11 +27,11 @@
           uploaded-favicon-key (atom nil)]
 
       (with-redefs [image-processing/generate-favicon (fn [_bytes _content-type _content-hash _extension]
-                                                        {:object-key "site/logo/fake.png@favicon.png"
+                                                        {:object-key "site/logo/fake.favicon.png"
                                                          :bytes (byte-array [1 2 3])})
                     object-store/put-object! (fn [vid key content content-type]
                                                (when (= vid vault-id)
-                                                 (if (str/includes? key "@favicon.")
+                                                 (if (str/includes? key ".favicon.")
                                                    (reset! uploaded-favicon-key key)
                                                    (reset! uploaded-logo-key key)))
                                                true)
@@ -68,7 +68,7 @@
       (db/update-vault-logo! vault-id first-logo-key)
 
       (with-redefs [image-processing/generate-favicon (fn [& _]
-                                                        {:object-key "site/logo/new.png@favicon.png"
+                                                        {:object-key "site/logo/new.favicon.png"
                                                          :bytes (byte-array [1 2 3])})
                     object-store/put-object! (fn [vid key content content-type] true)
                     object-store/delete-object! (fn [vid key]
@@ -82,7 +82,7 @@
 
           (is (= 200 (:status response)))
           (is (true? (get-in response [:body :success])))
-          (is (some #(str/includes? % "@favicon.") @deleted-keys)
+          (is (some #(str/includes? % ".favicon.") @deleted-keys)
               "Old favicon should be deleted")
           (is (some #(= % first-logo-key) @deleted-keys)
               "Old logo should be deleted"))))))
@@ -100,16 +100,16 @@
           uploaded-logo-key (atom nil)
           uploaded-favicon-key (atom nil)]
 
-	      (with-redefs [image-processing/generate-favicon (fn [& _]
-	                                                        (throw (ex-info "generate-favicon should not be called" {})))
-	                    object-store/put-object! (fn [vid key content content-type]
-	                                               (when (= vid vault-id)
-	                                                 (if (str/includes? key "@favicon.")
-	                                                   (reset! uploaded-favicon-key key)
-	                                                   (reset! uploaded-logo-key key)))
-	                                               true)
-	                    object-store/delete-object! (fn [vid key]
-	                                                  (throw (ex-info "delete-object! should not be called" {})))]
+		      (with-redefs [image-processing/generate-favicon (fn [& _]
+		                                                        (throw (ex-info "generate-favicon should not be called" {})))
+		                    object-store/put-object! (fn [vid key content content-type]
+		                                               (when (= vid vault-id)
+		                                                 (if (str/includes? key ".favicon.")
+		                                                   (reset! uploaded-favicon-key key)
+		                                                   (reset! uploaded-logo-key key)))
+		                                               true)
+		                    object-store/delete-object! (fn [vid key]
+		                                                  (throw (ex-info "delete-object! should not be called" {})))]
 
         (let [request (-> (authenticated-request :post (str "/console/vaults/" vault-id "/logo")
                                                  tenant-id user-id)
@@ -169,12 +169,12 @@
 
       (db/update-vault-logo! vault-id logo-key)
 
-      (with-redefs [object-store/get-object (fn [vid key]
-                                              (when (= vid vault-id)
-                                                (if (str/includes? key "@favicon.")
-                                                  {:Body (java.io.ByteArrayInputStream. favicon-bytes)
-                                                   :ContentType "image/png"}
-                                                  nil)))]
+	      (with-redefs [object-store/get-object (fn [vid key]
+	                                              (when (= vid vault-id)
+	                                                (if (str/includes? key ".favicon.")
+	                                                  {:Body (java.io.ByteArrayInputStream. favicon-bytes)
+	                                                   :ContentType "image/png"}
+	                                                  nil)))]
 
         (let [request (-> (authenticated-request :get (str "/console/vaults/" vault-id "/favicon")
                                                  tenant-id user-id)
@@ -251,7 +251,7 @@
           (is (= 200 (:status response)))
           (is (true? (get-in response [:body :success])))
           (is (some #(= % logo-key) @deleted-keys) "Logo should be deleted")
-          (is (some #(str/includes? % "@favicon.") @deleted-keys) "Favicon should be deleted")
+          (is (some #(str/includes? % ".favicon.") @deleted-keys) "Favicon should be deleted")
 
           (let [vault (db/get-vault-by-id vault-id)]
             (is (nil? (:logo-object-key vault)) "Logo key should be cleared in DB")))))))

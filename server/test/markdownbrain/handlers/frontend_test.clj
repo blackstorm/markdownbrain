@@ -459,7 +459,7 @@
           _ (db/create-vault! vault-id tenant-id "Favicon Test" domain (utils/generate-uuid))
           logo-hash "fav123"
           logo-object-key (str "site/logo/" logo-hash ".png")
-          favicon-object-key (str logo-object-key "@favicon.png")
+          favicon-object-key (object-store/favicon-object-key logo-object-key)
           _ (db/update-vault-logo! vault-id logo-object-key)]
 
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})

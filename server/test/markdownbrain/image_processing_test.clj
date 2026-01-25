@@ -106,8 +106,8 @@
       (is (contains? favicon :object-key) "Favicon should have object-key")
       (is (contains? favicon :bytes) "Favicon should have bytes")
       (is (bytes? (:bytes favicon)) "Favicon bytes should be byte array")
-      (is (str/includes? (:object-key favicon) "@favicon.")
-          "Object key should contain @favicon")
+      (is (str/includes? (:object-key favicon) ".favicon.")
+          "Object key should contain .favicon.")
       (is (= [32 32] (img/get-image-dimensions (:bytes favicon)))
           "Generated favicon should be 32x32"))))
 

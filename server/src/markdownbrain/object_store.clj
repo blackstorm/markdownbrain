@@ -121,6 +121,18 @@
   [content-hash extension]
   (str "site/logo/" content-hash "." extension))
 
+(defn favicon-object-key
+  "Generate object key for a site favicon derived from a logo object key.
+
+   Format: site/logo/{hash}.favicon.{ext}
+   Example: site/logo/abc123.png -> site/logo/abc123.favicon.png"
+  [logo-object-key]
+  (when-let [ext (extension-from-path logo-object-key)]
+    (let [p (str logo-object-key)
+          dot-idx (.lastIndexOf p ".")]
+      (when (pos? dot-idx)
+        (str (subs p 0 dot-idx) ".favicon." ext)))))
+
 ;; ============================================================
 ;; Public API (backward compatible, delegates to store instance)
 ;; ============================================================

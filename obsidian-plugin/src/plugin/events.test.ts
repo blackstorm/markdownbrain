@@ -5,7 +5,7 @@ import { registerFileEvents } from "./events";
 describe("registerFileEvents", () => {
   const createHarness = () => {
     const vaultCallbacks = new Map<string, (file: unknown, oldPath?: string) => void>();
-    const metadataCallbacks = new Map<string, () => void>();
+    const metadataCallbacks = new Map<string, (...args: unknown[]) => void>();
     const files = new Map<string, TFile>();
 
     const app = {
@@ -17,7 +17,7 @@ describe("registerFileEvents", () => {
         getAbstractFileByPath: (path: string) => files.get(path) ?? null,
       },
       metadataCache: {
-        on: (name: string, callback: () => void) => {
+        on: (name: string, callback: (...args: unknown[]) => void) => {
           metadataCallbacks.set(name, callback);
           return { name, callback };
         },
@@ -25,20 +25,13 @@ describe("registerFileEvents", () => {
     };
 
     const handlers = {
-      onFileChange: vi.fn(),
       onFileDelete: vi.fn(),
       onFileRename: vi.fn(),
       onAssetChange: vi.fn(),
       onAssetDelete: vi.fn(),
       onAssetRename: vi.fn(),
-      onMetadataResolved: vi.fn(),
-    };
-
-    const pendingSyncs = new Set<string>();
-    const pendingManager = {
-      add: (path: string) => pendingSyncs.add(path),
-      clear: () => pendingSyncs.clear(),
-      forEach: (callback: (path: string) => void) => pendingSyncs.forEach(callback),
+      onMarkdownCacheChanged: vi.fn(),
+      onMarkdownCreated: vi.fn(),
     };
 
     const registeredEvents: Array<{
@@ -55,8 +48,6 @@ describe("registerFileEvents", () => {
     return {
       app,
       handlers,
-      pendingManager,
-      pendingSyncs,
       vaultCallbacks,
       metadataCallbacks,
       files,
@@ -64,14 +55,9 @@ describe("registerFileEvents", () => {
     };
   };
 
-  test("registers and routes vault events", () => {
+  test("registers and routes vault/metadata events", () => {
     const harness = createHarness();
-    registerFileEvents(
-      harness.app as never,
-      harness.handlers,
-      harness.pendingManager,
-      harness.registerEvent,
-    );
+    registerFileEvents(harness.app as never, harness.handlers as never, harness.registerEvent);
 
     const note = new TFile("note.md");
     const asset = new TFile("assets/image.png", "image", "png");
@@ -81,15 +67,13 @@ describe("registerFileEvents", () => {
     const createHandler = harness.vaultCallbacks.get("create");
     createHandler?.(note);
     createHandler?.(asset);
-
-    expect(harness.handlers.onFileChange).toHaveBeenCalledWith(note, "create");
+    expect(harness.handlers.onMarkdownCreated).toHaveBeenCalledWith(note);
     expect(harness.handlers.onAssetChange).toHaveBeenCalledWith(asset, "create");
 
     const modifyHandler = harness.vaultCallbacks.get("modify");
     modifyHandler?.(note);
     modifyHandler?.(asset);
 
-    expect(harness.pendingSyncs.has(note.path)).toBe(true);
     expect(harness.handlers.onAssetChange).toHaveBeenCalledWith(asset, "modify");
 
     const deleteHandler = harness.vaultCallbacks.get("delete");
@@ -107,41 +91,42 @@ describe("registerFileEvents", () => {
     expect(harness.handlers.onAssetRename).toHaveBeenCalledWith(asset, "old.png");
   });
 
-  test("flushes pending markdown changes on metadata resolved", () => {
+  test("routes metadata cache changed for markdown files", () => {
     const harness = createHarness();
-    registerFileEvents(
-      harness.app as never,
-      harness.handlers,
-      harness.pendingManager,
-      harness.registerEvent,
-    );
+    registerFileEvents(harness.app as never, harness.handlers as never, harness.registerEvent);
 
     const note = new TFile("notes/todo.md");
     harness.files.set(note.path, note);
-    harness.pendingSyncs.add(note.path);
 
-    const resolvedHandler = harness.metadataCallbacks.get("resolved");
-    resolvedHandler?.();
+    const changedHandler = harness.metadataCallbacks.get("changed");
+    changedHandler?.(note, "content", { links: [] });
 
-    expect(harness.handlers.onFileChange).toHaveBeenCalledWith(note, "modify");
-    expect(harness.pendingSyncs.size).toBe(0);
-    expect(harness.handlers.onMetadataResolved).toHaveBeenCalled();
+    expect(harness.handlers.onMarkdownCacheChanged).toHaveBeenCalledWith(note, "content", {
+      links: [],
+    });
+  });
+
+  test("passes null cache when metadata cache is undefined", () => {
+    const harness = createHarness();
+    registerFileEvents(harness.app as never, harness.handlers as never, harness.registerEvent);
+
+    const note = new TFile("notes/todo.md");
+    harness.files.set(note.path, note);
+
+    const changedHandler = harness.metadataCallbacks.get("changed");
+    changedHandler?.(note, "content", undefined);
+
+    expect(harness.handlers.onMarkdownCacheChanged).toHaveBeenCalledWith(note, "content", null);
   });
 
   test("ignores non-file events", () => {
     const harness = createHarness();
-    registerFileEvents(
-      harness.app as never,
-      harness.handlers,
-      harness.pendingManager,
-      harness.registerEvent,
-    );
+    registerFileEvents(harness.app as never, harness.handlers as never, harness.registerEvent);
 
     const folder = new TFolder("notes", "notes");
     const createHandler = harness.vaultCallbacks.get("create");
     createHandler?.(folder);
 
-    expect(harness.handlers.onFileChange).not.toHaveBeenCalled();
     expect(harness.handlers.onAssetChange).not.toHaveBeenCalled();
   });
 });

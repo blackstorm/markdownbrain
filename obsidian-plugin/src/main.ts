@@ -5,25 +5,31 @@
 import { type App, Notice, Plugin, type PluginManifest, TFile } from "obsidian";
 import { ObsidianHttpClient } from "./api";
 import { SyncApiClient, type SyncSnapshotEntry } from "./api/sync-api";
-import { CLIENT_ID_KEY, getOrCreateClientId } from "./core/client-id";
+import { CLIENT_ID_KEY, ensureClientId, getClientId } from "./core/client-id";
 import { DEFAULT_SETTINGS, type MarkdownBrainSettings } from "./domain/types";
 import { MarkdownBrainSettingTab, registerFileEvents } from "./plugin";
-import { ClientIdCache, DebounceService, extractNoteMetadata } from "./services";
-import { extractNotePaths, getContentType, hashString, isAssetFile, md5Hash } from "./utils";
-import { extractAssetPaths } from "./utils/asset-links";
+import {
+  DebounceService,
+  extractInternalLinkpathsFromCache,
+  extractNoteMetadata,
+  type CachedMetadataLike,
+  ReferenceIndex,
+} from "./services";
+import { getContentType, hashString, isAssetFile, md5Hash } from "./utils";
+import { extractAssetPaths, extractNotePaths } from "./utils/asset-links";
 
 export default class MarkdownBrainPlugin extends Plugin {
   settings!: MarkdownBrainSettings;
   syncClient!: SyncApiClient;
   private debounceService: DebounceService;
-  private clientIdCache: ClientIdCache;
-  private pendingSyncs: Set<string>;
+  private referenceIndex: ReferenceIndex;
+  private referenceIndexReady: boolean;
 
   constructor(app: App, manifest: PluginManifest) {
     super(app, manifest);
     this.debounceService = new DebounceService();
-    this.clientIdCache = new ClientIdCache();
-    this.pendingSyncs = new Set();
+    this.referenceIndex = this.createReferenceIndex();
+    this.referenceIndexReady = false;
   }
 
   async onload() {
@@ -39,25 +45,6 @@ export default class MarkdownBrainPlugin extends Plugin {
       httpClient,
     );
 
-    registerFileEvents(
-      this.app,
-      {
-        onFileChange: (file, action) => this.handleFileChange(file, action),
-        onFileDelete: (file) => this.handleFileDelete(file),
-        onFileRename: (file, oldPath) => this.handleFileRename(file, oldPath),
-        onAssetChange: (file) => this.handleAssetChange(file),
-        onAssetDelete: () => this.fullSync(),
-        onAssetRename: () => this.fullSync(),
-        onMetadataResolved: () => {},
-      },
-      {
-        add: (path) => this.pendingSyncs.add(path),
-        clear: () => this.pendingSyncs.clear(),
-        forEach: (callback) => this.pendingSyncs.forEach(callback),
-      },
-      (event) => this.registerEvent(event),
-    );
-
     this.addSettingTab(new MarkdownBrainSettingTab(this.app, this));
 
     this.addCommand({
@@ -66,7 +53,7 @@ export default class MarkdownBrainPlugin extends Plugin {
       callback: () => {
         const file = this.app.workspace.getActiveFile();
         if (file && file.extension === "md") {
-          this.handleFileChange(file, "modify");
+          void this.syncCurrentFile(file);
         }
       },
     });
@@ -77,39 +64,135 @@ export default class MarkdownBrainPlugin extends Plugin {
       callback: () => this.fullSync(),
     });
 
-    await this.buildClientIdCache();
-    console.log("[MarkdownBrain] ✓ Plugin loaded");
+    this.app.workspace.onLayoutReady(() => {
+      void (async () => {
+        await this.ensureAllNotesHaveClientIds();
+        await this.buildReferenceIndexFromCurrentCache();
+
+        registerFileEvents(
+          this.app,
+          {
+            onMarkdownCacheChanged: (file, data, cache) =>
+              this.handleMarkdownCacheChanged(file, data, cache),
+            onFileDelete: (file) => this.handleFileDelete(file),
+            onFileRename: (file, oldPath) => this.handleFileRename(file, oldPath),
+            onAssetChange: (file) => this.handleAssetChange(file),
+            onAssetDelete: () => this.fullSync(),
+            onAssetRename: () => this.fullSync(),
+            onMarkdownCreated: (file) => this.handleMarkdownCreated(file),
+          },
+          (event) => this.registerEvent(event),
+        );
+
+        console.log("[MarkdownBrain] ✓ Plugin loaded");
+      })();
+    });
   }
 
-  private async buildClientIdCache(): Promise<void> {
+  private createReferenceIndex(): ReferenceIndex {
+    return new ReferenceIndex((linkpath, sourcePath) => {
+      const resolved = this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+      if (!(resolved instanceof TFile)) return null;
+      if (resolved.extension === "md") return { path: resolved.path, kind: "note" };
+      if (isAssetFile(resolved)) return { path: resolved.path, kind: "asset" };
+      return null;
+    });
+  }
+
+  private extractLinkpaths(content: string, cache: CachedMetadataLike | null): string[] {
+    if (cache) {
+      return extractInternalLinkpathsFromCache(cache);
+    }
+
+    const candidates = [...extractNotePaths(content), ...extractAssetPaths(content)];
+    const seen = new Set<string>();
+    const results: string[] = [];
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      if (seen.has(candidate)) continue;
+      seen.add(candidate);
+      results.push(candidate);
+    }
+    return results;
+  }
+
+  private async ensureAllNotesHaveClientIds(): Promise<void> {
     const files = this.app.vault.getMarkdownFiles();
-    let cached = 0;
+    let assigned = 0;
     for (const file of files) {
-      const cache = this.app.metadataCache.getFileCache(file);
-      const clientId = cache?.frontmatter?.[CLIENT_ID_KEY];
-      if (clientId) {
-        this.clientIdCache.set(file.path, String(clientId).trim());
-        cached++;
+      const existingId = await getClientId(file, this.app);
+      if (!existingId) {
+        await ensureClientId(file, this.app);
+        assigned++;
       }
     }
-    console.log(`[MarkdownBrain] ClientId cache: ${cached}/${files.length}`);
+    if (assigned > 0) {
+      console.log(`[MarkdownBrain] Assigned IDs to ${assigned} notes`);
+    }
+  }
+
+  private async buildReferenceIndexFromCurrentCache(): Promise<void> {
+    this.referenceIndexReady = false;
+    this.referenceIndex = this.createReferenceIndex();
+
+    const files = this.app.vault.getMarkdownFiles();
+    let indexed = 0;
+    for (const file of files) {
+      const cache = this.app.metadataCache.getFileCache(file) as unknown as CachedMetadataLike | null;
+      const content = cache ? "" : await this.app.vault.read(file);
+      const linkpaths = this.extractLinkpaths(content, cache);
+      this.referenceIndex.updateNote(file.path, linkpaths);
+      indexed++;
+    }
+    this.referenceIndexReady = true;
+    console.log(`[MarkdownBrain] Reference index: ${indexed}/${files.length}`);
   }
 
   // =========================================================================
   // File Event Handlers
   // =========================================================================
 
-  async handleFileChange(file: TFile, _action: "create" | "modify") {
+  private async getClientIdForSync(file: TFile): Promise<string | null> {
+    return getClientId(file, this.app);
+  }
+
+  async handleMarkdownCreated(file: TFile): Promise<void> {
+    await ensureClientId(file, this.app);
+  }
+
+  private async syncCurrentFile(file: TFile): Promise<void> {
+    const result = await this.syncNoteFile(file);
+    if (!result.success) {
+      new Notice("Sync failed: note upload failed");
+      return;
+    }
+    await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
+    await this.syncLinkedNotesForNote(file, result.needUploadNotes, result.linkedNotesById);
+  }
+
+  handleMarkdownCacheChanged(
+    file: TFile,
+    data: string,
+    cache: CachedMetadataLike | null,
+  ): void {
     if (!this.settings.autoSync) return;
+
+    this.referenceIndex.updateNote(file.path, this.extractLinkpaths(data, cache));
 
     this.debounceService.debounce(
       file.path,
       async () => {
-	        const result = await this.syncNoteFile(file);
-	        if (!result.success) {
-	          new Notice("Sync failed: note upload failed");
-	          return;
-	        }
+        const clientId = await this.getClientIdForSync(file);
+        if (!clientId) {
+          return;
+        }
+
+        const result = await this.syncNoteFromCache(file, data, cache);
+        if (!result.success) {
+          new Notice("Sync failed: note upload failed");
+          return;
+        }
+
         await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
         await this.syncLinkedNotesForNote(file, result.needUploadNotes, result.linkedNotesById);
       },
@@ -119,30 +202,34 @@ export default class MarkdownBrainPlugin extends Plugin {
 
   async handleFileDelete(_file: TFile) {
     if (!this.settings.autoSync) return;
+    this.referenceIndex.removeNote(_file.path);
     await this.fullSync();
   }
 
   async handleFileRename(file: TFile, oldPath: string) {
     if (!this.settings.autoSync) return;
-	    this.clientIdCache.rename(oldPath, file.path);
-	    const result = await this.syncNoteFile(file);
-	    if (!result.success) {
-	      new Notice("Sync failed: note rename sync failed");
-	      return;
-	    }
+    this.referenceIndex.renameNote(oldPath, file.path);
+    const cache = this.app.metadataCache.getFileCache(file) as unknown as CachedMetadataLike | null;
+    const content = cache ? "" : await this.app.vault.read(file);
+    this.referenceIndex.updateNote(file.path, this.extractLinkpaths(content, cache));
+
+    const result = await this.syncNoteFile(file);
+		    if (!result.success) {
+		      new Notice("Sync failed: note rename sync failed");
+		      return;
+		    }
     await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
     await this.syncLinkedNotesForNote(file, result.needUploadNotes, result.linkedNotesById);
   }
 
   async handleAssetChange(file: TFile) {
     if (!this.settings.autoSync) return;
-    const referencedAssets = await this.collectReferencedAssetFiles();
-    if (!referencedAssets.some((asset) => asset.path === file.path)) {
+    if (this.referenceIndexReady && !this.referenceIndex.isAssetReferenced(file.path)) {
       return;
     }
-	    const result = await this.syncAssetFile(file);
-	    if (!result) {
-	      new Notice("Sync failed: asset upload failed");
+		    const result = await this.syncAssetFile(file);
+		    if (!result) {
+		      new Notice("Sync failed: asset upload failed");
 	    }
 	  }
 
@@ -150,21 +237,32 @@ export default class MarkdownBrainPlugin extends Plugin {
   // Sync Operations
   // =========================================================================
 
-  private async syncNoteFile(file: TFile): Promise<{
+  private async syncNoteFromCache(
+    file: TFile,
+    content: string,
+    cache: CachedMetadataLike | null,
+  ): Promise<{
     success: boolean;
     needUploadAssets: Array<{ id: string; hash: string }>;
     assetsById: Map<string, TFile>;
     needUploadNotes: Array<{ id: string; hash: string }>;
     linkedNotesById: Map<string, TFile>;
   }> {
-    const content = await this.app.vault.read(file);
-    const hash = await hashString(content);
-    const clientId = await getOrCreateClientId(file, content, this.app);
-    const metadata = extractNoteMetadata(this.app.metadataCache.getFileCache(file));
-    const assets = await this.collectReferencedAssetEntriesForNote(file);
-    const linkedNotes = await this.collectLinkedNoteEntriesForNote(file);
+    const clientId = await getClientId(file, this.app);
+    if (!clientId) {
+      return {
+        success: false,
+        needUploadAssets: [],
+        assetsById: new Map(),
+        needUploadNotes: [],
+        linkedNotesById: new Map(),
+      };
+    }
 
-    this.clientIdCache.set(file.path, clientId);
+    const hash = await hashString(content);
+    const metadata = extractNoteMetadata(cache);
+    const assets = await this.collectReferencedAssetEntriesForNoteUsingCache(file, cache, content);
+    const linkedNotes = await this.collectLinkedNoteEntriesForNoteUsingCache(file, cache, content);
 
     const result = await this.syncClient.syncNote(clientId, {
       path: file.path,
@@ -182,6 +280,18 @@ export default class MarkdownBrainPlugin extends Plugin {
       needUploadNotes: result.need_upload_notes ?? [],
       linkedNotesById: linkedNotes.byId,
     };
+  }
+
+  private async syncNoteFile(file: TFile): Promise<{
+    success: boolean;
+    needUploadAssets: Array<{ id: string; hash: string }>;
+    assetsById: Map<string, TFile>;
+    needUploadNotes: Array<{ id: string; hash: string }>;
+    linkedNotesById: Map<string, TFile>;
+  }> {
+    const content = await this.app.vault.read(file);
+    const cache = this.app.metadataCache.getFileCache(file) as unknown as CachedMetadataLike | null;
+    return this.syncNoteFromCache(file, content, cache);
   }
 
   private async syncAssetFile(file: TFile): Promise<boolean> {
@@ -231,9 +341,10 @@ export default class MarkdownBrainPlugin extends Plugin {
   private async uploadNotes(entries: SyncSnapshotEntry[]): Promise<void> {
     const fileMap = new Map<string, TFile>();
     for (const file of this.app.vault.getMarkdownFiles()) {
-      const content = await this.app.vault.read(file);
-      const clientId = await getOrCreateClientId(file, content, this.app);
-      fileMap.set(clientId, file);
+      const clientId = await getClientId(file, this.app);
+      if (clientId) {
+        fileMap.set(clientId, file);
+      }
     }
 
     for (const entry of entries) {
@@ -287,10 +398,8 @@ export default class MarkdownBrainPlugin extends Plugin {
       const content = await this.app.vault.read(file);
       if (!content.trim()) continue;
 
-      const clientId = await getOrCreateClientId(file, content, this.app);
+      const clientId = await ensureClientId(file, this.app);
       const hash = await hashString(content);
-
-      this.clientIdCache.set(file.path, clientId);
       snapshot.push({ id: clientId, hash });
     }
 
@@ -316,39 +425,54 @@ export default class MarkdownBrainPlugin extends Plugin {
     const notes = this.app.vault.getMarkdownFiles();
 
     for (const note of notes) {
-      const content = await this.app.vault.read(note);
-      const paths = extractAssetPaths(content);
-      for (const path of paths) {
-        const resolved = this.app.metadataCache.getFirstLinkpathDest(path, note.path);
-        if (resolved instanceof TFile && isAssetFile(resolved)) {
-          referenced.set(resolved.path, resolved);
-        }
-      }
+      const cache = this.app.metadataCache.getFileCache(note) as unknown as CachedMetadataLike | null;
+      const content = cache ? "" : await this.app.vault.read(note);
+      const { assets } = this.resolveReferencesFromCache(note, cache, content);
+      for (const asset of assets) referenced.set(asset.path, asset);
     }
 
     return Array.from(referenced.values());
   }
 
-  private async collectReferencedAssetFilesForNote(note: TFile): Promise<TFile[]> {
-    const referenced = new Map<string, TFile>();
-    const content = await this.app.vault.read(note);
-    const paths = extractAssetPaths(content);
+  private resolveReferencesFromCache(
+    note: TFile,
+    cache: CachedMetadataLike | null,
+    content?: string,
+  ): { assets: TFile[]; linkedNotes: TFile[] } {
+    const linkpaths = this.extractLinkpaths(content ?? "", cache);
+    const assets = new Map<string, TFile>();
+    const linkedNotes = new Map<string, TFile>();
 
-    for (const path of paths) {
-      const resolved = this.app.metadataCache.getFirstLinkpathDest(path, note.path);
-      if (resolved instanceof TFile && isAssetFile(resolved)) {
-        referenced.set(resolved.path, resolved);
+    for (const linkpath of linkpaths) {
+      const resolved = this.app.metadataCache.getFirstLinkpathDest(linkpath, note.path);
+      if (!(resolved instanceof TFile)) continue;
+      if (resolved.extension === "md") {
+        linkedNotes.set(resolved.path, resolved);
+      } else if (isAssetFile(resolved)) {
+        assets.set(resolved.path, resolved);
       }
     }
 
-    return Array.from(referenced.values());
+    return { assets: Array.from(assets.values()), linkedNotes: Array.from(linkedNotes.values()) };
   }
 
   private async collectReferencedAssetEntriesForNote(note: TFile): Promise<{
     entries: Array<{ id: string; hash: string }>;
     byId: Map<string, TFile>;
   }> {
-    const files = await this.collectReferencedAssetFilesForNote(note);
+    const cache = this.app.metadataCache.getFileCache(note) as unknown as CachedMetadataLike | null;
+    return this.collectReferencedAssetEntriesForNoteUsingCache(note, cache);
+  }
+
+  private async collectReferencedAssetEntriesForNoteUsingCache(
+    note: TFile,
+    cache: CachedMetadataLike | null,
+    content?: string,
+  ): Promise<{
+    entries: Array<{ id: string; hash: string }>;
+    byId: Map<string, TFile>;
+  }> {
+    const files = this.resolveReferencesFromCache(note, cache, content).assets;
     const byId = new Map<string, TFile>();
     const entries = await Promise.all(
       files.map(async (file) => {
@@ -366,28 +490,35 @@ export default class MarkdownBrainPlugin extends Plugin {
     entries: Array<{ id: string; hash: string }>;
     byId: Map<string, TFile>;
   }> {
-    const content = await this.app.vault.read(note);
-    const paths = extractNotePaths(content);
-    const linkedFiles = new Map<string, TFile>();
+    const cache = this.app.metadataCache.getFileCache(note) as unknown as CachedMetadataLike | null;
+    return this.collectLinkedNoteEntriesForNoteUsingCache(note, cache);
+  }
 
-    for (const path of paths) {
-      const resolved = this.app.metadataCache.getFirstLinkpathDest(path, note.path);
-      if (resolved instanceof TFile && resolved.extension === "md") {
-        linkedFiles.set(resolved.path, resolved);
-      }
+  private async collectLinkedNoteEntriesForNoteUsingCache(
+    note: TFile,
+    cache: CachedMetadataLike | null,
+    content?: string,
+  ): Promise<{
+    entries: Array<{ id: string; hash: string }>;
+    byId: Map<string, TFile>;
+  }> {
+    const linkedFiles = new Map<string, TFile>();
+    for (const linked of this.resolveReferencesFromCache(note, cache, content).linkedNotes) {
+      if (linked.path !== note.path) linkedFiles.set(linked.path, linked);
     }
 
     const byId = new Map<string, TFile>();
-    const entries = await Promise.all(
-      Array.from(linkedFiles.values()).map(async (file) => {
-        const linkedContent = await this.app.vault.read(file);
-        const id = await getOrCreateClientId(file, linkedContent, this.app);
-        const hash = await hashString(linkedContent);
-        this.clientIdCache.set(file.path, id);
-        byId.set(id, file);
-        return { id, hash };
-      }),
-    );
+    const entries: Array<{ id: string; hash: string }> = [];
+
+    for (const file of linkedFiles.values()) {
+      const id = await getClientId(file, this.app);
+      if (!id) continue;
+
+      const linkedContent = await this.app.vault.read(file);
+      const hash = await hashString(linkedContent);
+      byId.set(id, file);
+      entries.push({ id, hash });
+    }
 
     return { entries, byId };
   }
@@ -478,6 +609,5 @@ export default class MarkdownBrainPlugin extends Plugin {
   onunload() {
     console.log("[MarkdownBrain] Plugin unloading");
     this.debounceService.clearAll();
-    this.pendingSyncs.clear();
   }
 }
