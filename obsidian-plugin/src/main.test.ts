@@ -375,7 +375,7 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
     plugin.handleMarkdownCacheChanged(note, "first", null);
     plugin.handleMarkdownCacheChanged(note, "second", null);
 
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(1200);
 
     expect(syncNoteFromCache).toHaveBeenCalledTimes(1);
     expect(syncNoteFromCache).toHaveBeenCalledWith(note, "second", null);
@@ -484,7 +484,7 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
     pluginAccess.referenceIndex = { updateNote: vi.fn() };
 
     plugin.handleMarkdownCacheChanged(note, originalContent, null);
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(1200);
 
     expect(getClientId).toHaveBeenCalledWith(note);
     expect(syncNoteFromCache).toHaveBeenCalledWith(note, originalContent, null);
@@ -511,7 +511,7 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
     pluginAccess.referenceIndex = { updateNote: vi.fn() };
 
     plugin.handleMarkdownCacheChanged(note, "content", null);
-    await vi.advanceTimersByTimeAsync(500);
+    await vi.advanceTimersByTimeAsync(1200);
 
     expect(getClientId).toHaveBeenCalledWith(note);
     expect(syncNoteFromCache).not.toHaveBeenCalled();

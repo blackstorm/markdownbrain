@@ -196,7 +196,7 @@ export default class MarkdownBrainPlugin extends Plugin {
         await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
         await this.syncLinkedNotesForNote(file, result.needUploadNotes, result.linkedNotesById);
       },
-      500,
+      1200,
     );
   }
 
