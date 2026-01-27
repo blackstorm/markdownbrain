@@ -4,11 +4,11 @@
     <span class="note-selector-value">
       {% if root-note-id %}
         {% for note in notes %}{% if note.client-id = root-note-id %}{{note.path}}{% endif %}{% endfor %}
-      {% else %}
+    {% else %}
         Select note
       {% endif %}
     </span>
-    <i data-lucide="chevron-down" class="icon-xs note-selector-arrow"></i>
+    {{ lucide_icon("chevron-down", "icon-xs note-selector-arrow") }}
   </div>
   <div class="note-selector-dropdown">
     <input type="text"
@@ -27,7 +27,7 @@
            hx-on::after-request="handleNoteSelect('{{vault-id}}', this, event)">
         <span class="note-path">{{note.path}}</span>
         {% if note.client-id = root-note-id %}
-        <i data-lucide="check" class="icon-xs note-check"></i>
+        {{ lucide_icon("check", "icon-xs note-check") }}
         {% endif %}
       </div>
       {% endfor %}
@@ -36,7 +36,7 @@
 </div>
 {% else %}
 <div class="warning-box">
-  <i data-lucide="alert-triangle" class="icon-xs shrink-0"></i>
+  {{ lucide_icon("alert-triangle", "icon-xs shrink-0") }}
   <span>No notes synced yet. Please use the Obsidian plugin to sync files before setting a homepage.</span>
 </div>
 {% endif %}

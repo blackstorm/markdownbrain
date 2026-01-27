@@ -5,6 +5,7 @@
    [clojure.tools.logging :as log]
    [markdownbrain.config :as config]
    [markdownbrain.db :as db]
+   [markdownbrain.lucide-icon :as lucide-icon]
    [markdownbrain.middleware :as middleware]
    [markdownbrain.object-store :as object-store]
    [markdownbrain.routes :as routes]
@@ -75,6 +76,8 @@
       (doseq [err (:errors (ex-data e))]
         (log/error "  -" err))
       (System/exit 1)))
+
+  (lucide-icon/init!)
 
   (log/info "Initializing database...")
   (db/init-db!)

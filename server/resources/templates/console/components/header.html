@@ -16,16 +16,16 @@
         <div class="header-actions">
             <div class="vault-actions">
                 <button type="button" class="btn" onclick="toggleActionMenu(this)">
-                    <i data-lucide="user" class="icon-sm"></i>
+                    {{ lucide_icon("user", "icon-sm") }}
                     <span>Account</span>
-                    <i data-lucide="chevron-down" class="icon-sm"></i>
+                    {{ lucide_icon("chevron-down", "icon-sm") }}
                 </button>
                 <div class="action-menu">
                     <button
                         type="button"
                         onclick="openChangePasswordModal(); toggleActionMenu(this.closest('.vault-actions').querySelector('button'))"
                     >
-                        <i data-lucide="key" class="icon-xs"></i>
+                        {{ lucide_icon("key", "icon-xs") }}
                         <span>Change password</span>
                     </button>
                     <button
@@ -35,7 +35,7 @@
                         hx-on::after-request="window.location.href='/console/login'"
                         onclick="toggleActionMenu(this.closest('.vault-actions').querySelector('button'))"
                     >
-                        <i data-lucide="log-out" class="icon-xs"></i>
+                        {{ lucide_icon("log-out", "icon-xs") }}
                         <span>Logout</span>
                     </button>
                 </div>

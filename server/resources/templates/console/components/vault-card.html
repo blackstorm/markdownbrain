@@ -8,9 +8,9 @@
     <div class="vault-info">
       <h3>{{vault.name}}</h3>
       <a href="http://{{vault.domain}}" target="_blank" class="vault-domain">
-        <i data-lucide="globe" class="icon-xs"></i>
+        {{ lucide_icon("globe", "icon-xs") }}
         <span>{{vault.domain}}</span>
-        <i data-lucide="external-link" class="icon-xs"></i>
+        {{ lucide_icon("external-link", "icon-xs") }}
       </a>
     </div>
 
@@ -21,28 +21,28 @@
         class="action-menu-btn"
         onclick="toggleActionMenu(this)"
       >
-        <i data-lucide="more-vertical" class="icon-md"></i>
+        {{ lucide_icon("more-vertical", "icon-md") }}
       </button>
       <div class="action-menu">
         <button
           type="button"
           onclick="window.open('http://{{vault.domain}}', '_blank'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
         >
-          <i data-lucide="external-link" class="icon-xs"></i>
+          {{ lucide_icon("external-link", "icon-xs") }}
           <span>Open site</span>
         </button>
         <button
           type="button"
           onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
         >
-          <i data-lucide="pencil" class="icon-xs"></i>
+          {{ lucide_icon("pencil", "icon-xs") }}
           <span>Edit</span>
         </button>
         <button
           type="button"
           onclick="openCustomHtmlModal('{{vault.id}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
         >
-          <i data-lucide="code" class="icon-xs"></i>
+          {{ lucide_icon("code", "icon-xs") }}
           <span>Custom HTML</span>
         </button>
         <button
@@ -53,7 +53,7 @@
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) { showNotification('Publish key renewed', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Failed to renew publish key', 'error'); } toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
         >
-          <i data-lucide="refresh-cw" class="icon-xs"></i>
+          {{ lucide_icon("refresh-cw", "icon-xs") }}
           <span>Renew publish key</span>
         </button>
         <button
@@ -64,7 +64,7 @@
           hx-swap="none"
           hx-on::after-request="if(event.detail.successful) { showNotification('Site deleted', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Delete failed', 'error'); }"
         >
-          <i data-lucide="trash-2" class="icon-xs"></i>
+          {{ lucide_icon("trash-2", "icon-xs") }}
           <span>Delete</span>
         </button>
       </div>
@@ -78,18 +78,18 @@
     <div>
       {% if vault.publish-ok %}
         <div class="flex items-center gap-2 text-sm text-[var(--success)]">
-          <i data-lucide="check-circle" class="icon-xs"></i>
+          {{ lucide_icon("check-circle", "icon-xs") }}
           <span class="font-medium">OK</span>
         </div>
       {% else %}
         {% if vault.publish-error %}
           <div class="flex items-center gap-2 text-sm text-[var(--error)]">
-            <i data-lucide="alert-circle" class="icon-xs"></i>
+            {{ lucide_icon("alert-circle", "icon-xs") }}
             <span class="font-medium">Error</span>
           </div>
         {% else %}
           <div class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
-            <i data-lucide="clock" class="icon-xs"></i>
+            {{ lucide_icon("clock", "icon-xs") }}
             <span>Never</span>
           </div>
         {% endif %}
@@ -137,7 +137,7 @@
             hx-on::after-request="handleLogoRequest(event)"
           >
             <label class="icon-btn" title="Change logo">
-              <i data-lucide="upload" class="icon-xs"></i>
+              {{ lucide_icon("upload", "icon-xs") }}
               <input
                 type="file"
                 name="logo"
@@ -155,7 +155,7 @@
             hx-swap="none"
             hx-on::after-request="handleLogoRequest(event)"
           >
-            <i data-lucide="trash-2" class="icon-xs"></i>
+            {{ lucide_icon("trash-2", "icon-xs") }}
           </button>
         </div>
       </div>
@@ -170,10 +170,7 @@
         hx-on::after-request="handleLogoRequest(event)"
       >
         <label class="logo-upload-area" id="logo-upload-area-{{vault.id}}">
-          <i
-            data-lucide="image-plus"
-            class="icon-lg text-(--text-tertiary)"
-          ></i>
+          {{ lucide_icon("image-plus", "icon-lg text-(--text-tertiary)") }}
           <span class="text-xs text-(--text-tertiary)"
             >Click to upload logo</span
           >
@@ -207,7 +204,7 @@
             onclick="toggleSyncKey(this, '{{vault.id}}')"
             title="Show/Hide"
           >
-            <i data-lucide="eye" class="icon-xs"></i>
+            {{ lucide_icon("eye", "icon-xs") }}
           </button>
           <button
             type="button"
@@ -215,7 +212,7 @@
             onclick="copyToClipboard('{{vault.sync-key}}')"
             title="Copy"
           >
-            <i data-lucide="copy" class="icon-xs"></i>
+            {{ lucide_icon("copy", "icon-xs") }}
           </button>
         </div>
       </div>
@@ -241,10 +238,7 @@
   <div class="vault-section">
     <span class="section-label">Storage</span>
     <div class="storage-info">
-      <i
-        data-lucide="hard-drive"
-        class="icon-xs text-[var(--text-tertiary)]"
-      ></i>
+      {{ lucide_icon("hard-drive", "icon-xs text-[var(--text-tertiary)]") }}
       <span class="text-sm">{{vault.storage-size}}</span>
     </div>
   </div>

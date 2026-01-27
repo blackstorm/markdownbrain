@@ -12,28 +12,11 @@
     {# HTMX - 动态交互 #}
     <script src="/publics/shared/htmx.min.js"></script>
 
-    {# Lucide Icons #}
-    <script src="/publics/shared/lucide.min.js"></script>
-
     {# console JS #}
     <script src="/publics/console/js/console.js"></script>
 </head>
 <body class="antialiased bg-[#fafafa] min-h-screen" hx-headers='{"X-CSRF-Token":"{{csrf-token}}"}'>
     <script>
-      // Initialize Lucide icons
-      document.addEventListener('DOMContentLoaded', () => {
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
-      });
-
-      // Re-initialize icons after HTMX swaps
-      document.body.addEventListener('htmx:afterSwap', () => {
-        if (typeof lucide !== 'undefined') {
-          lucide.createIcons();
-        }
-      });
-
       // Handle HTMX errors gracefully
       document.body.addEventListener('htmx:responseError', (event) => {
         if (typeof showNotification !== 'undefined') {

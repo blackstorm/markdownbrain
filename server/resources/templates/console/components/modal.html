@@ -12,7 +12,7 @@
         <div class="modal-header">
             <h3>{{title}}</h3>
             <button type="button" class="btn-close" onclick="{{close-fn}}()">
-                <i data-lucide="x" class="icon-lg"></i>
+                {{ lucide_icon("x", "icon-lg") }}
             </button>
         </div>
         <form {{form-attrs|safe}}>

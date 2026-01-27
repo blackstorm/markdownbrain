@@ -8,19 +8,13 @@
     <link href="/publics/console/css/app.css" rel="stylesheet">
     <script src="/publics/shared/htmx.min.js"></script>
     <script src="/publics/console/js/console.js"></script>
-    <script src="/publics/shared/lucide.min.js"></script>
 </head>
 <body class="auth-page">
-    <script>
-      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
-    </script>
-
     <div class="init-container">
         <!-- Header -->
         <div class="init-header">
             <div class="welcome-icon">
-                <i data-lucide="sparkles" class="icon-xl text-[var(--accent)]"></i>
+                {{ lucide_icon("sparkles", "icon-xl text-[var(--accent)]") }}
             </div>
             <h1 class="text-[1.375rem] font-semibold text-[var(--text-primary)] m-0 mb-2 text-center">Welcome to MarkdownBrain</h1>
             <p class="text-sm text-[var(--text-secondary)] m-0 text-center">Create an console account to get started</p>
@@ -51,7 +45,7 @@
 
                 <button type="submit" class="btn-primary">
                     <span class="spinner"></span>
-                    <i data-lucide="rocket" class="icon-md"></i>
+                    {{ lucide_icon("rocket", "icon-md") }}
                     <span>Create Account</span>
                 </button>
             </form>
@@ -68,38 +62,34 @@
                     if (response.success) {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-success">
-                                <i data-lucide="check-circle" class="icon-sm"></i>
+                                {{ lucide_icon("check-circle", "icon-sm") }}
                                 <span>Account created successfully, redirecting...</span>
                             </div>
                         `;
-                        lucide.createIcons();
                         setTimeout(() => window.location.href = '/console/login', 1200);
                     } else {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-error">
-                                <i data-lucide="alert-circle" class="icon-sm"></i>
+                                {{ lucide_icon("alert-circle", "icon-sm") }}
                                 <span>${response.error || 'Creation failed'}</span>
                             </div>
                         `;
-                        lucide.createIcons();
                     }
                 } catch (e) {
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <i data-lucide="alert-circle" class="icon-sm"></i>
+                            {{ lucide_icon("alert-circle", "icon-sm") }}
                             <span>Server response error</span>
                         </div>
                     `;
-                    lucide.createIcons();
                 }
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <i data-lucide="alert-circle" class="icon-sm"></i>
+                        {{ lucide_icon("alert-circle", "icon-sm") }}
                         <span>Network error, please try again</span>
                     </div>
                 `;
-                lucide.createIcons();
             }
         });
     </script>

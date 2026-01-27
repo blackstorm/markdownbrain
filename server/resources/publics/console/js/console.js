@@ -1,5 +1,49 @@
 // MarkdownBrain Frontend Helpers
 
+function escapeHtmlAttr(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#x27;');
+}
+
+function normalizeClassName(value) {
+  return String(value || '')
+    .split(/\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .filter((s, i, a) => a.indexOf(s) === i)
+    .join(' ');
+}
+
+function lucideIconSvg(name, className = '', ariaLabel = '') {
+  const icons = {
+    // Aliases / legacy names used in templates
+    'check-circle': `<path d="M21.801 10A10 10 0 1 1 17 3.335" /><path d="m9 11 3 3L22 4" />`,
+    'alert-circle': `<circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />`,
+    info: `<circle cx="12" cy="12" r="10" /><path d="M12 16v-4" /><path d="M12 8h.01" />`,
+    'alert-triangle': `<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" />`,
+
+    // Direct icon names used by JS logic
+    check: `<path d="M20 6 9 17l-5-5" />`,
+    eye: `<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" />`,
+    'eye-off': `<path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /><path d="m2 2 20 20" />`
+  };
+
+  const body = icons[name];
+  if (!body) return '';
+
+  const classes = normalizeClassName(`lucide lucide-${name} ${className}`);
+  const label = String(ariaLabel || '').trim();
+  const a11yAttrs = label
+    ? ` role="img" aria-label="${escapeHtmlAttr(label)}"`
+    : ' aria-hidden="true" focusable="false"';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="${escapeHtmlAttr(classes)}" data-lucide="${escapeHtmlAttr(name)}"${a11yAttrs}>${body}</svg>`;
+}
+
 /**
  * Copy text to clipboard with notification
  * @param {string} text - Text to copy
@@ -45,15 +89,11 @@ function showNotification(message, type = 'info', duration = 3000) {
   const notification = document.createElement('div');
   notification.className = `toast toast-${type}`;
   notification.innerHTML = `
-    <i data-lucide="${icons[type] || icons.info}" class="icon-sm"></i>
+    ${lucideIconSvg(icons[type] || icons.info, 'icon-sm')}
     <span>${message}</span>
   `;
 
   container.appendChild(notification);
-
-  if (typeof lucide !== 'undefined') {
-    lucide.createIcons();
-  }
 
   setTimeout(() => {
     notification.classList.add('toast-out');
@@ -333,11 +373,7 @@ function handleNoteSelect(vaultId, element, event) {
     
     element.classList.add('selected');
     if (!element.querySelector('.note-check')) {
-      const icon = document.createElement('i');
-      icon.setAttribute('data-lucide', 'check');
-      icon.className = 'icon-xs note-check';
-      element.appendChild(icon);
-      lucide.createIcons();
+      element.insertAdjacentHTML('beforeend', lucideIconSvg('check', 'icon-xs note-check'));
     }
     
     const trigger = container.querySelector('.note-selector-value');
@@ -386,19 +422,19 @@ function toggleSyncKey(button, vaultId) {
   const fullKey = keyElement.dataset.key;
   const currentText = keyElement.textContent.trim();
   const isHidden = currentText.includes('*');
-  const icon = button.querySelector('i');
+  const icon = button.querySelector('svg');
+  const iconClass = icon?.getAttribute('class') || 'icon-xs';
 
   if (isHidden) {
     keyElement.textContent = fullKey;
-    icon.setAttribute('data-lucide', 'eye-off');
+    if (icon) icon.outerHTML = lucideIconSvg('eye-off', iconClass);
     button.title = 'Hide';
   } else {
     const masked = fullKey.substring(0, 8) + '******' + fullKey.substring(fullKey.length - 8);
     keyElement.textContent = masked;
-    icon.setAttribute('data-lucide', 'eye');
+    if (icon) icon.outerHTML = lucideIconSvg('eye', iconClass);
     button.title = 'Show';
   }
-  lucide.createIcons();
 }
 
 window.toggleActionMenu = toggleActionMenu;

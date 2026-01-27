@@ -8,15 +8,9 @@
     <link href="/publics/console/css/app.css" rel="stylesheet">
     <script src="/publics/shared/htmx.min.js"></script>
     <script src="/publics/console/js/console.js"></script>
-    <script src="/publics/shared/lucide.min.js"></script>
 </head>
 <body hx-headers='{"X-CSRF-Token":"{{csrf-token}}"}'>
     <div id="notification-container" class="fixed top-4 right-4 z-[9999]"></div>
-
-    <script>
-      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
-    </script>
 
     {% with tenant=tenant %}
       {% include "templates/console/components/header.html" %}
@@ -29,7 +23,7 @@
                 <p>Manage your published vaults, domains, and publish keys.</p>
             </div>
             <button onclick="openCreateModal()" class="btn btn-primary">
-                <i data-lucide="plus" class="icon-sm"></i>
+                {{ lucide_icon("plus", "icon-sm") }}
                 <span>New Site</span>
             </button>
         </div>
@@ -50,7 +44,7 @@
             <div class="modal-header">
                 <h3>New Site</h3>
                 <button type="button" class="btn-close" onclick="closeCreateModal()">
-                    <i data-lucide="x" class="icon-lg"></i>
+                    {{ lucide_icon("x", "icon-lg") }}
                 </button>
             </div>
             <form hx-post="/console/vaults"
@@ -86,7 +80,7 @@
             <div class="modal-header">
                 <h3>Edit Site</h3>
                 <button type="button" class="btn-close" onclick="closeEditModal()">
-                    <i data-lucide="x" class="icon-lg"></i>
+                    {{ lucide_icon("x", "icon-lg") }}
                 </button>
             </div>
             <form id="edit-form"
@@ -124,7 +118,7 @@
             <div class="modal-header">
                 <h3>Custom HTML</h3>
                 <button type="button" class="btn-close" onclick="closeCustomHtmlModal()">
-                    <i data-lucide="x" class="icon-lg"></i>
+                    {{ lucide_icon("x", "icon-lg") }}
                 </button>
             </div>
             <form
@@ -165,7 +159,7 @@
             <div class="modal-header">
                 <h3>Change Password</h3>
                 <button type="button" class="btn-close" onclick="closeChangePasswordModal()">
-                    <i data-lucide="x" class="icon-lg"></i>
+                    {{ lucide_icon("x", "icon-lg") }}
                 </button>
             </div>
             <form id="change-password-form"

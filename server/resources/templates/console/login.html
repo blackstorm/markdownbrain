@@ -8,14 +8,8 @@
     <link href="/publics/console/css/app.css" rel="stylesheet">
     <script src="/publics/shared/htmx.min.js"></script>
     <script src="/publics/console/js/console.js"></script>
-    <script src="/publics/shared/lucide.min.js"></script>
 </head>
 <body class="auth-page">
-    <script>
-      document.addEventListener('DOMContentLoaded', () => lucide.createIcons());
-      document.body.addEventListener('htmx:afterSwap', () => lucide.createIcons());
-    </script>
-
     <div class="login-container">
         <!-- Header -->
         <div class="login-header">
@@ -64,38 +58,34 @@
                     if (response.success) {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-success">
-                                <i data-lucide="check-circle" class="icon-sm"></i>
+                                {{ lucide_icon("check-circle", "icon-sm") }}
                                 <span>Login successful, redirecting...</span>
                             </div>
                         `;
-                        lucide.createIcons();
                         setTimeout(() => window.location.href = '/console', 800);
                     } else {
                         event.detail.target.innerHTML = `
                             <div class="alert alert-error">
-                                <i data-lucide="alert-circle" class="icon-sm"></i>
+                                {{ lucide_icon("alert-circle", "icon-sm") }}
                                 <span>${response.error || 'Login failed'}</span>
                             </div>
                         `;
-                        lucide.createIcons();
                     }
                 } catch (e) {
                     event.detail.target.innerHTML = `
                         <div class="alert alert-error">
-                            <i data-lucide="alert-circle" class="icon-sm"></i>
+                            {{ lucide_icon("alert-circle", "icon-sm") }}
                             <span>Server response error</span>
                         </div>
                     `;
-                    lucide.createIcons();
                 }
             } else {
                 event.detail.target.innerHTML = `
                     <div class="alert alert-error">
-                        <i data-lucide="alert-circle" class="icon-sm"></i>
+                        {{ lucide_icon("alert-circle", "icon-sm") }}
                         <span>Network error, please try again</span>
                     </div>
                 `;
-                lucide.createIcons();
             }
         });
     </script>
