@@ -134,5 +134,6 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 - Server (`server/`): AGPL-3.0-or-later
 - Obsidian plugin (`obsidian-plugin/`): MIT
 - Deployment configs (`selfhosted/`): MIT
+- Icons: Lucide (ISC)
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party licenses.

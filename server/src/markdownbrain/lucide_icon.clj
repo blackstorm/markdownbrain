@@ -7,7 +7,7 @@
    [selmer.filter-parser :as selmer.filter-parser]
    [selmer.util :as selmer.util]))
 
-(def ^:private icon-resource-prefix "templates/lucide/icons/")
+(def ^:private icon-resource-prefix "templates/lucide/")
 (def ^:private icon-cache (atom {}))
 (def ^:private alias-cache (atom nil))
 (def ^:private installed-formatter (atom nil))
@@ -194,7 +194,7 @@
       ((selmer.filter-parser/compile-filter-body arg false) context-map))))
 
 (defn- render-lucide-icon
-  "Renders a Lucide icon from `server/resources/templates/lucide/icons/*.svg`.
+  "Renders a Lucide icon from `server/resources/templates/lucide/*.svg`.
    Supports:
      {{ lucide_icon(\"plus\") }}
      {{ lucide_icon(\"plus\", \"icon-sm\") }}

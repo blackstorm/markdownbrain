@@ -134,5 +134,6 @@ make dev
 - 服务端（`server/`）：AGPL-3.0-or-later
 - Obsidian 插件（`obsidian-plugin/`）：MIT
 - 部署配置（`selfhosted/`）：MIT
+- 图标：Lucide（ISC）
 
 第三方许可证详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
