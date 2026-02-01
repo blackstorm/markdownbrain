@@ -1,6 +1,20 @@
 window.NOTE_WIDTH = 625;
 window.NOTE_OVERLAP = 75;
 
+function isMobileNoteMode() {
+  return window.innerWidth <= NOTE_WIDTH;
+}
+
+function buildTruncatedPath(noteId) {
+  const pathSegments = window.location.pathname.split('+').filter(s => s);
+  const cleaned = pathSegments.map(seg => seg.replace(/^\//, ''));
+  const idx = cleaned.indexOf(noteId);
+  if (idx >= 0) {
+    return `/${cleaned.slice(0, idx + 1).join('+')}`;
+  }
+  return `/${noteId}`;
+}
+
 function noteWindowSizeAdjust() {
   const windowWidth = window.innerWidth;
   const notesContainer = document.querySelector("#notes");
@@ -160,6 +174,11 @@ htmx.on("htmx:beforeRequest", (evt) => {
   for (let path of pathSegments) {
     const cleanPath = path.replace(/^\//, '');
     if (cleanPath === noteId) {
+      if (isMobileNoteMode()) {
+        evt.preventDefault();
+        window.location.href = buildTruncatedPath(noteId);
+        return;
+      }
       evt.preventDefault();
       highlightNoteById(`note-${noteId}`);
       return;
@@ -207,6 +226,10 @@ function handleInternalLinkClick(e) {
   for (let path of pathSegments) {
     const cleanPath = path.replace(/^\//, '');
     if (cleanPath === noteId) {
+      if (isMobileNoteMode()) {
+        window.location.href = buildTruncatedPath(noteId);
+        return;
+      }
       highlightNoteById(`note-${noteId}`);
       return;
     }
