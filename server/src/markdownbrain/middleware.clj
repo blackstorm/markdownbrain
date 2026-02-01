@@ -95,6 +95,9 @@
     (let [uri (:uri request)
           method (:request-method request)
           has-user (db/has-any-user?)]
+      ;; Only gate Console routes. Frontend (8080) must never redirect into /console/*.
+      (if-not (str/starts-with? uri "/console")
+        (handler request)
       (cond
         ;; 跳过 Obsidian 同步接口、API 路由、静态资源和 favicon
         (or (str/starts-with? uri "/obsidian/")
@@ -102,7 +105,10 @@
             (str/starts-with? uri "/static/")
             (str/starts-with? uri "/js/")
             (str/starts-with? uri "/css/")
-            (= uri "/favicon.ico"))
+            (= uri "/favicon.ico")
+            ;; Console internal endpoints should keep working even before init.
+            (= uri "/console/health")
+            (= uri "/console/domain-check"))
         (handler request)
 
         ;; 如果已有用户，禁止访问初始化页面
@@ -115,7 +121,7 @@
 
         ;; 其他情况正常处理
         :else
-        (handler request)))))
+        (handler request))))))
 
 ;; 完整中间件栈
 (defn wrap-middleware [handler]

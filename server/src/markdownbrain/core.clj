@@ -34,12 +34,24 @@
             (handler request)))
         (handler request)))))
 
+(defn wrap-frontend-reserved-paths
+  "Frontend server (8080) must not serve Console (9090) pages or Publish API routes.
+   Return 404 instead of letting the frontend router treat them as note paths."
+  [handler]
+  (fn [request]
+    (let [uri (:uri request)]
+      (if (or (str/starts-with? uri "/console")
+              (str/starts-with? uri "/obsidian"))
+        {:status 404 :body "Not found"}
+        (handler request)))))
+
 (defn start-frontend-server []
   (let [port (config/get-config :server :frontend :port)
         host (config/get-config :server :frontend :host)]
     (log/info "Starting Frontend server on" host ":" port)
     (let [server (undertow/run-undertow
                   (-> routes/frontend-app
+                      (wrap-frontend-reserved-paths)
                       (middleware/wrap-middleware)
                       (wrap-resource-with-context "/publics/frontend" "publics/frontend")
                       (wrap-resource-with-context "/publics/shared" "publics/shared"))
