@@ -12,26 +12,41 @@
 ;; ============================================================
 
 (defn parse-endpoint
-  "Parse endpoint URL into hostname and port components.
-   e.g., 'http://localhost:9000' -> {:hostname 'localhost' :port 9000}"
+  "Parse endpoint into protocol/hostname/port components.
+
+   - If the scheme is missing, defaults to http://
+   - If the port is missing:
+     - https defaults to 443
+     - http defaults to 9000 (common S3-compatible default)
+
+   Example:
+   - 'http://localhost:9000' -> {:protocol :http :hostname \"localhost\" :port 9000}"
   [endpoint]
-  (let [without-proto (str/replace endpoint #"^https?://" "")
-        parts (str/split without-proto #":")
-        hostname (first parts)
-        port-str (when (> (count parts) 1)
-                   (str/replace (second parts) #"/.*" ""))
-        port (if (str/blank? port-str) 9000 (Integer/parseInt port-str))]
-    {:hostname hostname :port port}))
+  (let [raw (-> (str endpoint) str/trim)
+        with-scheme (if (re-find #"^https?://" raw)
+                      raw
+                      (str "http://" raw))
+        uri (java.net.URI. with-scheme)
+        scheme (or (.getScheme uri) "http")
+        hostname (.getHost uri)
+        port (.getPort uri)
+        protocol (keyword scheme)
+        port (if (pos? port)
+               port
+               (if (= scheme "https") 443 9000))]
+    {:protocol protocol
+     :hostname hostname
+     :port port}))
 
 (defn- create-s3-client
   "Create an S3 client using configuration."
   []
   (let [{:keys [endpoint access-key secret-key region]} (config/s3-config)]
     (when (and endpoint access-key secret-key)
-      (let [{:keys [hostname port]} (parse-endpoint endpoint)]
+      (let [{:keys [protocol hostname port]} (parse-endpoint endpoint)]
         (aws/client {:api :s3
                      :region region
-                     :endpoint-override {:protocol :http
+                     :endpoint-override {:protocol protocol
                                          :hostname hostname
                                          :port port}
                      :credentials-provider (creds/basic-credentials-provider

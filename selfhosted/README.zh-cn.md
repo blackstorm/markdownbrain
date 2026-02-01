@@ -33,10 +33,18 @@ MarkdownBrain 在容器内提供两个端口：
 - Frontend：`8080`（公开站点）
 - Console：`9090`（管理后台与发布 API，`/obsidian/*`）
 
+健康检查：
+
+- `GET /console/health` 仅允许本机访问（只有请求来自 `127.0.0.1` / `::1` 才会返回 `200`）。
+  该接口用于容器/本机探活，不建议用于公网监控。
+
 推荐的安全模型：
 
 - Console 保持私有（宿主机只绑定 `127.0.0.1`）。
 - 只对外暴露公开站点（通过本仓库提供的 Caddy 转发到 `8080`/`9090`）。
+- 建议通过私有网络访问 Console（例如 Tailscale/VPN），避免将 `9090` 端口暴露在公网上。
+- Docker 镜像默认以 `ENVIRONMENT=production` 运行，Console 会话使用 `Secure` Cookie。
+  通过纯 HTTP（包括 SSH 隧道）访问 Console 可能不可靠；建议为 Console 提供 HTTPS 访问方式。
 
 <a id="toc-quick-deploy"></a>
 ## 快速部署（一行命令）
@@ -49,6 +57,8 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 
 - 公开站点：`http://<你的服务器>:8080/`
 - Console（SSH 隧道）：`ssh -L 9090:localhost:9090 user@your-server`，然后打开 `http://localhost:9090/console`
+  - 注意：在 `ENVIRONMENT=production` 下 Console 使用 `Secure` Cookie，通过纯 HTTP 登录可能不可靠。
+    建议为 Console 提供 HTTPS 访问方式（即便在内网）。
 
 <a id="toc-choose-deployment"></a>
 ## 选择部署方式
@@ -92,7 +102,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |---|---|---|---|
-| `ENVIRONMENT` | `development` 或 `production` | `development` | 否 |
+| `ENVIRONMENT` | `development` 或 `production` | `production`（Docker 镜像默认） | 否 |
 | `HOST` | 监听地址（前台与 Console 共用） | `0.0.0.0` | 否 |
 | `FRONTEND_PORT` | Frontend 端口 | `8080` | 否 |
 | `CONSOLE_PORT` | Console 端口 | `9090` | 否 |
@@ -113,7 +123,8 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 
 - 数据库默认路径为 `${DATA_PATH}/markdownbrain.db`。
 - 如果未设置 `SESSION_SECRET`，MarkdownBrain 会自动生成，并保存在 `${DATA_PATH}/.secrets.edn` 中。
-- 生产环境建议设置 `ENVIRONMENT=production`，以启用安全 Cookie。
+- Docker 镜像默认以 `ENVIRONMENT=production` 运行（Console 的安全 Cookie 默认开启）。
+  若通过纯 HTTP 访问 Console，登录可能不可靠；建议为 Console 提供 HTTPS 访问方式。
 
 <a id="toc-docker-runtime-vars"></a>
 ### Docker 运行时变量
@@ -170,6 +181,9 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.c
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
+
+注意：在 `ENVIRONMENT=production` 下 Console 使用 `Secure` Cookie，通过纯 HTTP（包括 SSH 隧道）登录可能不可靠。
+建议为 Console 提供 HTTPS 访问方式（例如私有网络 + HTTPS 反代）。
 
 5. 初始化并发布。
 

@@ -16,11 +16,11 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
     containerEl.createEl("h2", { text: "MarkdownBrain Settings" });
 
     new Setting(containerEl)
-      .setName("Server URL")
-      .setDesc("MarkdownBrain server API base URL")
+      .setName("Publish URL")
+      .setDesc("Your MarkdownBrain publish URL (must route /obsidian/* to Console)")
       .addText((text) =>
         text
-          .setPlaceholder("https://api.markdownbrain.com")
+          .setPlaceholder("https://notes.example.com")
           .setValue(this.plugin.settings.serverUrl)
           .onChange(async (value) => {
             this.plugin.settings.serverUrl = value;
@@ -42,14 +42,14 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Test connection")
-      .setDesc("Test connectivity to the server (30s timeout)")
+      .setName("Test publish connection")
+      .setDesc("Test connectivity to your Publish URL (30s timeout)")
       .addButton((button) =>
         button.setButtonText("Test").onClick(async () => {
           button.setDisabled(true);
           button.setButtonText("Testing...");
 
-          new Notice("Testing connection...");
+          new Notice("Testing publish connection...");
 
           const result = await this.plugin.syncClient.getVaultInfo();
 
@@ -70,23 +70,23 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName("Full sync")
-      .setDesc("Manually sync all Markdown files to the server")
+      .setName("Full publish")
+      .setDesc("Manually publish all Markdown files to the server")
       .addButton((button) =>
-        button.setButtonText("Start sync").onClick(async () => {
+        button.setButtonText("Start publish").onClick(async () => {
           button.setDisabled(true);
-          button.setButtonText("Syncing...");
+          button.setButtonText("Publishing...");
 
           await this.plugin.fullSync();
 
           button.setDisabled(false);
-          button.setButtonText("Start sync");
+          button.setButtonText("Start publish");
         }),
       );
 
     new Setting(containerEl)
-      .setName("Auto sync")
-      .setDesc("Automatically sync on file changes")
+      .setName("Auto publish")
+      .setDesc("Automatically publish on file changes")
       .addToggle((toggle) =>
         toggle.setValue(this.plugin.settings.autoSync).onChange(async (value) => {
           this.plugin.settings.autoSync = value;

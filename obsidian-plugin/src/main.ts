@@ -33,7 +33,7 @@ export default class MarkdownBrainPlugin extends Plugin {
   }
 
   async onload() {
-    console.log("[MarkdownBrain] Plugin loading (snapshot sync)...");
+    console.log("[MarkdownBrain] Plugin loading (snapshot publish)...");
     await this.loadSettings();
 
     const httpClient = new ObsidianHttpClient();
@@ -49,7 +49,7 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     this.addCommand({
       id: "sync-current-file",
-      name: "Sync current file",
+      name: "Publish current file",
       callback: () => {
         const file = this.app.workspace.getActiveFile();
         if (file && file.extension === "md") {
@@ -60,7 +60,7 @@ export default class MarkdownBrainPlugin extends Plugin {
 
     this.addCommand({
       id: "sync-all-files",
-      name: "Sync all files (full sync)",
+      name: "Publish all files (full publish)",
       callback: () => this.fullSync(),
     });
 
@@ -163,7 +163,7 @@ export default class MarkdownBrainPlugin extends Plugin {
   private async syncCurrentFile(file: TFile): Promise<void> {
     const result = await this.syncNoteFile(file);
     if (!result.success) {
-      new Notice("Sync failed: note upload failed");
+      new Notice("Publish failed: note upload failed");
       return;
     }
     await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
@@ -189,7 +189,7 @@ export default class MarkdownBrainPlugin extends Plugin {
 
         const result = await this.syncNoteFromCache(file, data, cache);
         if (!result.success) {
-          new Notice("Sync failed: note upload failed");
+          new Notice("Publish failed: note upload failed");
           return;
         }
 
@@ -213,9 +213,9 @@ export default class MarkdownBrainPlugin extends Plugin {
     const content = cache ? "" : await this.app.vault.read(file);
     this.referenceIndex.updateNote(file.path, this.extractLinkpaths(content, cache));
 
-    const result = await this.syncNoteFile(file);
+	    const result = await this.syncNoteFile(file);
 		    if (!result.success) {
-		      new Notice("Sync failed: note rename sync failed");
+		      new Notice("Publish failed: note rename failed");
 		      return;
 		    }
     await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
@@ -229,7 +229,7 @@ export default class MarkdownBrainPlugin extends Plugin {
     }
 		    const result = await this.syncAssetFile(file);
 		    if (!result) {
-		      new Notice("Sync failed: asset upload failed");
+		      new Notice("Publish failed: asset upload failed");
 	    }
 	  }
 
@@ -316,13 +316,13 @@ export default class MarkdownBrainPlugin extends Plugin {
     const referencedAssets = await this.collectReferencedAssetFiles();
     const assets = await this.buildAssetSnapshot(referencedAssets);
 
-	    new Notice(`Starting full sync: ${notes.length} notes / ${assets.length} assets`);
+		    new Notice(`Starting full publish: ${notes.length} notes / ${assets.length} assets`);
 
-	    const changes = await this.syncClient.syncChanges({ notes, assets });
-	    if (!changes.success) {
-	      new Notice(`Full sync failed: ${changes.error}`);
-	      return;
-	    }
+		    const changes = await this.syncClient.syncChanges({ notes, assets });
+		    if (!changes.success) {
+		      new Notice(`Full publish failed: ${changes.error}`);
+		      return;
+		    }
 
     const needNotes = changes.need_upsert?.notes ?? [];
     const needAssets = changes.need_upsert?.assets ?? [];
@@ -335,8 +335,8 @@ export default class MarkdownBrainPlugin extends Plugin {
       await this.uploadNotes(needNotes);
     }
 
-	    new Notice("Full sync completed");
-	  }
+		    new Notice("Full publish completed");
+		  }
 
   private async uploadNotes(entries: SyncSnapshotEntry[]): Promise<void> {
     const fileMap = new Map<string, TFile>();
@@ -348,14 +348,14 @@ export default class MarkdownBrainPlugin extends Plugin {
     }
 
     for (const entry of entries) {
-      const file = fileMap.get(entry.id);
-      if (!file) continue;
-	      const result = await this.syncNoteFile(file);
-	      if (!result.success) {
-	        new Notice("Sync failed: note upload failed");
-	      }
-	    }
-	  }
+	      const file = fileMap.get(entry.id);
+	      if (!file) continue;
+		      const result = await this.syncNoteFile(file);
+		      if (!result.success) {
+		        new Notice("Publish failed: note upload failed");
+		      }
+		    }
+		  }
 
   private async uploadAssets(entries: SyncSnapshotEntry[], assetFiles?: TFile[]): Promise<void> {
     const targetAssets = assetFiles ?? this.app.vault.getFiles().filter(isAssetFile);
@@ -547,10 +547,10 @@ export default class MarkdownBrainPlugin extends Plugin {
       }
     }
 
-	    if (failed) {
-	      new Notice("Sync failed: asset upload failed");
-	    }
-	  }
+		    if (failed) {
+		      new Notice("Publish failed: asset upload failed");
+		    }
+		  }
 
   private async syncLinkedNotesForNote(
     note: TFile,
@@ -573,10 +573,10 @@ export default class MarkdownBrainPlugin extends Plugin {
       await this.syncAssetsForNote(file, result.needUploadAssets, result.assetsById);
     }
 
-	    if (failed) {
-	      new Notice("Sync failed: linked note upload failed");
-	    }
-	  }
+		    if (failed) {
+		      new Notice("Publish failed: linked note upload failed");
+		    }
+		  }
 
   // extractAssetIds removed; asset uploads now use per-note asset entries with hashes.
 

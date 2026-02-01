@@ -119,21 +119,21 @@ plugin-test:
 # Database
 db-migrate:
 	@echo "Running database migrations..."
-	@cd server && clojure -M:dev -m markdownbrain.migrations migrate
+	@cd server && clojure -M -m markdownbrain.migrations migrate
 
 db-reset:
 	@echo "Resetting database..."
 	@rm -f data/markdownbrain.db data/.secrets.edn
-	@cd server && clojure -M:dev -m markdownbrain.migrations migrate
+	@cd server && clojure -M -m markdownbrain.migrations migrate
 	@echo "Database reset complete"
 
 db-pending:
 	@echo "Checking pending migrations..."
-	@cd server && clojure -M:dev -m markdownbrain.migrations pending
+	@cd server && clojure -M -m markdownbrain.migrations pending
 
 db-create-migration:
 	@echo "Creating new migration..."
-	@cd server && clojure -M:dev -m markdownbrain.migrations create $(NAME)
+	@cd server && clojure -M -m markdownbrain.migrations create $(NAME)
 
 clean:
 	@echo "Cleaning build artifacts..."

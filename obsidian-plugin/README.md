@@ -25,23 +25,24 @@ Publish your Obsidian vault to a MarkdownBrain server.
 
 Obsidian → Settings → Community plugins → MarkdownBrain:
 
-- Server URL: your published site base URL (for example `https://notes.example.com`)
+- Publish URL: your published site base URL (for example `https://notes.example.com`)
 - Publish Key: copy from MarkdownBrain Console → your vault card
 - Auto publish: publish on file changes
 
-The plugin calls `${serverUrl}/obsidian/...` endpoints. For self-hosting, your reverse proxy must route `/obsidian/*` to MarkdownBrain Console (see [selfhosted/README.md](../selfhosted/README.md)).
+The plugin calls `${publishUrl}/obsidian/...` endpoints. Your Publish URL must route `/obsidian/*` to the MarkdownBrain Console port (`9090`).
+For self-hosting, use a reverse proxy that routes `/obsidian/*` → `9090` and everything else → `8080` (see [selfhosted/README.md](../selfhosted/README.md)).
 
 <a id="toc-commands"></a>
 ## Commands
 
-- Sync current file
-- Sync all files (full sync)
+- Publish current file
+- Publish all files (full publish)
 
 <a id="toc-troubleshooting"></a>
 ## Troubleshooting
 
 - `401 Unauthorized`: check Publish Key.
-- `404 Not Found`: check Server URL and reverse proxy routing for `/obsidian/*`.
+- `404 Not Found`: check Publish URL and reverse proxy routing for `/obsidian/*` (Publish API runs on port `9090`, not `8080`).
 - Upload succeeds but assets do not load: verify your server storage configuration (especially `S3_PUBLIC_URL` for S3 mode).
 
 <a id="toc-development"></a>

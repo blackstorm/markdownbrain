@@ -1,6 +1,6 @@
 {
   "name": "markdownbrain",
-  "version": "0.0.1",
+  "version": "0.1.5",
   "description": "MarkdownBrain Obsidian plugin",
   "main": "main.js",
   "scripts": {

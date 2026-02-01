@@ -25,23 +25,24 @@
 
 Obsidian → 设置 → 社区插件 → MarkdownBrain：
 
-- Server URL：你的站点地址（例如 `https://notes.example.com`）
+- Publish URL：你的站点地址（例如 `https://notes.example.com`）
 - Publish Key：从 MarkdownBrain Console 复制
 - 自动发布：文件变更时自动发布
 
-插件会请求 `${serverUrl}/obsidian/...` 接口。自托管时，需要让反向代理把 `/obsidian/*` 转发到 MarkdownBrain 的 Console 端口（参考 [selfhosted/README.md](../selfhosted/README.md)）。
+插件会请求 `${publishUrl}/obsidian/...` 接口。Publish URL 必须能把 `/obsidian/*` 转发到 MarkdownBrain 的 Console 端口（`9090`）。
+自托管时，建议通过反向代理实现：`/obsidian/*` → `9090`，其它路径 → `8080`（参考 [selfhosted/README.md](../selfhosted/README.md)）。
 
 <a id="toc-commands"></a>
 ## 命令
 
-- Sync current file（同步当前文件）
-- Sync all files（全量同步）
+- Publish current file（发布当前文件）
+- Publish all files（全量发布）
 
 <a id="toc-troubleshooting"></a>
 ## 常见问题
 
 - 返回 `401 Unauthorized`：检查 Publish Key。
-- 返回 `404 Not Found`：检查 Server URL 与反向代理的 `/obsidian/*` 转发规则。
+- 返回 `404 Not Found`：检查 Publish URL 与反向代理的 `/obsidian/*` 转发规则（Publish API 在 `9090` 端口，不在 `8080`）。
 - 上传成功但资源无法加载：检查服务端存储配置（S3 模式重点确认 `S3_PUBLIC_URL`）。
 
 <a id="toc-development"></a>

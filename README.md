@@ -6,7 +6,7 @@
 
 **MarkdownBrain is a complete self-hosted solution for publishing [Obsidian](https://obsidian.md/) notes as websites.**
 
-It supports multiple vaults, automatic incremental sync, link parsing, and backlink display—designed to deliver a seamless publishing experience for digital gardens, blogs, documentation, and tutorial sites.
+It supports multiple vaults, automatic incremental publishing, link parsing, and backlink display—designed to deliver a seamless publishing experience for digital gardens, blogs, documentation, and tutorial sites.
 
 Built with `Clojure` and `HTMX` for a simple, fast, and maintainable architecture.
 
@@ -15,13 +15,13 @@ Built with `Clojure` and `HTMX` for a simple, fast, and maintainable architectur
 - **Truly self-hosted** — No SaaS or third-party platform dependencies; you own your data
 - **Obsidian-native** — Full support for internal links, backlinks, and wiki-style references
 - **Developer-friendly** — Flexible integration with local storage or S3-compatible backends
-- **One-click publishing** — Sync your existing vault to a live site in seconds
+- **One-click publishing** — Publish your existing vault to a live site in seconds
 
 ## Features
 
 - Fully self-hosted with complete control over deployment and data
 - Support for multiple independent vaults
-- Incremental and full sync modes for efficient publishing
+- Incremental and full publish modes for efficient publishing
 - Native support for Obsidian notes and related assets
 - Automatic parsing of internal links and backlinks
 - Built-in custom domain support with automatic HTTPS
@@ -44,7 +44,9 @@ docker run -d \
 ```
 
 - Public site: `http://<your-server>:8080`
-- Console: `http://localhost:9090/console` (bound to localhost by default for security; access via SSH tunnel, VPN, or other secure methods)
+- Console + Publish API: `http://localhost:9090/console` (this command binds `9090` to localhost on the host for security)
+
+Security note: the Docker image runs in `ENVIRONMENT=production` by default. Console sessions use `Secure` cookies, so accessing Console over plain HTTP (including SSH tunnel) can be unreliable. Prefer an HTTPS access method for Console (for example, a Tailscale/internal network + HTTPS reverse proxy), and avoid exposing port `9090` to the public internet.
 
 **Production deployment (with Caddy + auto TLS):**
 

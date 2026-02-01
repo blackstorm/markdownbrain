@@ -62,16 +62,43 @@
 
 (deftest test-parse-endpoint-edge-cases
   (testing "handles https with custom port"
-    (is (= {:hostname "s3.amazonaws.com" :port 443}
+    (is (= {:protocol :https :hostname "s3.amazonaws.com" :port 443}
            (s3/parse-endpoint "https://s3.amazonaws.com:443"))))
   
   (testing "handles IP address"
-    (is (= {:hostname "192.168.1.100" :port 9000}
+    (is (= {:protocol :http :hostname "192.168.1.100" :port 9000}
            (s3/parse-endpoint "http://192.168.1.100:9000"))))
   
   (testing "handles subdomain"
-    (is (= {:hostname "minio.internal.example.com" :port 9000}
+    (is (= {:protocol :http :hostname "minio.internal.example.com" :port 9000}
            (s3/parse-endpoint "http://minio.internal.example.com:9000")))))
+
+;; =============================================================================
+;; create-s3-client Tests
+;; =============================================================================
+
+(deftest test-create-s3-client-uses-endpoint-protocol
+  (testing "uses https when S3_ENDPOINT is https://..."
+    (let [captured (atom nil)]
+      (with-redefs [config/s3-config (constantly (assoc mock-s3-config :endpoint "https://minio.example.com"))
+                    aws/client (fn [opts]
+                                 (reset! captured opts)
+                                 :mock-client)]
+        (is (= :mock-client (#'s3/create-s3-client)))
+        (is (= :https (get-in @captured [:endpoint-override :protocol])))
+        (is (= "minio.example.com" (get-in @captured [:endpoint-override :hostname])))
+        (is (= 443 (get-in @captured [:endpoint-override :port]))))))
+
+  (testing "defaults to http when S3_ENDPOINT has no scheme"
+    (let [captured (atom nil)]
+      (with-redefs [config/s3-config (constantly (assoc mock-s3-config :endpoint "minio.internal:9000"))
+                    aws/client (fn [opts]
+                                 (reset! captured opts)
+                                 :mock-client)]
+        (is (= :mock-client (#'s3/create-s3-client)))
+        (is (= :http (get-in @captured [:endpoint-override :protocol])))
+        (is (= "minio.internal" (get-in @captured [:endpoint-override :hostname])))
+        (is (= 9000 (get-in @captured [:endpoint-override :port])))))))
 
 ;; =============================================================================
 ;; put-object!* Tests

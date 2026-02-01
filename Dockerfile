@@ -1,9 +1,10 @@
 FROM node:25-bookworm-slim AS frontend-builder
 WORKDIR /app/server
 COPY server/package*.json ./
-RUN npm ci
+RUN npm install --include=dev
 COPY server/console.css server/frontend.css ./
 COPY server/resources/templates ./resources/templates
+COPY server/resources/publics/shared ./resources/publics/shared
 RUN mkdir -p resources/publics/console/css resources/publics/frontend/css
 RUN npm run build
 
@@ -14,7 +15,7 @@ COPY server/deps.edn server/build.clj ./
 RUN clojure -P -T:build
 COPY server/src ./src
 COPY server/resources ./resources
-COPY --from=frontend-builder /app/server/resources/publics/console/css/console.css ./resources/publics/console/css/console.css
+COPY --from=frontend-builder /app/server/resources/publics/console/css/app.css ./resources/publics/console/css/app.css
 COPY --from=frontend-builder /app/server/resources/publics/frontend/css/frontend.css ./resources/publics/frontend/css/frontend.css
 RUN clojure -T:build uberjar
 
@@ -24,9 +25,10 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
-RUN groupadd -g 1000 markdownbrain && \
-    useradd -m -u 1000 -g 1000 -s /bin/sh markdownbrain && \
-    mkdir -p /app/data && \
+RUN set -eux; \
+    getent group markdownbrain >/dev/null || groupadd -r markdownbrain; \
+    id -u markdownbrain >/dev/null 2>&1 || useradd -r -m -g markdownbrain -s /bin/sh markdownbrain; \
+    mkdir -p /app/data; \
     chown -R markdownbrain:markdownbrain /app
 
 COPY --from=backend-builder --chown=markdownbrain:markdownbrain /app/server/target/server-standalone.jar ./app.jar

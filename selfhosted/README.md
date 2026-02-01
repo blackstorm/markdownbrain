@@ -33,10 +33,18 @@ MarkdownBrain exposes two HTTP ports inside the container:
 - Frontend: `8080` (public site)
 - Console: `9090` (admin UI + publish API under `/obsidian/*`)
 
+Health checks:
+
+- `GET /console/health` is loopback-only (returns `200` only for requests coming from `127.0.0.1` / `::1`).
+  It is intended for local/container health checks, not public monitoring.
+
 Security model (recommended):
 
 - Keep Console private (bound to `127.0.0.1` on the host).
 - Expose only the public site (`:80/:443`) through a reverse proxy (Caddy in this repo).
+- Access Console through a private network (for example, Tailscale/VPN). Avoid exposing port `9090` to the public internet.
+- The Docker image runs in `ENVIRONMENT=production` by default and Console sessions use `Secure` cookies.
+  Accessing Console over plain HTTP (including SSH tunnel) can be unreliable; prefer an HTTPS access method for Console.
 
 <a id="toc-quick-deploy"></a>
 ## Quick deploy (one command)
@@ -49,6 +57,8 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 
 - Public site: `http://<your-server>:8080/`
 - Console (SSH tunnel): `ssh -L 9090:localhost:9090 user@your-server`, then open `http://localhost:9090/console`
+  - Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP, login can be unreliable.
+    Prefer an HTTPS access method for Console (even on an internal network).
 
 <a id="toc-choose-deployment"></a>
 ## Choose a deployment
@@ -92,7 +102,7 @@ For a short overview table, see [../README.md](../README.md#toc-configuration).
 
 | Name | Description | Default | Required |
 |---|---|---|---|
-| `ENVIRONMENT` | `development` or `production` | `development` | No |
+| `ENVIRONMENT` | `development` or `production` | `production` (Docker image default) | No |
 | `HOST` | Bind host for both servers | `0.0.0.0` | No |
 | `FRONTEND_PORT` | Frontend server port | `8080` | No |
 | `CONSOLE_PORT` | Console server port | `9090` | No |
@@ -113,7 +123,8 @@ Notes:
 
 - Default DB path is `${DATA_PATH}/markdownbrain.db`.
 - If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
-- In production, set `ENVIRONMENT=production` to enable secure cookies.
+- The Docker image runs in `ENVIRONMENT=production` by default (secure cookies enabled for Console sessions).
+  If you access Console over plain HTTP, login can be unreliable; prefer HTTPS access for Console.
 
 <a id="toc-docker-runtime-vars"></a>
 ### Docker runtime variables
@@ -170,6 +181,9 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.c
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
+
+Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP (including SSH tunnel), login can be unreliable.
+Prefer an HTTPS access method for Console (for example, a private network + HTTPS reverse proxy).
 
 5. Initialize and publish.
 

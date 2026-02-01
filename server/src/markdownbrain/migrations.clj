@@ -22,7 +22,7 @@
 
 (defn -main
   "CLI entry point for migrations.
-   Usage: clojure -M:dev -m markdownbrain.migrations <command>
+   Usage: clojure -M -m markdownbrain.migrations <command>
    Commands:
      migrate  - Run all pending migrations
      pending  - List pending migrations
@@ -35,6 +35,6 @@
                 (create-migration (first args))
                 (do (println "Error: migration name required")
                     (System/exit 1)))
-    (do (println "Usage: clojure -M:dev -m markdownbrain.migrations <command>")
+    (do (println "Usage: clojure -M -m markdownbrain.migrations <command>")
         (println "Commands: migrate, pending, create <name>")
         (System/exit 1))))

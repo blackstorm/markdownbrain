@@ -10,20 +10,28 @@
 
 (deftest test-parse-endpoint
   (testing "parses http URL with port"
-    (is (= {:hostname "localhost" :port 9000}
+    (is (= {:protocol :http :hostname "localhost" :port 9000}
            (s3/parse-endpoint "http://localhost:9000"))))
   
   (testing "parses https URL with port"
-    (is (= {:hostname "minio.example.com" :port 443}
+    (is (= {:protocol :https :hostname "minio.example.com" :port 443}
            (s3/parse-endpoint "https://minio.example.com:443"))))
   
-  (testing "defaults to port 9000 when no port specified"
-    (is (= {:hostname "localhost" :port 9000}
+  (testing "defaults to port 9000 when no port specified (http)"
+    (is (= {:protocol :http :hostname "localhost" :port 9000}
            (s3/parse-endpoint "http://localhost"))))
+
+  (testing "defaults to port 443 when no port specified (https)"
+    (is (= {:protocol :https :hostname "s3.amazonaws.com" :port 443}
+           (s3/parse-endpoint "https://s3.amazonaws.com"))))
   
   (testing "handles URL with trailing path"
-    (is (= {:hostname "storage.local" :port 9000}
-           (s3/parse-endpoint "http://storage.local:9000/path/ignored")))))
+    (is (= {:protocol :http :hostname "storage.local" :port 9000}
+           (s3/parse-endpoint "http://storage.local:9000/path/ignored"))))
+
+  (testing "defaults to http:// when scheme is missing"
+    (is (= {:protocol :http :hostname "storage.local" :port 9000}
+           (s3/parse-endpoint "storage.local:9000/path/ignored")))))
 
 (deftest test-normalize-path
   (testing "nil input returns nil"
