@@ -214,11 +214,16 @@ body {
 
 @media (max-width: 767px) {
   .notes-container {
-    scroll-snap-type: x mandatory;
+    overflow-x: hidden;
+    scroll-snap-type: none;
   }
 
-  .note {
-    scroll-snap-align: start;
+  .notes-container .note {
+    display: none;
+  }
+
+  .notes-container .note:last-child {
+    display: block;
   }
 }
 

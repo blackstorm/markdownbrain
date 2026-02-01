@@ -14,6 +14,60 @@
 (def ^:private session-cookie-name
   "markdownbrain-session")
 
+(defn parse-host-domain
+  "Parse an HTTP Host header into a domain string (without port).
+   Returns {:domain <string>} or {:error :missing|:invalid}."
+  [host]
+  (let [host (when (string? host) (str/trim host))]
+    (cond
+      (str/blank? host)
+      {:error :missing}
+
+      (or (re-find #"\s" host)
+          (str/includes? host "/"))
+      {:error :invalid}
+
+      ;; Bracketed IPv6 host, e.g. \"[::1]:8080\"
+      (str/starts-with? host "[")
+      (let [close-idx (str/index-of host "]")]
+        (if (nil? close-idx)
+          {:error :invalid}
+          (let [domain (subs host 1 close-idx)
+                rest (subs host (inc close-idx))]
+            (cond
+              (str/blank? domain) {:error :invalid}
+              (str/blank? rest) {:domain domain}
+              (not (str/starts-with? rest ":")) {:error :invalid}
+              :else
+              (let [port-str (subs rest 1)]
+                (try
+                  (let [port (Long/parseLong port-str)]
+                    (if (<= 1 port 65535)
+                      {:domain domain}
+                      {:error :invalid}))
+                  (catch Exception _
+                    {:error :invalid})))))))
+
+      :else
+      (let [parts (str/split host #":" 3)]
+        (if (> (count parts) 2)
+          {:error :invalid}
+          (let [domain (first parts)
+                port-str (when (= (count parts) 2) (second parts))]
+            (if (and (string? domain)
+                     (not (str/blank? domain))
+                     (re-matches #"[A-Za-z0-9._-]+" domain))
+              (if (nil? port-str)
+                {:domain domain}
+                (try
+                  (let [port (Long/parseLong port-str)]
+                    (if (<= 1 port 65535)
+                      {:domain domain}
+                      {:error :invalid}))
+                  (catch Exception _
+                    {:error :invalid})))
+              {:error :invalid})))))))
+
 (defn wrap-session-middleware [handler]
   (session/wrap-session
     handler
@@ -51,7 +105,44 @@
               response (if (= :options (:request-method request))
                          {:status 200 :body ""}
                          (handler request))]
-          (update response :headers (fnil merge {}) cors-headers))))))
+        (update response :headers (fnil merge {}) cors-headers))))))
+
+(defn wrap-frontend-host-binding
+  "Enforce Host -> vault binding for the Frontend server (8080).
+   - Missing/invalid Host: 400
+   - Host not bound to a vault: 403
+
+   Skips reserved paths (\"/console*\", \"/obsidian*\") so the frontend can return a
+   consistent 404 for those paths."
+  [handler]
+  (fn [request]
+    (let [uri (:uri request)]
+      (if (or (str/starts-with? uri "/console")
+              (str/starts-with? uri "/obsidian"))
+        (handler request)
+        (let [{:keys [domain error]} (parse-host-domain (get-in request [:headers "host"]))]
+          (cond
+            (= error :missing)
+            {:status 400
+             :headers {"Content-Type" "text/plain; charset=utf-8"
+                       "Cache-Control" "no-store"}
+             :body "Bad request"}
+
+            (= error :invalid)
+            {:status 400
+             :headers {"Content-Type" "text/plain; charset=utf-8"
+                       "Cache-Control" "no-store"}
+             :body "Bad request"}
+
+            :else
+            (if-let [vault (db/get-vault-by-domain domain)]
+              (handler (assoc request
+                              :markdownbrain/domain domain
+                              :markdownbrain/vault vault))
+              {:status 403
+               :headers {"Content-Type" "text/plain; charset=utf-8"
+                         "Cache-Control" "no-store"}
+               :body "Forbidden"})))))))
 
 ;; CSRF 中间件（仅保护 Console 路由）
 (defn- get-csrf-token-from-request [request]

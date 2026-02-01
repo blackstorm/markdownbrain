@@ -12,14 +12,17 @@ function noteWindowSizeAdjust() {
   if (windowWidth <= NOTE_WIDTH) {
     allNotes.forEach((note, i) => {
       note.classList.remove("stacked");
-      if (i < noteCount - 1) {
-        note.classList.add("hidden");
-      } else {
-        note.classList.remove("hidden");
-      }
+      note.classList.remove("hidden");
       note.style.left = "";
     });
     notesContainer.style.width = "";
+
+    requestAnimationFrame(() => {
+      notesContainer.scrollTo({
+        left: notesContainer.scrollWidth,
+        behavior: "smooth",
+      });
+    });
     return;
   }
   
