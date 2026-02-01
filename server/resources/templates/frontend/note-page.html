@@ -29,9 +29,7 @@
             hx-swap="beforeend"
           >
             <span class="backlink-title">{{ backlink.title }}</span>
-            {% if backlink.description %}
-            <p class="backlink-desc">{{ backlink.description }}</p>
-            {% endif %}
+            <p class="backlink-desc">{{ backlink.description|default:"" }}</p>
           </a>
         </div>
         {% endfor %}

@@ -7,7 +7,7 @@
   {% if description %}<meta name="description" content="{{ description }}">{% endif %}
   {% if vault.favicon-version %}<link rel="icon" href="/favicon.ico?v={{ vault.favicon-version }}">{% endif %}
   <link rel="stylesheet" href="/publics/frontend/css/frontend.css">
-  <link rel="stylesheet" href="/publics/shared/katex.min.css">
+  <link rel="stylesheet" href="/publics/frontend/katex/katex-swap.min.css">
   {{ vault.custom-head-html|safe }}
 </head>
 <body>
@@ -27,8 +27,8 @@
     </header>
     {% block content %}{% endblock %}
   </div>
-  <script src="/publics/shared/highlight.min.js"></script>
-  <script src="/publics/shared/katex.min.js"></script>
+  <script src="/publics/frontend/js/highlight.min.js"></script>
+  <script src="/publics/frontend/katex/katex.min.js"></script>
   <script src="/publics/shared/htmx.min.js"></script>
   <script src="/publics/frontend/js/frontend.js"></script>
 </body>

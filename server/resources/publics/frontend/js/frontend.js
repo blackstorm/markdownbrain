@@ -5,14 +5,51 @@ function isMobileNoteMode() {
   return window.innerWidth <= NOTE_WIDTH;
 }
 
-function buildTruncatedPath(noteId) {
-  const pathSegments = window.location.pathname.split('+').filter(s => s);
-  const cleaned = pathSegments.map(seg => seg.replace(/^\//, ''));
-  const idx = cleaned.indexOf(noteId);
-  if (idx >= 0) {
-    return `/${cleaned.slice(0, idx + 1).join('+')}`;
+function getPathSegments() {
+  return window.location.pathname
+    .split('+')
+    .map(seg => seg.replace(/^\//, ''))
+    .filter(Boolean);
+}
+
+function getNoteIdFromHref(href) {
+  if (!href) return null;
+  const trimmed = href.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('//')) {
+    return null;
   }
-  return `/${noteId}`;
+  const clean = trimmed.split('?')[0].replace(/^\//, '');
+  const parts = clean.split('/');
+  return parts[0] || null;
+}
+
+function getTruncatedPath(noteId) {
+  const segments = getPathSegments();
+  const idx = segments.indexOf(noteId);
+  if (idx < 0) return null;
+  return `/${segments.slice(0, idx + 1).join('+')}`;
+}
+
+function handleExistingNoteInPath(noteId, evt) {
+  const truncatedPath = getTruncatedPath(noteId);
+  if (!truncatedPath) return false;
+  if (evt) evt.preventDefault();
+
+  if (isMobileNoteMode()) {
+    window.location.href = truncatedPath;
+  } else {
+    highlightNoteById(`note-${noteId}`);
+  }
+  return true;
+}
+
+function scrollNotesToEnd(notesContainer) {
+  requestAnimationFrame(() => {
+    notesContainer.scrollTo({
+      left: notesContainer.scrollWidth,
+      behavior: "smooth",
+    });
+  });
 }
 
 function noteWindowSizeAdjust() {
@@ -24,19 +61,14 @@ function noteWindowSizeAdjust() {
   const noteCount = allNotes.length;
   
   if (windowWidth <= NOTE_WIDTH) {
-    allNotes.forEach((note, i) => {
+    allNotes.forEach((note) => {
       note.classList.remove("stacked");
       note.classList.remove("hidden");
       note.style.left = "";
     });
     notesContainer.style.width = "";
 
-    requestAnimationFrame(() => {
-      notesContainer.scrollTo({
-        left: notesContainer.scrollWidth,
-        behavior: "smooth",
-      });
-    });
+    scrollNotesToEnd(notesContainer);
     return;
   }
   
@@ -60,12 +92,7 @@ function noteWindowSizeAdjust() {
     : noteCount * NOTE_WIDTH;
   notesContainer.style.width = Math.max(totalWidth, windowWidth) + "px";
   
-  requestAnimationFrame(() => {
-    notesContainer.scrollTo({
-      left: notesContainer.scrollWidth,
-      behavior: "smooth",
-    });
-  });
+  scrollNotesToEnd(notesContainer);
 }
 
 function highlightNoteById(id) {
@@ -131,7 +158,7 @@ function initializeMathRendering() {
 
 htmx.on("htmx:beforeSwap", (evt) => {
   const target = evt.target;
-  if (target.className && target.className.includes("note") && target.id && target.id.startsWith("note")) {
+  if (target.classList && target.classList.contains("note") && target.id && target.id.startsWith("note")) {
     const targetElement = document.getElementById(target.id);
     if (targetElement) {
       let nextSibling = targetElement.nextElementSibling;
@@ -164,27 +191,11 @@ htmx.on("htmx:afterSwap", (evt) => {
 
 htmx.on("htmx:beforeRequest", (evt) => {
   const target = evt.target;
-  const href = target.getAttribute("href");
-  if (!href) return;
-  
-  const noteId = href.split('/')[1];
+  const noteId = getNoteIdFromHref(target.getAttribute("href"));
   if (!noteId) return;
-  
-  const pathSegments = window.location.pathname.split('+').filter(s => s);
-  for (let path of pathSegments) {
-    const cleanPath = path.replace(/^\//, '');
-    if (cleanPath === noteId) {
-      if (isMobileNoteMode()) {
-        evt.preventDefault();
-        window.location.href = buildTruncatedPath(noteId);
-        return;
-      }
-      evt.preventDefault();
-      highlightNoteById(`note-${noteId}`);
-      return;
-    }
-  }
-  
+
+  if (handleExistingNoteInPath(noteId, evt)) return;
+
   const currentNote = target.closest('.note');
   removeNotesAfter(currentNote);
 });
@@ -218,23 +229,12 @@ function handleInternalLinkClick(e) {
   
   const href = link.getAttribute('href');
   if (!href) return;
-  
-  const noteId = href.replace(/^\//, '').split('/')[0];
+
+  const noteId = getNoteIdFromHref(href);
   if (!noteId) return;
-  
-  const pathSegments = window.location.pathname.split('+').filter(s => s && s !== '/');
-  for (let path of pathSegments) {
-    const cleanPath = path.replace(/^\//, '');
-    if (cleanPath === noteId) {
-      if (isMobileNoteMode()) {
-        window.location.href = buildTruncatedPath(noteId);
-        return;
-      }
-      highlightNoteById(`note-${noteId}`);
-      return;
-    }
-  }
-  
+
+  if (handleExistingNoteInPath(noteId)) return;
+
   const currentNote = link.closest('.note');
   removeNotesAfter(currentNote);
   
