@@ -30,16 +30,60 @@ function getTruncatedPath(noteId) {
   return `/${segments.slice(0, idx + 1).join('+')}`;
 }
 
-function handleExistingNoteInPath(noteId, evt) {
+function updateUrlPath(path) {
+  if (!path) return;
+  const newUrl = `${path}${window.location.search}${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (newUrl !== currentUrl) {
+    window.history.replaceState({}, '', newUrl);
+  }
+}
+
+function updateDocumentTitleFromNotes() {
+  const notes = document.querySelectorAll('.note');
+  const titles = [];
+  notes.forEach(note => {
+    const h1 = note.querySelector('article h1');
+    if (h1) {
+      titles.push(h1.textContent);
+    }
+  });
+  if (titles.length > 0) {
+    document.title = titles.join(' | ');
+  }
+}
+
+function handleExistingNoteInPath(noteId, evt, currentNote) {
   const truncatedPath = getTruncatedPath(noteId);
   if (!truncatedPath) return false;
-  if (evt) evt.preventDefault();
 
   if (isMobileNoteMode()) {
+    if (evt) evt.preventDefault();
     window.location.href = truncatedPath;
-  } else {
-    highlightNoteById(`note-${noteId}`);
+    return true;
   }
+
+  const targetNoteId = `note-${noteId}`;
+  const targetNote = document.getElementById(targetNoteId);
+  if (!targetNote) return false;
+
+  if (evt) evt.preventDefault();
+
+  if (currentNote) {
+    const notes = Array.from(document.querySelectorAll('#notes .note'));
+    const currentIndex = notes.indexOf(currentNote);
+    const targetIndex = notes.indexOf(targetNote);
+    if (currentIndex >= 0 && targetIndex > currentIndex) {
+      removeNotesAfter(targetNote);
+      updateUrlPath(truncatedPath);
+      updateDocumentTitleFromNotes();
+      noteWindowSizeAdjust();
+      highlightNoteById(targetNoteId);
+      return true;
+    }
+  }
+
+  highlightNoteById(targetNoteId);
   return true;
 }
 
@@ -172,17 +216,7 @@ htmx.on("htmx:beforeSwap", (evt) => {
 });
 
 htmx.on("htmx:afterSwap", (evt) => {
-  const notes = document.querySelectorAll(".note");
-  const titles = [];
-  notes.forEach(note => {
-    const h1 = note.querySelector('article h1');
-    if (h1) {
-      titles.push(h1.textContent);
-    }
-  });
-  if (titles.length > 0) {
-    document.title = titles.join(' | ');
-  }
+  updateDocumentTitleFromNotes();
   
   initializeSyntaxHighlighting();
   initializeMathRendering();
@@ -194,9 +228,9 @@ htmx.on("htmx:beforeRequest", (evt) => {
   const noteId = getNoteIdFromHref(target.getAttribute("href"));
   if (!noteId) return;
 
-  if (handleExistingNoteInPath(noteId, evt)) return;
-
   const currentNote = target.closest('.note');
+  if (handleExistingNoteInPath(noteId, evt, currentNote)) return;
+
   removeNotesAfter(currentNote);
 });
 
@@ -233,9 +267,9 @@ function handleInternalLinkClick(e) {
   const noteId = getNoteIdFromHref(href);
   if (!noteId) return;
 
-  if (handleExistingNoteInPath(noteId)) return;
-
   const currentNote = link.closest('.note');
+  if (handleExistingNoteInPath(noteId, e, currentNote)) return;
+
   removeNotesAfter(currentNote);
   
   const fromNoteId = currentNote?.id?.replace('note-', '');
