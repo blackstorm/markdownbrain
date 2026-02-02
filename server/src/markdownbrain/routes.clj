@@ -27,11 +27,13 @@
 
 (def console-routes
   (let [base-routes
-        [["/" {:get (fn [_] (response/redirect "/console"))}]
+         [["/" {:get (fn [_] (response/redirect "/console"))}]
 
-         ["/obsidian"
-          ["/sync"
-           ["/changes" {:post sync/sync-changes}]
+          ["/robots.txt" {:get internal/robots}]
+
+          ["/obsidian"
+           ["/sync"
+            ["/changes" {:post sync/sync-changes}]
            ["/notes/:id" {:post sync/sync-note}]
            ["/assets/:id" {:post sync/sync-asset}]]
           ["/vault/info" {:get sync/vault-info}]]

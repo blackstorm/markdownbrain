@@ -33,18 +33,12 @@ MarkdownBrain exposes two HTTP ports inside the container:
 - Frontend: `8080` (public site)
 - Console: `9090` (admin UI + publish API under `/obsidian/*`)
 
-Health checks:
-
-- `GET /console/health` is loopback-only (returns `200` only for requests coming from `127.0.0.1` / `::1`).
-  It is intended for local/container health checks, not public monitoring.
-
 Security model (recommended):
 
-- Keep Console private (bound to `127.0.0.1` on the host).
-- Expose only the public site (`:80/:443`) through a reverse proxy (Caddy in this repo).
-- Access Console through a private network (for example, Tailscale/VPN). Avoid exposing port `9090` to the public internet.
+- Expose Frontend (`8080`) and Console (`9090`) as needed.
+- If Console is public, restrict access with firewall/ACLs or a private network.
 - The Docker image runs in `ENVIRONMENT=production` by default and Console sessions use `Secure` cookies.
-  Accessing Console over plain HTTP (including SSH tunnel) can be unreliable; prefer an HTTPS access method for Console.
+  Accessing Console over plain HTTP can be unreliable; prefer HTTPS for Console.
 
 <a id="toc-quick-deploy"></a>
 ## Quick deploy (one command)
@@ -52,14 +46,13 @@ Security model (recommended):
 For a quick trial (no reverse proxy, local storage), run:
 
 ```bash
-docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.0.0.1:9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/markdownbrain:latest
+docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/markdownbrain:latest
 ```
 
 - Public site: `http://<your-server>:8080/`
-- Console (recommended: Tailscale/private network): `http://<tailscale-ip>:9090/console` (optionally via HTTPS reverse proxy)
-- Console (quick access via SSH tunnel): `ssh -L 9090:localhost:9090 user@your-server`, then open `http://localhost:9090/console`
-  - Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP (including SSH tunnel), login can be unreliable.
-    Prefer an HTTPS access method for Console (even on an internal network).
+- Console: `http://<your-server>:9090/console`
+  - Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP, login can be unreliable.
+    Prefer HTTPS for Console, and restrict access if it is public.
 
 <a id="toc-choose-deployment"></a>
 ## Choose a deployment
@@ -176,20 +169,12 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.caddy.yml up -d
 ```
 
-4. Access Console (recommended: Tailscale/private network).
+4. Access Console.
 
-Recommended: access over Tailscale/private network, optionally via HTTPS reverse proxy.
-Example: `http://<tailscale-ip>:9090/console`.
+Direct: `http://<your-server>:9090/console`.
 
-Quick access (SSH tunnel):
-
-```bash
-ssh -L 9090:localhost:9090 user@your-server
-open http://localhost:9090/console
-```
-
-Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP (including SSH tunnel), login can be unreliable.
-Prefer an HTTPS access method for Console (for example, a private network + HTTPS reverse proxy).
+Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP, login can be unreliable.
+Prefer HTTPS for Console, and restrict access if it is public.
 
 5. Initialize and publish.
 

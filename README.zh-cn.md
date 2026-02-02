@@ -37,16 +37,16 @@ docker run -d \
   --name markdownbrain \
   --restart unless-stopped \
   -p 8080:8080 \
-  -p 127.0.0.1:9090:9090 \
+  -p 9090:9090 \
   -v markdownbrain:/app/data \
   -e STORAGE_TYPE=local \
   ghcr.io/blackstorm/markdownbrain:latest
 ```
 
 - 公开站点：`http://<你的服务器>:8080`
-- 管理后台 + Publish API：`http://localhost:9090/console`（该命令会将主机上的 `9090` 仅绑定到本地，以降低风险）。远程访问推荐使用 Tailscale/内网；SSH 隧道可用于快速访问。
+- 管理后台 + Publish API：`http://<你的服务器>:9090/console`（如需限制访问，请使用防火墙/ACL 或私有网络）。
 
-安全提示：Docker 镜像默认以 `ENVIRONMENT=production` 运行，Console 会话使用 `Secure` Cookie，因此通过纯 HTTP（包括 SSH 隧道）访问 Console 可能不可靠。建议通过 HTTPS 访问 Console（例如 Tailscale/内网 + HTTPS 反代），并避免将 `9090` 端口暴露在公网上。
+安全提示：Docker 镜像默认以 `ENVIRONMENT=production` 运行，Console 会话使用 `Secure` Cookie，因此通过纯 HTTP 访问 Console 可能不可靠。建议为 Console 提供 HTTPS 访问方式（例如反向代理或私有网络），并在公开 `9090` 端口时做好访问控制。
 
 **生产环境部署（Caddy + 自动 TLS）：**
 
@@ -60,11 +60,9 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env \
   -f selfhosted/compose/docker-compose.caddy.yml up -d
 
-# 3. 访问 Console（推荐 Tailscale/内网）
-# 推荐：http://<tailscale-ip>:9090/console（或通过 HTTPS 反代）
-# 快速访问（SSH 隧道）：
-ssh -L 9090:localhost:9090 user@your-server
-open http://localhost:9090/console
+# 3. 访问 Console
+# 直接访问：http://<你的服务器>:9090/console
+# 如需限制访问，可通过 HTTPS 反代或私有网络实现。
 ```
 
 然后在 `/console/init` 创建管理员账号，设置 Vault，安装 Obsidian 插件即可。

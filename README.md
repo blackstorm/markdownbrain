@@ -37,16 +37,16 @@ docker run -d \
   --name markdownbrain \
   --restart unless-stopped \
   -p 8080:8080 \
-  -p 127.0.0.1:9090:9090 \
+  -p 9090:9090 \
   -v markdownbrain:/app/data \
   -e STORAGE_TYPE=local \
   ghcr.io/blackstorm/markdownbrain:latest
 ```
 
 - Public site: `http://<your-server>:8080`
-- Console + Publish API: `http://localhost:9090/console` (this command binds `9090` to localhost on the host for security). For remote access, prefer Tailscale/private network; SSH tunnel is a quick access fallback.
+- Console + Publish API: `http://<your-server>:9090/console` (use firewall/ACLs or a private network to restrict access if needed).
 
-Security note: the Docker image runs in `ENVIRONMENT=production` by default. Console sessions use `Secure` cookies, so accessing Console over plain HTTP (including SSH tunnel) can be unreliable. Prefer an HTTPS access method for Console (for example, Tailscale/private network + HTTPS reverse proxy), and avoid exposing port `9090` to the public internet.
+Security note: the Docker image runs in `ENVIRONMENT=production` by default. Console sessions use `Secure` cookies, so accessing Console over plain HTTP can be unreliable. Prefer HTTPS for Console (for example, a reverse proxy or private network) and restrict access to port `9090` if you expose it publicly.
 
 **Production deployment (with Caddy + auto TLS):**
 
@@ -60,11 +60,9 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env \
   -f selfhosted/compose/docker-compose.caddy.yml up -d
 
-# 3. Access Console (recommended: Tailscale/private network)
-# Recommended: http://<tailscale-ip>:9090/console (or via HTTPS reverse proxy)
-# Quick access (SSH tunnel):
-ssh -L 9090:localhost:9090 user@your-server
-open http://localhost:9090/console
+# 3. Access Console
+# Direct: http://<your-server>:9090/console
+# Optional: put Console behind HTTPS or a private network if you need restricted access.
 ```
 
 Then create your first admin user at `/console/init`, set up a vault, and install the Obsidian plugin.

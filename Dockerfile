@@ -33,7 +33,8 @@ RUN set -eux; \
 
 COPY --from=backend-builder --chown=markdownbrain:markdownbrain /app/server/target/server-standalone.jar ./app.jar
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
-RUN chmod +x ./docker-entrypoint.sh
+COPY docker-healthcheck.sh ./healthcheck.sh
+RUN chmod +x ./docker-entrypoint.sh ./healthcheck.sh
 
 USER markdownbrain
 
@@ -49,6 +50,6 @@ EXPOSE 8080 9090
 VOLUME ["/app/data"]
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD curl -fsS http://localhost:9090/console/health >/dev/null || exit 1
+    CMD ["/app/healthcheck.sh"]
 
 CMD ["./docker-entrypoint.sh"]

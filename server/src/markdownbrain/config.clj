@@ -78,6 +78,33 @@
 
 (def ^:private secrets (delay (get-or-generate-secrets)))
 
+(defn- health-token-file []
+  (io/file (data-path) ".health-token"))
+
+(defn- load-health-token []
+  (let [f (health-token-file)]
+    (when (.exists f)
+      (let [token (str/trim (slurp f))]
+        (when-not (str/blank? token)
+          token)))))
+
+(defn- save-health-token [token]
+  (let [f (health-token-file)]
+    (io/make-parents f)
+    (spit f token)))
+
+(defn- get-or-generate-health-token []
+  (let [existing (load-health-token)
+        token (or existing
+                  (do
+                    (log/info "Generated new health token (saved to .health-token)")
+                    (generate-random-hex 32)))]
+    (when (not= token existing)
+      (save-health-token token))
+    token))
+
+(def ^:private health-token (delay (get-or-generate-health-token)))
+
 (defn- ->int
   "Convert value to int. Handles String, Long, Integer, or nil."
   [v default]
@@ -122,6 +149,9 @@
 
 (defn session-secret []
   (string->16-bytes (:session-secret @secrets)))
+
+(defn health-token []
+  @health-token)
 
 (defn production? []
   (= :production (get-config :environment)))

@@ -98,6 +98,9 @@
   (log/info "Initializing storage...")
   (object-store/init-storage!)
 
+  (log/info "Initializing health token...")
+  (config/health-token)
+
   (let [frontend (start-frontend-server)
         console (start-console-server)]
     (log/info "=== MarkdownBrain Servers Started ===")
