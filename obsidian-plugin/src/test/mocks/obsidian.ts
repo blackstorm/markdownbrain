@@ -111,7 +111,7 @@ export class App {
   metadataCache: MetadataCache;
   fileManager: FileManager;
   workspace: {
-    onLayoutReady: (callback: () => any) => void;
+    onLayoutReady: (callback: () => void) => void;
     getActiveFile: () => TFile | null;
   };
 

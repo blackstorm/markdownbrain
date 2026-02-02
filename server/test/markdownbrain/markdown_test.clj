@@ -1,7 +1,14 @@
 (ns markdownbrain.markdown-test
   (:require [clojure.test :refer :all]
             [clojure.string :as str]
+            [markdownbrain.db :as db]
             [markdownbrain.markdown :as md]))
+
+(defn with-stub-asset-lookups [f]
+  (with-redefs [db/find-asset (fn [_ _] nil)]
+    (f)))
+
+(use-fixtures :each with-stub-asset-lookups)
 
 ;;; 测试 1: 基础 Markdown 转换
 (deftest test-basic-markdown-conversion

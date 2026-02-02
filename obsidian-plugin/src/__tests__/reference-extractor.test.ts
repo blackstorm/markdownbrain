@@ -41,7 +41,10 @@ describe("extractInternalLinkpathsFromCache", () => {
       ],
     };
 
-    expect(extractInternalLinkpathsFromCache(cache)).toEqual(["Project:Plan", "folder/Project:Plan"]);
+    expect(extractInternalLinkpathsFromCache(cache)).toEqual([
+      "Project:Plan",
+      "folder/Project:Plan",
+    ]);
   });
 
   test("deduplicates while preserving first-seen order", () => {

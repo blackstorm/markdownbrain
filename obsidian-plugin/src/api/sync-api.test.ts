@@ -13,10 +13,9 @@ describe("SyncApiClient", () => {
   };
 
   beforeEach(() => {
-    requestMock = vi.fn<
-      ReturnType<HttpClient["request"]>,
-      Parameters<HttpClient["request"]>
-    >(() => Promise.resolve({ status: 200, json: {}, text: "" }));
+    requestMock = vi.fn<ReturnType<HttpClient["request"]>, Parameters<HttpClient["request"]>>(() =>
+      Promise.resolve({ status: 200, json: {}, text: "" }),
+    );
     mockHttpClient = {
       request: requestMock,
     };

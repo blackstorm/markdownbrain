@@ -189,7 +189,10 @@ describe("MarkdownBrainPlugin.handleFileRename", () => {
       syncAssetsForNote: (file: TFile) => Promise<void>;
       syncLinkedNotesForNote: (file: TFile) => Promise<void>;
       settings: { autoSync: boolean };
-      referenceIndex: { renameNote: (oldPath: string, newPath: string) => void; updateNote: () => void };
+      referenceIndex: {
+        renameNote: (oldPath: string, newPath: string) => void;
+        updateNote: () => void;
+      };
     };
     pluginAccess.syncNoteFile = syncNoteFile;
     pluginAccess.syncAssetsForNote = syncAssetsForNote;
@@ -199,7 +202,10 @@ describe("MarkdownBrainPlugin.handleFileRename", () => {
 
     await plugin.handleFileRename(file, "notes/old.md");
 
-    expect(pluginAccess.referenceIndex.renameNote).toHaveBeenCalledWith("notes/old.md", "notes/new.md");
+    expect(pluginAccess.referenceIndex.renameNote).toHaveBeenCalledWith(
+      "notes/old.md",
+      "notes/new.md",
+    );
     expect(syncNoteFile).toHaveBeenCalledWith(file);
     expect(syncAssetsForNote).toHaveBeenCalled();
     expect(syncLinkedNotesForNote).toHaveBeenCalled();
@@ -306,7 +312,11 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
     const pluginAccess = plugin as unknown as {
       debounceService: { debounce: (key: string, callback: () => void, delay: number) => void };
       getClientIdForSync: (file: TFile) => Promise<string | null>;
-      syncNoteFromCache: (file: TFile, data: string, cache: unknown) => Promise<{
+      syncNoteFromCache: (
+        file: TFile,
+        data: string,
+        cache: unknown,
+      ) => Promise<{
         success: boolean;
         needUploadAssets: Array<{ id: string; hash: string }>;
         assetsById: Map<string, TFile>;
@@ -353,7 +363,11 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
 
     const pluginAccess = plugin as unknown as {
       getClientIdForSync: (file: TFile) => Promise<string | null>;
-      syncNoteFromCache: (file: TFile, data: string, cache: unknown) => Promise<{
+      syncNoteFromCache: (
+        file: TFile,
+        data: string,
+        cache: unknown,
+      ) => Promise<{
         success: boolean;
         needUploadAssets: Array<{ id: string; hash: string }>;
         assetsById: Map<string, TFile>;
@@ -407,7 +421,11 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
     const pluginAccess = plugin as unknown as {
       debounceService: { debounce: (key: string, callback: () => void, delay: number) => void };
       getClientIdForSync: (file: TFile) => Promise<string | null>;
-      syncNoteFromCache: (file: TFile, data: string, cache: unknown) => Promise<{
+      syncNoteFromCache: (
+        file: TFile,
+        data: string,
+        cache: unknown,
+      ) => Promise<{
         success: boolean;
         needUploadAssets: Array<{ id: string; hash: string }>;
         assetsById: Map<string, TFile>;
@@ -464,7 +482,11 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
 
     const pluginAccess = plugin as unknown as {
       getClientIdForSync: (file: TFile) => Promise<string | null>;
-      syncNoteFromCache: (file: TFile, data: string, cache: unknown) => Promise<{
+      syncNoteFromCache: (
+        file: TFile,
+        data: string,
+        cache: unknown,
+      ) => Promise<{
         success: boolean;
         needUploadAssets: Array<{ id: string; hash: string }>;
         assetsById: Map<string, TFile>;

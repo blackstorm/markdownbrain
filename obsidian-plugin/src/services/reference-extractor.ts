@@ -42,7 +42,9 @@ const isExternalLink = (value: string): boolean => {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
 };
 
-export function extractInternalLinkpathsFromCache(cache: CachedMetadataLike | null | undefined): string[] {
+export function extractInternalLinkpathsFromCache(
+  cache: CachedMetadataLike | null | undefined,
+): string[] {
   if (!cache) return [];
 
   const candidates: string[] = [];

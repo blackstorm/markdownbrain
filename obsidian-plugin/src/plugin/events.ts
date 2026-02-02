@@ -1,6 +1,6 @@
 import { type App, TFile } from "obsidian";
-import { isAssetFile } from "../utils";
 import type { CachedMetadataLike } from "../services";
+import { isAssetFile } from "../utils";
 
 export type FileDeleteCallback = (file: TFile) => void;
 export type FileRenameCallback = (file: TFile, oldPath: string) => void;

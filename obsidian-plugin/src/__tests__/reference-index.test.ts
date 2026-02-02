@@ -21,7 +21,9 @@ describe("ReferenceIndex", () => {
 
     expect(index.isAssetReferenced("img.png")).toBe(true);
     expect(index.getNotesForAsset("img.png")).toEqual(new Set(["notes/source.md"]));
-    expect(index.getAssetsForNote("notes/source.md")).toEqual(new Set(["img.png", "docs/diagram.svg"]));
+    expect(index.getAssetsForNote("notes/source.md")).toEqual(
+      new Set(["img.png", "docs/diagram.svg"]),
+    );
     expect(index.getLinkedNotesForNote("notes/source.md")).toEqual(new Set(["a.md"]));
 
     const second = index.updateNote("notes/source.md", ["docs/diagram.svg", "b.md"]);

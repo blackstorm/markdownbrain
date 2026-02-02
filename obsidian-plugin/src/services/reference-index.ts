@@ -138,4 +138,3 @@ export class ReferenceIndex {
     return Boolean(notes && notes.size > 0);
   }
 }
-

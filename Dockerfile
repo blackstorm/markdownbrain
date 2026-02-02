@@ -4,6 +4,7 @@ COPY server/package*.json ./
 RUN npm install --include=dev
 COPY server/console.css server/frontend.css ./
 COPY server/resources/templates ./resources/templates
+COPY server/resources/publics/console ./resources/publics/console
 COPY server/resources/publics/shared ./resources/publics/shared
 RUN mkdir -p resources/publics/console/css resources/publics/frontend/css
 RUN npm run build
