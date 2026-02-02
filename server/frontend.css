@@ -152,6 +152,7 @@ body {
 
 .backlinks-section {
     margin-top: 2rem;
+    padding-bottom: 1rem;
 }
 
 .backlinks-title {
@@ -167,6 +168,12 @@ body {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .backlinks-section {
+        padding-bottom: 2rem;
+    }
 }
 
 @media (max-width: 767px) {

@@ -11,7 +11,7 @@ help:
 	@echo "MarkdownBrain - Developer commands"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev                           Start backend dev server (FRONTEND_PORT/CONSOLE_PORT)"
+	@echo "  make dev                           Start backend + frontend/console watch (FRONTEND_PORT/CONSOLE_PORT)"
 	@echo "  make backend-repl                  Start backend REPL (no server)"
 	@echo "  make assets-dev                    Watch and rebuild Tailwind CSS (console + frontend)"
 	@echo "  make plugin-dev                    Watch Obsidian plugin (vaults/test)"
@@ -60,10 +60,19 @@ FRONTEND_PORT ?= 8080
 CONSOLE_PORT ?= 9090
 
 dev:
-	@echo "Starting backend development server..."
+	@echo "Starting backend development server + asset watches..."
 	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
-	@echo "Use Ctrl+C to stop"
-	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
+	@echo "Use Ctrl+C to stop all processes"
+	@set -e; \
+	cd server; \
+	FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev & \
+	BACKEND_PID=$$!; \
+	npm run watch:console & \
+	CONSOLE_WATCH_PID=$$!; \
+	npm run watch:frontend & \
+	FRONTEND_WATCH_PID=$$!; \
+	trap 'kill $$BACKEND_PID $$CONSOLE_WATCH_PID $$FRONTEND_WATCH_PID || true' INT TERM; \
+	wait $$BACKEND_PID $$CONSOLE_WATCH_PID $$FRONTEND_WATCH_PID
 
 backend-dev:
 	@echo "Starting backend development server..."
