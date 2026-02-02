@@ -56,8 +56,9 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 ```
 
 - 公开站点：`http://<你的服务器>:8080/`
-- Console（SSH 隧道）：`ssh -L 9090:localhost:9090 user@your-server`，然后打开 `http://localhost:9090/console`
-  - 注意：在 `ENVIRONMENT=production` 下 Console 使用 `Secure` Cookie，通过纯 HTTP 登录可能不可靠。
+- Console（推荐 Tailscale/内网）：`http://<tailscale-ip>:9090/console`（可结合 HTTPS 反代）
+- Console（SSH 隧道，快速访问）：`ssh -L 9090:localhost:9090 user@your-server`，然后打开 `http://localhost:9090/console`
+  - 注意：在 `ENVIRONMENT=production` 下 Console 使用 `Secure` Cookie，通过纯 HTTP（包括 SSH 隧道）登录可能不可靠。
     建议为 Console 提供 HTTPS 访问方式（即便在内网）。
 
 <a id="toc-choose-deployment"></a>
@@ -175,7 +176,12 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.caddy.yml up -d
 ```
 
-4. 通过 SSH 隧道访问 Console。
+4. 访问 Console（推荐 Tailscale/内网）。
+
+推荐：通过 Tailscale/内网访问，可结合 HTTPS 反代。
+示例：`http://<tailscale-ip>:9090/console`。
+
+快速访问（SSH 隧道）：
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server

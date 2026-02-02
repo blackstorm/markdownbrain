@@ -1,7 +1,7 @@
 {
   "id": "markdownbrain",
   "name": "MarkdownBrain",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "minAppVersion": "1.0.0",
   "description": "Sync your Obsidian vault to MarkdownBrain server",
   "author": "MarkdownBrain",

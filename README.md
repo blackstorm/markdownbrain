@@ -44,9 +44,9 @@ docker run -d \
 ```
 
 - Public site: `http://<your-server>:8080`
-- Console + Publish API: `http://localhost:9090/console` (this command binds `9090` to localhost on the host for security)
+- Console + Publish API: `http://localhost:9090/console` (this command binds `9090` to localhost on the host for security). For remote access, prefer Tailscale/private network; SSH tunnel is a quick access fallback.
 
-Security note: the Docker image runs in `ENVIRONMENT=production` by default. Console sessions use `Secure` cookies, so accessing Console over plain HTTP (including SSH tunnel) can be unreliable. Prefer an HTTPS access method for Console (for example, a Tailscale/internal network + HTTPS reverse proxy), and avoid exposing port `9090` to the public internet.
+Security note: the Docker image runs in `ENVIRONMENT=production` by default. Console sessions use `Secure` cookies, so accessing Console over plain HTTP (including SSH tunnel) can be unreliable. Prefer an HTTPS access method for Console (for example, Tailscale/private network + HTTPS reverse proxy), and avoid exposing port `9090` to the public internet.
 
 **Production deployment (with Caddy + auto TLS):**
 
@@ -60,7 +60,9 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env \
   -f selfhosted/compose/docker-compose.caddy.yml up -d
 
-# 3. Access Console via SSH tunnel
+# 3. Access Console (recommended: Tailscale/private network)
+# Recommended: http://<tailscale-ip>:9090/console (or via HTTPS reverse proxy)
+# Quick access (SSH tunnel):
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
@@ -136,6 +138,5 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 - Server (`server/`): AGPL-3.0-or-later
 - Obsidian plugin (`obsidian-plugin/`): MIT
 - Deployment configs (`selfhosted/`): MIT
-- Icons: Lucide (ISC)
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party licenses.

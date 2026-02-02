@@ -44,7 +44,7 @@ docker run -d \
 ```
 
 - 公开站点：`http://<你的服务器>:8080`
-- 管理后台 + Publish API：`http://localhost:9090/console`（该命令会将主机上的 `9090` 仅绑定到本地，以降低风险）
+- 管理后台 + Publish API：`http://localhost:9090/console`（该命令会将主机上的 `9090` 仅绑定到本地，以降低风险）。远程访问推荐使用 Tailscale/内网；SSH 隧道可用于快速访问。
 
 安全提示：Docker 镜像默认以 `ENVIRONMENT=production` 运行，Console 会话使用 `Secure` Cookie，因此通过纯 HTTP（包括 SSH 隧道）访问 Console 可能不可靠。建议通过 HTTPS 访问 Console（例如 Tailscale/内网 + HTTPS 反代），并避免将 `9090` 端口暴露在公网上。
 
@@ -60,7 +60,9 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env \
   -f selfhosted/compose/docker-compose.caddy.yml up -d
 
-# 3. 通过 SSH 隧道访问 Console
+# 3. 访问 Console（推荐 Tailscale/内网）
+# 推荐：http://<tailscale-ip>:9090/console（或通过 HTTPS 反代）
+# 快速访问（SSH 隧道）：
 ssh -L 9090:localhost:9090 user@your-server
 open http://localhost:9090/console
 ```
@@ -136,6 +138,5 @@ make dev
 - 服务端（`server/`）：AGPL-3.0-or-later
 - Obsidian 插件（`obsidian-plugin/`）：MIT
 - 部署配置（`selfhosted/`）：MIT
-- 图标：Lucide（ISC）
 
 第三方许可证详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

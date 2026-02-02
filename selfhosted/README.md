@@ -56,8 +56,9 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 127.
 ```
 
 - Public site: `http://<your-server>:8080/`
-- Console (SSH tunnel): `ssh -L 9090:localhost:9090 user@your-server`, then open `http://localhost:9090/console`
-  - Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP, login can be unreliable.
+- Console (recommended: Tailscale/private network): `http://<tailscale-ip>:9090/console` (optionally via HTTPS reverse proxy)
+- Console (quick access via SSH tunnel): `ssh -L 9090:localhost:9090 user@your-server`, then open `http://localhost:9090/console`
+  - Note: Console uses `Secure` cookies in `ENVIRONMENT=production`. Over plain HTTP (including SSH tunnel), login can be unreliable.
     Prefer an HTTPS access method for Console (even on an internal network).
 
 <a id="toc-choose-deployment"></a>
@@ -175,7 +176,12 @@ cp selfhosted/.env.example selfhosted/.env
 docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.caddy.yml up -d
 ```
 
-4. Access Console via SSH tunnel.
+4. Access Console (recommended: Tailscale/private network).
+
+Recommended: access over Tailscale/private network, optionally via HTTPS reverse proxy.
+Example: `http://<tailscale-ip>:9090/console`.
+
+Quick access (SSH tunnel):
 
 ```bash
 ssh -L 9090:localhost:9090 user@your-server
