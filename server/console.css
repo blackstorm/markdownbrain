@@ -1,5 +1,5 @@
 /* Typography System - Multi-font design */
-@import "./resources/publics/shared/fonts.css";
+@import "./resources/publics/console/fonts.css";
 @import "tailwindcss" source(none);
 @source "./resources/templates/console/**/*.html";
 @source "./resources/publics/console/**/*.{html,js}";

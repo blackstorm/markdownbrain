@@ -52,6 +52,7 @@
     (let [server (undertow/run-undertow
                   (-> routes/frontend-app
                       (wrap-frontend-reserved-paths)
+                      (middleware/wrap-frontend-host-binding)
                       (middleware/wrap-middleware)
                       (wrap-resource-with-context "/publics/frontend" "publics/frontend")
                       (wrap-resource-with-context "/publics/shared" "publics/shared"))

@@ -53,20 +53,26 @@
       (is (= 200 (:status response)))
       (is (string? (:body response)))))
 
-  (testing "Non-existent domain returns 404"
+  (testing "Non-existent domain returns 403"
     (let [request (-> (mock/request :get "/")
                       (assoc :headers {"host" "nonexistent.com"}))
           response (frontend/get-note request)]
-      (is (= 404 (:status response)))
+      (is (= 403 (:status response)))
       (is (string? (:body response)))
-      (is (clojure.string/includes? (:body response) "Site not found"))))
+      (is (clojure.string/includes? (:body response) "Forbidden"))))
 
   (testing "Missing Host header"
-    (let [request (mock/request :get "/")
+    (let [request (assoc (mock/request :get "/") :headers {})
           response (frontend/get-note request)]
-      ;; Depending on database state, could be 404 or 200
-      (is (or (= 404 (:status response))
-              (= 200 (:status response)))))))
+      (is (= 400 (:status response)))
+      (is (clojure.string/includes? (:body response) "Bad request"))))
+
+  (testing "Invalid Host header"
+    (let [request (-> (mock/request :get "/")
+                      (assoc :headers {"host" "bad host"}))
+          response (frontend/get-note request)]
+      (is (= 400 (:status response)))
+      (is (clojure.string/includes? (:body response) "Bad request")))))
 
 ;; Console Pages 测试
 (deftest test-console-pages
@@ -342,7 +348,7 @@
 
           (is (= 404 (:status response)))))))
 
-  (testing "Return 404 for unknown domain (vault isolation)"
+  (testing "Return 403 for unknown domain (vault isolation)"
     (let [temp-storage (create-temp-storage)]
       (with-redefs [config/storage-config (constantly {:type :local :local-path temp-storage})
                     config/storage-type (constantly :local)]
@@ -353,7 +359,7 @@
                           (assoc :path-params {:path "assets/some-client-id"}))
               response (frontend/serve-asset request)]
 
-          (is (= 404 (:status response)))))))
+          (is (= 403 (:status response)))))))
 
   (testing "Vault isolation - cannot access other vault's assets"
     (let [temp-storage (create-temp-storage)
@@ -394,13 +400,17 @@
           (is (= 404 (:status response-2)))))))
 
   (testing "Return 404 when using S3 storage"
-    (with-redefs [config/storage-type (constantly :s3)]
-      (let [request (-> (mock/request :get "/storage/assets/some-client-id")
-                        (assoc :headers {"host" "any-domain.com"})
-                        (assoc :path-params {:path "assets/some-client-id"}))
-            response (frontend/serve-asset request)]
-
-        (is (= 404 (:status response))))))
+    (let [tenant-id (utils/generate-uuid)
+          _ (db/create-tenant! tenant-id "Test Org S3")
+          vault-id (utils/generate-uuid)
+          domain "any-domain.com"
+          _ (db/create-vault! vault-id tenant-id "Any Domain" domain (utils/generate-uuid))]
+      (with-redefs [config/storage-type (constantly :s3)]
+        (let [request (-> (mock/request :get "/storage/assets/some-client-id")
+                          (assoc :headers {"host" domain})
+                          (assoc :path-params {:path "assets/some-client-id"}))
+              response (frontend/serve-asset request)]
+          (is (= 404 (:status response)))))))
 
   (testing "Return 400 for missing path"
     (let [temp-storage (create-temp-storage)
@@ -510,9 +520,9 @@
 
         (is (= 404 (:status response))))))
 
-  (testing "Return 404 for unknown domain"
+  (testing "Return 403 for unknown domain"
     (let [request (-> (mock/request :get "/favicon.ico?v=1")
                       (assoc :headers {"host" "unknown-favicon-domain.com"}))
           response (frontend/serve-favicon request)]
 
-      (is (= 404 (:status response))))))
+      (is (= 403 (:status response))))))
