@@ -11,15 +11,15 @@ help:
 	@echo "MarkdownBrain - Developer commands"
 	@echo ""
 	@echo "Development:"
-	@echo "  make dev                           Start backend + frontend/console watch (FRONTEND_PORT/CONSOLE_PORT)"
+	@echo "  make dev                           Start backend + app/console watch (APP_PORT/CONSOLE_PORT)"
 	@echo "  make backend-repl                  Start backend REPL (no server)"
-	@echo "  make assets-dev                    Watch and rebuild Tailwind CSS (console + frontend)"
+	@echo "  make assets-dev                    Watch and rebuild Tailwind CSS (console + app)"
 	@echo "  make plugin-dev                    Watch Obsidian plugin (vaults/test)"
 	@echo ""
 	@echo "Build:"
 	@echo "  make build                         Build backend + CSS + plugin"
 	@echo "  make backend-build                 Build backend uberjar"
-	@echo "  make assets-build                  Build Tailwind CSS (console + frontend)"
+	@echo "  make assets-build                  Build Tailwind CSS (console + app)"
 	@echo "  make plugin-build                  Build Obsidian plugin to dist/"
 	@echo "  make plugin-package                Package plugin zip (markdownbrain-plugin.zip)"
 	@echo ""
@@ -56,28 +56,28 @@ plugin-install:
 	@echo "Installing plugin dependencies..."
 	@cd obsidian-plugin && pnpm install --frozen-lockfile
 
-FRONTEND_PORT ?= 8080
+APP_PORT ?= 8080
 CONSOLE_PORT ?= 9090
 
 dev:
 	@echo "Starting backend development server + asset watches..."
-	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
+	@echo "App Port: $(APP_PORT), Console Port: $(CONSOLE_PORT)"
 	@echo "Use Ctrl+C to stop all processes"
 	@set -e; \
 	cd server; \
-	FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev & \
+	APP_PORT=$(APP_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev & \
 	BACKEND_PID=$$!; \
 	npm run watch:console & \
 	CONSOLE_WATCH_PID=$$!; \
-	npm run watch:frontend & \
-	FRONTEND_WATCH_PID=$$!; \
-	trap 'kill $$BACKEND_PID $$CONSOLE_WATCH_PID $$FRONTEND_WATCH_PID || true' INT TERM; \
-	wait $$BACKEND_PID $$CONSOLE_WATCH_PID $$FRONTEND_WATCH_PID
+	npm run watch:app & \
+	APP_WATCH_PID=$$!; \
+	trap 'kill $$BACKEND_PID $$CONSOLE_WATCH_PID $$APP_WATCH_PID || true' INT TERM; \
+	wait $$BACKEND_PID $$CONSOLE_WATCH_PID $$APP_WATCH_PID
 
 backend-dev:
 	@echo "Starting backend development server..."
-	@echo "Frontend Port: $(FRONTEND_PORT), Console Port: $(CONSOLE_PORT)"
-	@cd server && FRONTEND_PORT=$(FRONTEND_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
+	@echo "App Port: $(APP_PORT), Console Port: $(CONSOLE_PORT)"
+	@cd server && APP_PORT=$(APP_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
 
 backend-repl:
 	@echo "Starting backend REPL..."
@@ -102,8 +102,8 @@ assets-build:
 	@echo "Building Tailwind CSS..."
 	@cd server && npm run build
 	@echo "CSS built:"
-	@echo "  - server/resources/publics/console/css/app.css"
-	@echo "  - server/resources/publics/frontend/css/frontend.css"
+	@echo "  - server/resources/publics/console/css/console.css"
+	@echo "  - server/resources/publics/app/css/app.css"
 
 plugin-build:
 	@echo "Building Obsidian plugin..."

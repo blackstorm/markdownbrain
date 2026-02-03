@@ -4,15 +4,15 @@
 
 ;; Get Config 测试
 (deftest test-get-config
-  (testing "Get frontend server host"
-    (let [host (config/get-config :server :frontend :host)]
-      (is (string? host))
-      (is (not (clojure.string/blank? host)))))
+(testing "Get app server host"
+  (let [host (config/get-config :server :app :host)]
+    (is (string? host))
+    (is (not (clojure.string/blank? host)))))
 
-  (testing "Get frontend server port"
-    (let [port (config/get-config :server :frontend :port)]
-      (is (number? port))
-      (is (pos? port))))
+(testing "Get app server port"
+  (let [port (config/get-config :server :app :port)]
+    (is (number? port))
+    (is (pos? port))))
 
   (testing "Get console server host"
     (let [host (config/get-config :server :console :host)]
@@ -32,7 +32,7 @@
   (testing "Get top-level config"
     (let [server-config (config/get-config :server)]
       (is (map? server-config))
-      (is (contains? server-config :frontend))
+      (is (contains? server-config :app))
       (is (contains? server-config :console)))))
 
 ;; Default Config Values 测试
@@ -50,13 +50,13 @@
 (deftest test-config-structure
   (testing "Server config has required keys"
     (let [server-config (config/get-config :server)]
-      (is (contains? server-config :frontend))
+      (is (contains? server-config :app))
       (is (contains? server-config :console))))
 
-  (testing "Frontend server config has required keys"
-    (let [frontend-config (config/get-config :server :frontend)]
-      (is (contains? frontend-config :host))
-      (is (contains? frontend-config :port))))
+  (testing "App server config has required keys"
+    (let [app-config (config/get-config :server :app)]
+      (is (contains? app-config :host))
+      (is (contains? app-config :port))))
 
   (testing "Console server config has required keys"
     (let [console-config (config/get-config :server :console)]
@@ -69,11 +69,11 @@
 
 ;; Config Values Type Check 测试
 (deftest test-config-value-types
-  (testing "Frontend server host is string"
-    (is (string? (config/get-config :server :frontend :host))))
+  (testing "App server host is string"
+    (is (string? (config/get-config :server :app :host))))
 
-  (testing "Frontend server port is number"
-    (is (number? (config/get-config :server :frontend :port))))
+  (testing "App server port is number"
+    (is (number? (config/get-config :server :app :port))))
 
   (testing "Console server host is string"
     (is (string? (config/get-config :server :console :host))))
@@ -106,7 +106,7 @@
 ;; Environment-based Config 测试
 (deftest test-environment-config
   (testing "Config responds to environment variables"
-    (let [host (config/get-config :server :frontend :host)]
+    (let [host (config/get-config :server :app :host)]
       (is (or (= "0.0.0.0" host) (= "localhost" host)))))
 
   (testing "Database jdbcUrl is configurable"

@@ -145,10 +145,9 @@
   []
   (let [base-path (storage-path)
         dir (io/file base-path)]
-    (log/info "Creating local storage backend at:" base-path)
-    
     ;; Create directory if it doesn't exist
     (when-not (.exists dir)
+      (log/info "Creating local storage backend at:" base-path)
       (if (.mkdirs dir)
         (log/info "Created storage directory:" base-path)
         (throw (ex-info "Failed to create storage directory"

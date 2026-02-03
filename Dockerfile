@@ -1,12 +1,12 @@
-FROM node:25-bookworm-slim AS frontend-builder
+FROM node:25-bookworm-slim AS app-builder
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm install --include=dev
-COPY server/console.css server/frontend.css ./
+COPY server/console.css server/app.css ./
 COPY server/resources/templates ./resources/templates
 COPY server/resources/publics/console ./resources/publics/console
 COPY server/resources/publics/shared ./resources/publics/shared
-RUN mkdir -p resources/publics/console/css resources/publics/frontend/css
+RUN mkdir -p resources/publics/console/css resources/publics/app/css
 RUN npm run build
 
 FROM clojure:temurin-25-tools-deps AS backend-builder
@@ -16,8 +16,8 @@ COPY server/deps.edn server/build.clj ./
 RUN clojure -P -T:build
 COPY server/src ./src
 COPY server/resources ./resources
-COPY --from=frontend-builder /app/server/resources/publics/console/css/app.css ./resources/publics/console/css/app.css
-COPY --from=frontend-builder /app/server/resources/publics/frontend/css/frontend.css ./resources/publics/frontend/css/frontend.css
+COPY --from=app-builder /app/server/resources/publics/console/css/console.css ./resources/publics/console/css/console.css
+COPY --from=app-builder /app/server/resources/publics/app/css/app.css ./resources/publics/app/css/app.css
 RUN clojure -T:build uberjar
 
 # Stage 3: Runtime
@@ -39,7 +39,7 @@ RUN chmod +x ./docker-entrypoint.sh ./healthcheck.sh
 
 USER markdownbrain
 
-ENV FRONTEND_PORT=8080
+ENV APP_PORT=8080
 ENV CONSOLE_PORT=9090
 ENV DATA_PATH=/app/data
 ENV ENVIRONMENT=production

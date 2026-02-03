@@ -30,12 +30,12 @@
 
 MarkdownBrain 在容器内提供两个端口：
 
-- Frontend：`8080`（公开站点）
+- App：`8080`（公开站点）
 - Console：`9090`（管理后台与发布 API，`/obsidian/*`）
 
 推荐的安全模型：
 
-- 根据需要开放 Frontend（`8080`）与 Console（`9090`）。
+- 根据需要开放 App（`8080`）与 Console（`9090`）。
 - 若 Console 对外开放，请通过防火墙/ACL 或私有网络限制访问。
 - Docker 镜像默认以 `ENVIRONMENT=production` 运行，Console 会话使用 `Secure` Cookie。
   通过纯 HTTP 访问 Console 可能不可靠；建议为 Console 提供 HTTPS 访问方式。
@@ -98,7 +98,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 |---|---|---|---|
 | `ENVIRONMENT` | `development` 或 `production` | `production`（Docker 镜像默认） | 否 |
 | `HOST` | 监听地址（前台与 Console 共用） | `0.0.0.0` | 否 |
-| `FRONTEND_PORT` | Frontend 端口 | `8080` | 否 |
+| `APP_PORT` | App 端口 | `8080` | 否 |
 | `CONSOLE_PORT` | Console 端口 | `9090` | 否 |
 | `DATA_PATH` | 数据目录（DB、secrets、本地存储） | `data`（Docker 镜像：`/app/data`） | 否 |
 | `SESSION_SECRET` | Console session 密钥（字符串） | 自动生成 | 否 |

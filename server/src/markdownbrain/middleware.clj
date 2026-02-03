@@ -107,12 +107,12 @@
                          (handler request))]
         (update response :headers (fnil merge {}) cors-headers))))))
 
-(defn wrap-frontend-host-binding
-  "Enforce Host -> vault binding for the Frontend server (8080).
+(defn wrap-app-host-binding
+  "Enforce Host -> vault binding for the App server (8080).
    - Missing/invalid Host: 400
    - Host not bound to a vault: 403
 
-   Skips reserved paths (\"/console*\", \"/obsidian*\") so the frontend can return a
+   Skips reserved paths (\"/console*\", \"/obsidian*\") so the app can return a
    consistent 404 for those paths."
   [handler]
   (fn [request]

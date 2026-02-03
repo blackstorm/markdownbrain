@@ -34,9 +34,9 @@
             (handler request)))
         (handler request)))))
 
-(defn wrap-frontend-reserved-paths
-  "Frontend server (8080) must not serve Console (9090) pages or Publish API routes.
-   Return 404 instead of letting the frontend router treat them as note paths."
+(defn wrap-app-reserved-paths
+  "App server (8080) must not serve Console (9090) pages or Publish API routes.
+   Return 404 instead of letting the app router treat them as note paths."
   [handler]
   (fn [request]
     (let [uri (:uri request)]
@@ -45,22 +45,22 @@
         {:status 404 :body "Not found"}
         (handler request)))))
 
-(defn start-frontend-server []
-  (let [port (config/get-config :server :frontend :port)
-        host (config/get-config :server :frontend :host)]
-    (log/info "Starting Frontend server on" host ":" port)
+(defn start-app-server []
+  (let [port (config/get-config :server :app :port)
+        host (config/get-config :server :app :host)]
+    (log/info "Starting App server on" host ":" port)
     (let [server (undertow/run-undertow
-                  (-> routes/frontend-app
-                      (wrap-frontend-reserved-paths)
-                      (middleware/wrap-frontend-host-binding)
+                  (-> routes/app-app
+                      (wrap-app-reserved-paths)
+                      (middleware/wrap-app-host-binding)
                       (middleware/wrap-middleware)
-                      (wrap-resource-with-context "/publics/frontend" "publics/frontend")
+                      (wrap-resource-with-context "/publics/app" "publics/app")
                       (wrap-resource-with-context "/publics/shared" "publics/shared"))
                   {:port port
                    :host host})]
       {:server server
        :port port
-       :type :frontend
+       :type :app
        :stop #(.stop server)})))
 
 (defn start-console-server []
@@ -101,17 +101,17 @@
   (log/info "Initializing health token...")
   (config/health-token)
 
-  (let [frontend (start-frontend-server)
+  (let [app (start-app-server)
         console (start-console-server)]
     (log/info "=== MarkdownBrain Servers Started ===")
-    (log/info (str "Frontend: http://localhost:" (:port frontend)))
+    (log/info (str "App:       http://localhost:" (:port app)))
     (log/info (str "Console:    http://localhost:" (:port console)))
     (log/info "=====================================")
-    {:frontend frontend
+    {:app app
      :console console
      :stop (fn []
              (log/info "Stopping servers...")
-             ((:stop frontend))
+             ((:stop app))
              ((:stop console))
              (log/info "All servers stopped"))}))
 

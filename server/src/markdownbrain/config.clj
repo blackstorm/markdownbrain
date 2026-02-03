@@ -103,7 +103,7 @@
       (save-health-token token))
     token))
 
-(def ^:private health-token (delay (get-or-generate-health-token)))
+(def ^:private health-token-delay (delay (get-or-generate-health-token)))
 
 (defn- ->int
   "Convert value to int. Handles String, Long, Integer, or nil."
@@ -116,8 +116,8 @@
 
 (def config
   {:server
-   {:frontend
-    {:port (->int (getenv "FRONTEND_PORT") 8080)
+   {:app
+    {:port (->int (getenv "APP_PORT") 8080)
      :host (or (getenv "HOST") "0.0.0.0")}
     :console
     {:port (->int (getenv "CONSOLE_PORT") 9090)
@@ -151,7 +151,7 @@
   (string->16-bytes (:session-secret @secrets)))
 
 (defn health-token []
-  @health-token)
+  @health-token-delay)
 
 (defn production? []
   (= :production (get-config :environment)))

@@ -30,12 +30,12 @@ This directory provides production-ready Docker Compose setups.
 
 MarkdownBrain exposes two HTTP ports inside the container:
 
-- Frontend: `8080` (public site)
+- App: `8080` (public site)
 - Console: `9090` (admin UI + publish API under `/obsidian/*`)
 
 Security model (recommended):
 
-- Expose Frontend (`8080`) and Console (`9090`) as needed.
+- Expose App (`8080`) and Console (`9090`) as needed.
 - If Console is public, restrict access with firewall/ACLs or a private network.
 - The Docker image runs in `ENVIRONMENT=production` by default and Console sessions use `Secure` cookies.
   Accessing Console over plain HTTP can be unreliable; prefer HTTPS for Console.
@@ -98,7 +98,7 @@ For a short overview table, see [../README.md](../README.md#toc-configuration).
 |---|---|---|---|
 | `ENVIRONMENT` | `development` or `production` | `production` (Docker image default) | No |
 | `HOST` | Bind host for both servers | `0.0.0.0` | No |
-| `FRONTEND_PORT` | Frontend server port | `8080` | No |
+| `APP_PORT` | App server port | `8080` | No |
 | `CONSOLE_PORT` | Console server port | `9090` | No |
 | `DATA_PATH` | Base data directory (DB, secrets, local storage) | `data` (Docker image: `/app/data`) | No |
 | `SESSION_SECRET` | Console session secret (string) | auto-generated | No |

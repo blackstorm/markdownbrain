@@ -287,7 +287,7 @@
         (h/where [:and [:= :vault_id vault-id]
                   [:= :client_id client-id]]))))
 
-(defn get-note-for-frontend
+(defn get-note-for-app
   [vault-id client-id]
   (execute-one!
     (-> (h/select :*)

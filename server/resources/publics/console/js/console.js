@@ -160,7 +160,7 @@ function getHtmxJsonResponse(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('MarkdownBrain frontend initialized');
+  console.log('MarkdownBrain console initialized');
   renderLocalDatetimes(document);
 });
 

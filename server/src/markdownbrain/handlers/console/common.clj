@@ -17,7 +17,7 @@
   "Serve assets from storage for console panel.
    Route: GET /console/storage/:id/*path
    
-   Unlike frontend's /storage/* which uses Host header for vault resolution,
+   Unlike app's /storage/* which uses Host header for vault resolution,
    this route takes vault-id explicitly and verifies tenant isolation via session."
   [request]
   (let [tenant-id (get-in request [:session :tenant-id])

@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "markdownbrain-frontend",
+      "name": "markdownbrain-app",
       "dependencies": {
         "htmx.org": "^2.0.4",
       },

@@ -755,7 +755,7 @@ document.addEventListener('keydown', function(e) {
 
 ```
 server/
-├── app.css                          # Main CSS file (source)
+├── console.css                      # Main CSS file (source)
 │                                    # - TailwindCSS + DaisyUI imports
 │                                    # - Custom theme tokens
 │                                    # - Design system components
@@ -769,17 +769,22 @@ server/
 │   │   │   ├── vaults.html         # Dashboard
 │   │   │   ├── vault-list.html     # Vault cards (partial)
 │   │   │   └── root-doc-selector.html  # Home page selector (partial)
-│   │   └── frontend/
+│   │   └── app/
 │   │       └── home.html            # Public site home
-│   └── public/
-│       ├── css/
-│       │   └── app.css              # Compiled CSS (generated)
-│       └── js/
-│           ├── helpers.js           # Global utilities
-│           └── console.js             # Console dashboard logic
+│   └── publics/
+│       ├── app/
+│       │   ├── css/
+│       │   │   └── app.css          # Compiled CSS (generated)
+│       │   └── js/
+│       │       └── app.js           # App site logic
+│       └── console/
+│           ├── css/
+│           │   └── console.css      # Compiled CSS (generated)
+│           └── js/
+│               └── console.js       # Console dashboard logic
 ```
 
-**Note:** All design system styles are defined in `server/app.css` and compiled to `server/resources/publics/console/css/console.css`. When making style changes, edit `server/app.css` and run the CSS build process.
+**Note:** All design system styles are defined in `server/console.css` and compiled to `server/resources/publics/console/css/console.css`. When making style changes, edit `server/console.css` and run the CSS build process.
 
 ## Contributing
 

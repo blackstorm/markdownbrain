@@ -2,7 +2,7 @@
   (:require
    [markdownbrain.config :as config]
    [markdownbrain.handlers.console :as console]
-   [markdownbrain.handlers.frontend :as frontend]
+   [markdownbrain.handlers.app :as app]
    [markdownbrain.handlers.internal :as internal]
    [markdownbrain.handlers.sync :as sync]
    [markdownbrain.middleware :as middleware]
@@ -19,11 +19,11 @@
     [:formats "application/json" :decoder-opts]
     {:decode-key-fn true})))
 
-(def frontend-routes
-  [["/favicon.ico" {:get frontend/serve-favicon}]
-   ["/storage/{*path}" {:get frontend/serve-asset}]
-   ["/" {:get frontend/get-note}]
-   ["/{*path}" {:get frontend/get-note}]])
+(def app-routes
+  [["/favicon.ico" {:get app/serve-favicon}]
+   ["/storage/{*path}" {:get app/serve-asset}]
+   ["/" {:get app/get-note}]
+   ["/{*path}" {:get app/get-note}]])
 
 (def console-routes
   (let [base-routes
@@ -80,9 +80,9 @@
       (conj base-routes domain-check-route)
       base-routes)))
 
-(def frontend-app
+(def app-app
   (ring/ring-handler
-   (ring/router frontend-routes
+   (ring/router app-routes
                 {:conflicts nil
                  :data {:muuntaja muuntaja-instance
                         :middleware [parameters/parameters-middleware
