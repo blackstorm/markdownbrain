@@ -1,0 +1,260 @@
+@import "tailwindcss" source(none);
+@source "./resources/templates/app/**/*.html";
+@source "./resources/publics/app/**/*.{html,js}";
+@source "./src/**/*.clj";
+@plugin "@tailwindcss/typography";
+
+:root {
+    --navbar-height: 48px;
+    --note-width: 625px;
+    --note-overlap: 75px;
+}
+
+body {
+    padding-top: var(--navbar-height);
+    background-color: #fafafc;
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--navbar-height);
+    background: white;
+    border-bottom: 1px solid #e5e7eb;
+    z-index: 1000;
+}
+
+.navbar-content {
+    max-width: 100%;
+    height: var(--navbar-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #111827;
+    text-decoration: none;
+}
+
+.navbar-logo:hover {
+    color: #2563eb;
+}
+
+.navbar-logo-img {
+    height: 24px;
+    width: auto;
+}
+
+.navbar-link {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.navbar-link a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.navbar-link a:hover {
+    color: #2563eb;
+    text-decoration: underline;
+}
+
+.notes-container {
+    display: flex;
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: calc(100vh - var(--navbar-height));
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+
+.notes-container::-webkit-scrollbar {
+    height: 8px;
+}
+
+.notes-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.notes-container::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.notes-container:hover::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+}
+
+.note {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    background: white;
+    animation: fadeInScale 0.15s ease-out;
+}
+
+.note:not(.stacked) {
+    border-right: 1px solid #e5e7eb;
+}
+
+.note.stacked:not(:first-child) {
+    border-left: 1px solid #e5e7eb;
+}
+
+@media (min-width: 768px) {
+    .note {
+        position: sticky;
+        left: 0;
+        width: var(--note-width);
+        max-width: var(--note-width);
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.internal-link {
+    color: #2563eb;
+    text-decoration: none;
+    border-bottom: 1px dashed #93c5fd;
+}
+
+.internal-link:hover {
+    color: #1d4ed8;
+    border-bottom-color: #2563eb;
+    border-bottom-style: solid;
+}
+
+.internal-link.broken {
+    color: #dc2626;
+    border-bottom-color: #fca5a5;
+    cursor: not-allowed;
+}
+
+.backlinks-section {
+    margin-top: 2rem;
+    padding-bottom: 1rem;
+}
+
+.backlinks-title {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+}
+
+.backlinks-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+    .backlinks-section {
+        padding-bottom: 2rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .backlinks-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.backlink-item a {
+    display: block;
+    padding: 0.875rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    text-decoration: none;
+}
+
+.backlink-item a:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.backlink-title {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.backlink-desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1.35;
+    min-height: calc(2 * 1.35em);
+    color: #6b7280;
+    margin: 0;
+}
+
+.last-updated {
+    font-size: 0.75rem;
+    color: #a1a1aa;
+}
+
+@media (max-width: 767px) {
+    .notes-container {
+        overflow-x: hidden;
+        scroll-snap-type: none;
+    }
+
+    .notes-container .note {
+        display: none;
+    }
+
+    .notes-container .note:last-child {
+        display: block;
+    }
+}
+
+@media print {
+    .navbar {
+        display: none;
+    }
+
+    body {
+        padding-top: 0;
+    }
+
+    .notes-container {
+        display: block;
+        overflow: visible;
+        height: auto;
+    }
+
+    .note {
+        width: 100%;
+        max-width: 100%;
+        border: none;
+        page-break-inside: avoid;
+    }
+}

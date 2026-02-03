@@ -21,7 +21,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Determine build platforms
+        id: platforms
+        shell: bash
+        run: |
+          if [[ "${ACT:-}" == "true" ]]; then
+            echo "platforms=linux/amd64" >> "$GITHUB_OUTPUT"
+            echo "multiarch=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "platforms=linux/amd64,linux/arm64" >> "$GITHUB_OUTPUT"
+            echo "multiarch=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up QEMU
+        if: ${{ steps.platforms.outputs.multiarch == 'true' }}
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Buildx
@@ -73,7 +86,7 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ steps.platforms.outputs.platforms }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
