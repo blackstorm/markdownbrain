@@ -1,0 +1,245 @@
+<!-- Vault Card Component
+  Parameters:
+  - vault: vault object with id, name, domain, sync-key, masked-key, root-note-id, notes, logo-object-key
+-->
+<div class="vault-card">
+  <!-- Header -->
+  <div class="vault-header">
+    <div class="vault-info">
+      <h3>{{vault.name}}</h3>
+      <a href="http://{{vault.domain}}" target="_blank" class="vault-domain">
+        {{ lucide_icon("globe", "icon-xs") }}
+        <span>{{vault.domain}}</span>
+        {{ lucide_icon("external-link", "icon-xs") }}
+      </a>
+    </div>
+
+    <!-- Actions -->
+    <div class="vault-actions">
+      <button
+        type="button"
+        class="action-menu-btn"
+        onclick="toggleActionMenu(this)"
+      >
+        {{ lucide_icon("more-vertical", "icon-md") }}
+      </button>
+      <div class="action-menu">
+        <button
+          type="button"
+          onclick="window.open('http://{{vault.domain}}', '_blank'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          {{ lucide_icon("external-link", "icon-xs") }}
+          <span>Open site</span>
+        </button>
+        <button
+          type="button"
+          onclick="openEditModal('{{vault.id}}', '{{vault.name}}', '{{vault.domain}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          {{ lucide_icon("pencil", "icon-xs") }}
+          <span>Edit</span>
+        </button>
+        <button
+          type="button"
+          onclick="openCustomHtmlModal('{{vault.id}}'); toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          {{ lucide_icon("code", "icon-xs") }}
+          <span>Custom HTML</span>
+        </button>
+        <button
+          type="button"
+          class="warning"
+          hx-post="/console/vaults/{{vault.id}}/renew-sync-key"
+          hx-confirm="Are you sure you want to renew the publish key for '{{vault.name}}'? The old key will no longer work for publishing."
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { showNotification('Publish key renewed', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Failed to renew publish key', 'error'); } toggleActionMenu(this.closest('.vault-actions').querySelector('.action-menu-btn'))"
+        >
+          {{ lucide_icon("refresh-cw", "icon-xs") }}
+          <span>Renew publish key</span>
+        </button>
+        <button
+          type="button"
+          class="danger"
+          hx-delete="/console/vaults/{{vault.id}}"
+          hx-confirm="Are you sure you want to delete '{{vault.name}}'? This cannot be undone."
+          hx-swap="none"
+          hx-on::after-request="if(event.detail.successful) { showNotification('Site deleted', 'success'); htmx.trigger('body', 'refreshList'); } else { showNotification('Delete failed', 'error'); }"
+        >
+          {{ lucide_icon("trash-2", "icon-xs") }}
+          <span>Delete</span>
+        </button>
+      </div>
+      <span hidden id="custom-html-data-{{vault.id}}">{{vault.custom-head-html}}</span>
+    </div>
+  </div>
+
+  <!-- Publish Status -->
+  <div class="vault-section">
+    <span class="section-label">Publish Status</span>
+    <div>
+      {% if vault.publish-ok %}
+        <div class="flex items-center gap-2 text-sm text-[var(--success)]">
+          {{ lucide_icon("check-circle", "icon-xs") }}
+          <span class="font-medium">OK</span>
+        </div>
+      {% else %}
+        {% if vault.publish-error %}
+          <div class="flex items-center gap-2 text-sm text-[var(--error)]">
+            {{ lucide_icon("alert-circle", "icon-xs") }}
+            <span class="font-medium">Error</span>
+          </div>
+        {% else %}
+          <div class="flex items-center gap-2 text-sm text-[var(--text-tertiary)]">
+            {{ lucide_icon("clock", "icon-xs") }}
+            <span>Never</span>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      <div class="text-xs text-[var(--text-tertiary)] mt-2">
+        Last publish:
+        {% if vault.last-publish-at %}
+          <span data-utc-datetime="{{vault.last-publish-at}}">{{vault.last-publish-at}}</span>
+        {% else %}
+          Never
+        {% endif %}
+      </div>
+
+      {% if vault.publish-error %}
+        {% if vault.last-publish-error-message %}
+          <div class="text-xs text-[var(--error)] mt-2">
+            {{vault.last-publish-error-message}}
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Site Logo Section -->
+  <div class="vault-section">
+    <span class="section-label">Site Logo</span>
+    <div class="logo-upload-box" id="logo-box-{{vault.id}}">
+      {% if vault.logo-url %}
+      <!-- Logo exists - show preview with delete option -->
+      <div class="logo-preview-container">
+        <img
+          src="{{vault.logo-url}}"
+          alt="Site logo"
+          class="logo-preview-img"
+          id="logo-preview-{{vault.id}}"
+        />
+        <div class="logo-actions">
+          <form
+            class="contents"
+            hx-post="/console/vaults/{{vault.id}}/logo"
+            hx-encoding="multipart/form-data"
+            hx-trigger="change from:input[type=file]"
+            hx-swap="none"
+            hx-on::after-request="handleLogoRequest(event)"
+          >
+            <label class="icon-btn" title="Change logo">
+              {{ lucide_icon("upload", "icon-xs") }}
+              <input
+                type="file"
+                name="logo"
+                accept="image/png,image/jpeg"
+                class="hidden"
+              />
+            </label>
+          </form>
+          <button
+            type="button"
+            class="icon-btn"
+            title="Delete logo"
+            hx-delete="/console/vaults/{{vault.id}}/logo"
+            hx-confirm="Are you sure you want to delete this logo?"
+            hx-swap="none"
+            hx-on::after-request="handleLogoRequest(event)"
+          >
+            {{ lucide_icon("trash-2", "icon-xs") }}
+          </button>
+        </div>
+      </div>
+      {% else %}
+      <!-- No logo - show upload area -->
+      <form
+        class="contents"
+        hx-post="/console/vaults/{{vault.id}}/logo"
+        hx-encoding="multipart/form-data"
+        hx-trigger="change from:input[type=file]"
+        hx-swap="none"
+        hx-on::after-request="handleLogoRequest(event)"
+      >
+        <label class="logo-upload-area" id="logo-upload-area-{{vault.id}}">
+          {{ lucide_icon("image-plus", "icon-lg text-(--text-tertiary)") }}
+          <span class="text-xs text-(--text-tertiary)"
+            >Click to upload logo</span
+          >
+          <span class="text-xs text-(--text-tertiary)"
+            >PNG, JPEG (max 2MB)</span
+          >
+          <input
+            type="file"
+            name="logo"
+            accept="image/png,image/jpeg"
+            class="hidden"
+          />
+        </label>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Publish Key Section -->
+  <div class="vault-section">
+    <span class="section-label">Publish Key</span>
+    <div class="sync-key-box">
+      <div class="sync-key-header">
+        <span class="text-xs text-(--text-tertiary)"
+          >For Obsidian plugin publishing</span
+        >
+        <div class="sync-key-actions">
+          <button
+            type="button"
+            class="icon-btn"
+            onclick="toggleSyncKey(this, '{{vault.id}}')"
+            title="Show/Hide"
+          >
+            {{ lucide_icon("eye", "icon-xs") }}
+          </button>
+          <button
+            type="button"
+            class="icon-btn"
+            onclick="copyToClipboard('{{vault.sync-key}}')"
+            title="Copy"
+          >
+            {{ lucide_icon("copy", "icon-xs") }}
+          </button>
+        </div>
+      </div>
+      <div
+        class="sync-key-value"
+        id="key-{{vault.id}}"
+        data-key="{{vault.sync-key}}"
+      >
+        {{vault.masked-key}}
+      </div>
+    </div>
+  </div>
+
+  <!-- Home Page Section -->
+  <div class="vault-section">
+    <span class="section-label">Home Page</span>
+    {% with vault-id=vault.id root-note-id=vault.root-note-id notes=vault.notes %}
+      {% include "templates/console/root-note-selector.html" %}
+    {% endwith %}
+  </div>
+
+  <!-- Storage Section -->
+  <div class="vault-section">
+    <span class="section-label">Storage</span>
+    <div class="storage-info">
+      {{ lucide_icon("hard-drive", "icon-xs text-[var(--text-tertiary)]") }}
+      <span class="text-sm">{{vault.storage-size}}</span>
+    </div>
+  </div>
+</div>

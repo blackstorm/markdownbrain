@@ -1,0 +1,34 @@
+<!-- Modal Component
+  Parameters:
+  - id: modal ID (required)
+  - title: modal title (required)
+  - close-fn: JavaScript function name to close modal (required)
+  - form-attrs: additional form attributes (optional)
+  - submit-text: submit button text (default: "Submit")
+  - show-cancel: show cancel button (default: true)
+-->
+<div id="{{id}}" class="modal-backdrop" onclick="if(event.target === this) {{close-fn}}()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <h3>{{title}}</h3>
+            <button type="button" class="btn-close" onclick="{{close-fn}}()">
+                {{ lucide_icon("x", "icon-lg") }}
+            </button>
+        </div>
+        <form {{form-attrs|safe}}>
+            <div class="modal-body">
+                <div id="{{id}}-result"></div>
+                {% block modal-body %}{% endblock %}
+            </div>
+            <div class="modal-footer">
+                {% if show-cancel|default:true %}
+                <button type="button" class="btn" onclick="{{close-fn}}()">Cancel</button>
+                {% endif %}
+                <button type="submit" class="btn btn-primary">
+                    <span class="spinner {{id}}-spinner"></span>
+                    <span>{{submit-text|default:"Submit"}}</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

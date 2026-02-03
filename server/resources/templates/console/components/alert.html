@@ -1,0 +1,22 @@
+<!-- Alert Component
+  Parameters:
+  - type: "success", "error", "warning", "info" (required)
+  - message: alert message (required)
+  - icon: lucide icon name (optional, defaults based on type)
+-->
+<div class="alert alert-{{type}}">
+    {% if icon %}
+      {{ lucide_icon(icon, "icon-sm") }}
+    {% else %}
+      {% if type = "success" %}
+        {{ lucide_icon("check-circle", "icon-sm") }}
+      {% elif type = "error" %}
+        {{ lucide_icon("alert-circle", "icon-sm") }}
+      {% elif type = "warning" %}
+        {{ lucide_icon("alert-triangle", "icon-sm") }}
+      {% else %}
+        {{ lucide_icon("info", "icon-sm") }}
+      {% endif %}
+    {% endif %}
+    <span>{{message}}</span>
+</div>

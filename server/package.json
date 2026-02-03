@@ -1,0 +1,19 @@
+{
+  "name": "markdownbrain-app",
+  "version": "0.2.0",
+  "description": "MarkdownBrain app assets",
+  "scripts": {
+    "build:console": "tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --minify",
+    "watch:console": "tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css && tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --watch",
+    "build:app": "tailwindcss -i ./app.css -o ./resources/publics/app/css/app.css --minify",
+    "watch:app": "tailwindcss -i ./app.css -o ./resources/publics/app/css/app.css && tailwindcss -i ./app.css -o ./resources/publics/app/css/app.css --watch",
+    "build": "npm run build:console && npm run build:app",
+    "watch": "npm run watch:console & npm run watch:app & wait"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.19",
+    "@tailwindcss/cli": "4.1.18",
+    "tailwindcss": "4.1.18"
+  },
+  "dependencies": {}
+}

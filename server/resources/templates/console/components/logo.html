@@ -1,0 +1,13 @@
+<!-- Logo Component
+  Parameters:
+  - size: "sm", "md", "lg" (default: "md")
+  - with-text: show text beside icon (default: true)
+-->
+<div class="flex items-center gap-3">
+    <img src="/publics/console/images/logo.png"
+         alt="MarkdownBrain Logo"
+         class="{% if size = 'sm' %}w-8 h-8{% else %}{% if size = 'lg' %}w-16 h-16{% else %}w-10 h-10{% endif %}{% endif %} object-contain">
+    {% if with-text|default:true %}
+    <h1 class="{% if size = 'sm' %}text-base{% else %}{% if size = 'lg' %}text-2xl{% else %}text-xl{% endif %}{% endif %} font-semibold text-[var(--text-primary)] m-0">MarkdownBrain</h1>
+    {% endif %}
+</div>

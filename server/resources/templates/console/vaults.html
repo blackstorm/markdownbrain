@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{csrf-token}}">
+    <title>Console Dashboard - MarkdownBrain</title>
+    <link rel="icon" type="image/png" href="/publics/shared/images/favicon.png">
+    <link href="/publics/console/css/console.css" rel="stylesheet">
+    <script src="/publics/shared/htmx.min.js"></script>
+    <script src="/publics/console/js/console.js"></script>
+</head>
+<body hx-headers='{"X-CSRF-Token":"{{csrf-token}}"}'>
+    <div id="notification-container" class="fixed top-4 right-4 z-[9999]"></div>
+
+    {% with tenant=tenant %}
+      {% include "templates/console/components/header.html" %}
+    {% endwith %}
+
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h2>Publishing</h2>
+                <p>Manage your published vaults, domains, and publish keys.</p>
+            </div>
+            <button onclick="openCreateModal()" class="btn btn-primary">
+                {{ lucide_icon("plus", "icon-sm") }}
+                <span>New Site</span>
+            </button>
+        </div>
+
+        <div id="vault-list"
+             hx-get="/console/vaults"
+             hx-trigger="refreshList from:body"
+             hx-swap="innerHTML"
+             class="vault-grid">
+            {% include "templates/console/vault-list.html" %}
+        </div>
+    </main>
+
+    {% include "templates/console/components/footer.html" %}
+
+    <dialog id="modal-create" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>New Site</h3>
+                <button type="button" class="btn-close" onclick="closeCreateModal()">
+                    {{ lucide_icon("x", "icon-lg") }}
+                </button>
+            </div>
+            <form hx-post="/console/vaults"
+                  hx-swap="none"
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".create-spinner"
+                  hx-on::after-request="if(event.detail.successful) { closeCreateModal(); this.reset(); htmx.trigger('body', 'refreshList'); showNotification('Site created', 'success'); }">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
+                <div class="modal-body">
+                    <div id="create-result"></div>
+
+                    {% with id="create-name" name="name" label="Site Name" placeholder="My Digital Garden" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="create-domain" name="domain" label="Domain" placeholder="notes.example.com" hint="Your custom domain (without https://)" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeCreateModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner create-spinner"></span>
+                        <span>Create Site</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-edit" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Site</h3>
+                <button type="button" class="btn-close" onclick="closeEditModal()">
+                    {{ lucide_icon("x", "icon-lg") }}
+                </button>
+            </div>
+            <form id="edit-form"
+                  hx-put=""
+                  hx-swap="none"
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".edit-spinner"
+                  hx-on::after-request="if(event.detail.successful) { closeEditModal(); htmx.trigger('body', 'refreshList'); showNotification('Site updated', 'success'); }">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
+                <input type="hidden" name="id" id="edit-vault-id">
+                <div class="modal-body">
+                    <div id="edit-result"></div>
+
+                    {% with id="edit-name" name="name" label="Site Name" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="edit-domain" name="domain" label="Domain" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner edit-spinner"></span>
+                        <span>Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-custom-html" class="modal-dialog modal-dialog-wide">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Custom HTML</h3>
+                <button type="button" class="btn-close" onclick="closeCustomHtmlModal()">
+                    {{ lucide_icon("x", "icon-lg") }}
+                </button>
+            </div>
+            <form
+                id="custom-html-form"
+                hx-put=""
+                hx-swap="none"
+                hx-disabled-elt="button[type=submit]"
+                hx-on::after-request="onSaveCustomHtml(event)"
+            >
+                <div class="modal-body">
+                    <p class="form-hint" style="margin-top: 0; margin-bottom: 12px;">
+                        Add custom &lt;style&gt; or &lt;script&gt; tags to inject into your site's &lt;head&gt;. Useful for analytics or custom styling.
+                    </p>
+                    <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
+                    <input type="hidden" id="custom-html-vault-id">
+                    <textarea
+                        id="custom-html-textarea"
+                        name="customHeadHtml"
+                        class="form-input"
+                        rows="10"
+                        maxlength="65536"
+                        style="font-family: var(--font-mono); font-size: 0.875rem; resize: vertical;"
+                        placeholder="<style>&#10;  body { background: #f5f5f5; }&#10;</style>&#10;&#10;<script>&#10;  console.log('Hello');&#10;</script>"
+                    ></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeCustomHtmlModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span>Save</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog id="modal-change-password" class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Change Password</h3>
+                <button type="button" class="btn-close" onclick="closeChangePasswordModal()">
+                    {{ lucide_icon("x", "icon-lg") }}
+                </button>
+            </div>
+            <form id="change-password-form"
+                  hx-put="/console/user/password"
+                  hx-swap="none"
+                  hx-disabled-elt="button[type=submit]"
+                  hx-indicator=".password-spinner">
+                <input type="hidden" name="__anti-forgery-token" value="{{csrf-token}}">
+                <div class="modal-body">
+                    <div id="change-password-result"></div>
+
+                    {% with id="current-password" name="current-password" type="password" label="Current Password" autocomplete="current-password" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="new-password" name="new-password" type="password" label="New Password" autocomplete="new-password" minlength="8" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+
+                    {% with id="confirm-password" name="confirm-password" type="password" label="Confirm New Password" autocomplete="new-password" minlength="8" required=true %}
+                      {% include "templates/console/components/form-field.html" %}
+                    {% endwith %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn" onclick="closeChangePasswordModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="spinner password-spinner"></span>
+                        <span>Update Password</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+</body>
+</html>

@@ -1,0 +1,115 @@
+/* inter-regular - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/publics/console/fonts/inter/inter-v20-latin-regular.woff2') format('woff2'); 
+}
+/* inter-500 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  src: url('/publics/console/fonts/inter/inter-v20-latin-500.woff2') format('woff2'); 
+}
+/* inter-600 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  src: url('/publics/console/fonts/inter/inter-v20-latin-600.woff2') format('woff2'); 
+}
+/* inter-700 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/publics/console/fonts/inter/inter-v20-latin-700.woff2') format('woff2'); 
+}
+
+/* geist-regular - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/publics/console/fonts/geist/geist-v4-latin-regular.woff2') format('woff2'); 
+}
+/* geist-500 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 500;
+  src: url('/publics/console/fonts/geist/geist-v4-latin-500.woff2') format('woff2'); 
+}
+/* geist-600 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Geist';
+  font-style: normal;
+  font-weight: 600;
+  src: url('/publics/console/fonts/geist/geist-v4-latin-600.woff2') format('woff2'); 
+}
+
+/* jetbrains-mono-regular - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/publics/console/fonts/jetbrains-mono/jetbrains-mono-v24-latin-regular.woff2') format('woff2'); 
+}
+/* jetbrains-mono-500 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  src: url('/publics/console/fonts/jetbrains-mono/jetbrains-mono-v24-latin-500.woff2') format('woff2'); 
+}
+/* jetbrains-mono-600 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  src: url('/publics/console/fonts/jetbrains-mono/jetbrains-mono-v24-latin-600.woff2') format('woff2'); 
+}
+
+/* merriweather-regular - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Merriweather';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/publics/console/fonts/merriweather/merriweather-v33-latin-regular.woff2') format('woff2'); 
+}
+/* merriweather-500 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Merriweather';
+  font-style: normal;
+  font-weight: 500;
+  src: url('/publics/console/fonts/merriweather/merriweather-v33-latin-500.woff2') format('woff2'); 
+}
+/* merriweather-600 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Merriweather';
+  font-style: normal;
+  font-weight: 600;
+  src: url('/publics/console/fonts/merriweather/merriweather-v33-latin-600.woff2') format('woff2'); 
+}
+/* merriweather-700 - latin */
+@font-face {
+  font-display: swap; 
+  font-family: 'Merriweather';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/publics/console/fonts/merriweather/merriweather-v33-latin-700.woff2') format('woff2'); 
+}

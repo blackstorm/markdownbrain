@@ -1,77 +1,140 @@
-<h1 align="center">MarkdownBrain</h1>
-<p align="center">
-	<a href="https://markdownbrain.com">
-		<picture>
-			<source media="(prefers-color-scheme: dark)" srcset="screenshots/markdownbrain.png">
-			<source media="(prefers-color-scheme: light)" srcset="screenshots/markdownbrain.png">
-			<img src="screenshots/markdownbrain.png" alt="markdownbrain">
-		</picture>
-	</a>
-	<br>
-</p>
-<p align="center">Make your digital garden with MarkdownBrain.</p>
-<p align="center">
-<a href="https://github.com/blackstorm/markdownbrain/actions/workflows/release.yml">
-  <img src="https://github.com/blackstorm/markdownbrain/actions/workflows/release.yml/badge.svg" alt="MarkdownBrain Build">
-</a>
-<a href="https://github.com/blackstorm/markdownbrain/actions/workflows/release-docker.yml">
-  <img src="https://github.com/blackstorm/markdownbrain/actions/workflows/release-docker.yml/badge.svg" alt="MarkdownBrain Build">
-</a>
-<a href="LICENSE.md">
-  <img src="https://img.shields.io/badge/license-AGPLv3-blue.svg" alt="License">
-</a>
-</p>
-<p align="center">
-  <a href="https://github.com/blackstorm/markdownbrain/releases">Releases</a> ·
-  <a href="https://markdownbrain.com">Documentation</a>
-</p>
+# MarkdownBrain
 
-## Quick Start
+[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
 
-### Client
+[English](README.md) | [简体中文](README.zh-cn.md)
 
-#### Create client config.yml
+**MarkdownBrain is a complete self-hosted solution for publishing [Obsidian](https://obsidian.md/) notes as websites.**
 
-```bash
-echo 'source: "~/Library/Mobile Documents/com~apple~CloudDocs/obsidian/example"
-server: "https://your-server-url"
-api_key: "1234567890"
-ignores:
-  - "Templates"' > config.yml
-```
+It supports multiple vaults, automatic incremental publishing, link parsing, and backlink display—designed to deliver a seamless publishing experience for digital gardens, blogs, documentation, and tutorial sites.
 
-> Note: The `source` is the path to your Obsidian vault.
+Built with `Clojure` and `HTMX` for a simple, fast, and maintainable architecture.
 
-#### Run cli
+## Why MarkdownBrain
+
+- **Truly self-hosted** — No SaaS or third-party platform dependencies; you own your data
+- **Obsidian-native** — Full support for internal links, backlinks, and wiki-style references
+- **Developer-friendly** — Flexible integration with local storage or S3-compatible backends
+- **One-click publishing** — Publish your existing vault to a live site in seconds
+
+## Features
+
+- Fully self-hosted with complete control over deployment and data
+- Support for multiple independent vaults
+- Incremental and full publish modes for efficient publishing
+- Native support for Obsidian notes and related assets
+- Automatic parsing of internal links and backlinks
+- Built-in custom domain support with automatic HTTPS
+- Compatibility with local storage and S3-compatible object storage
+- Customizable site logo and HTML templates
+
+## Quickstart
+
+**One command to try it out:**
 
 ```bash
-curl -L https://github.com/blackstorm/markdownbrain/releases/download/v0.1.1/markdownbrain-cli-darwin-amd64 -o markdownbrain-client
-chmod +x markdownbrain-client
-./markdownbrain-client -c config.yml
-```
-> Note: Before running the client, ensure the `server` is running.
-
-### Server
-
-#### Create config.yml
-```bash
-echo 'lang: "en"
-root_note_name: "Welcome"
-name: "MarkdownBrain"
-description: "MarkdownBrain"
-api_key: "1234567890"' > config.yml
+docker run -d \
+  --name markdownbrain \
+  --restart unless-stopped \
+  -p 8080:8080 \
+  -p 9090:9090 \
+  -v markdownbrain:/app/data \
+  -e STORAGE_TYPE=local \
+  ghcr.io/blackstorm/markdownbrain:latest
 ```
 
-#### Run Server
+- Public site: `http://<your-server>:8080`
+- Console + Publish API: `http://<your-server>:9090/console` (use firewall/ACLs or a private network to restrict access if needed).
+
+Security note: the Docker image runs in `ENVIRONMENT=production` by default. Console sessions use `Secure` cookies, so accessing Console over plain HTTP can be unreliable. Prefer HTTPS for Console (for example, a reverse proxy or private network) and restrict access to port `9090` if you expose it publicly.
+
+**Production deployment (with Caddy + auto TLS):**
 
 ```bash
-docker run -dit --name markdownbrain -v $(pwd)/config.yml:/markdownbrain/config.yml -p 3000:3000 ghcr.io/blackstorm/markdownbrain-server:latest
+# 1. Clone and configure
+git clone https://github.com/blackstorm/markdownbrain.git
+cd markdownbrain
+cp selfhosted/.env.example selfhosted/.env
+
+# 2. Start services
+docker compose --env-file selfhosted/.env \
+  -f selfhosted/compose/docker-compose.caddy.yml up -d
+
+# 3. Access Console
+# Direct: http://<your-server>:9090/console
+# Optional: put Console behind HTTPS or a private network if you need restricted access.
 ```
 
-## Documentation
+Then create your first admin user at `/console/init`, set up a vault, and install the Obsidian plugin.
 
-[MarkdownBrain.com](https://markdownbrain.com)
+Full deployment guide: [selfhosted/README.md](selfhosted/README.md)
+
+## Configuration
+
+MarkdownBrain reads configuration from environment variables.
+
+| Name | Description | Default | Required |
+|---|---|---|---|
+| `STORAGE_TYPE` | Storage backend: `local` or `s3` | `local` | No |
+| `DATA_PATH` | Base data directory | `/app/data` | No |
+| `CADDY_ON_DEMAND_TLS_ENABLED` | Enable automatic HTTPS certificates | `false` | No |
+| `S3_ENDPOINT` | S3 endpoint URL | — | Yes (S3) |
+| `S3_ACCESS_KEY` | S3 access key | — | Yes (S3) |
+| `S3_SECRET_KEY` | S3 secret key | — | Yes (S3) |
+| `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
+| `S3_PUBLIC_URL` | Public URL for browser asset loading | — | Yes (S3) |
+
+Full reference: [selfhosted/README.md](selfhosted/README.md#toc-environment-variables)
+
+## FAQ
+
+**What storage backends are supported?**
+
+Local filesystem storage and any S3-compatible object storage (AWS S3, MinIO, RustFS, Cloudflare R2, etc.).
+
+**Does it support backlinks?**
+
+Yes. MarkdownBrain automatically parses Obsidian internal links (`[[note]]`) and displays backlinks on each published page.
+
+**How are images and attachments handled?**
+
+All assets referenced in your notes are uploaded alongside your content and served from the same domain or S3 storage.
+
+**Can I use my own domain for each vault?**
+
+Yes. Each vault can have its own custom domain with automatic HTTPS via Caddy's on-demand TLS.
+
+## Development
+
+Prerequisites: Java 25 (Temurin), Clojure CLI, Node.js 25, pnpm, Make.
+
+```bash
+make install
+make dev
+```
+
+- Frontend: `http://localhost:8080`
+- Console: `http://localhost:9090/console`
+
+## Releases
+
+### Docker image
+
+- Image: `ghcr.io/blackstorm/markdownbrain`
+- Tags: `latest`, `X.Y.Z`, `edge` (main branch)
+
+### Obsidian plugin
+
+Download `markdownbrain-plugin.zip` from [GitHub Releases](https://github.com/blackstorm/markdownbrain/releases) and extract to `.obsidian/plugins/markdownbrain/`.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
 
 ## License
 
-[AGPLv3](LICENSE.md)
+- Server (`server/`): AGPL-3.0-or-later
+- Obsidian plugin (`obsidian-plugin/`): MIT
+- Deployment configs (`selfhosted/`): MIT
+
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for third-party licenses.

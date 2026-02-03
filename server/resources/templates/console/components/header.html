@@ -1,0 +1,45 @@
+<!-- Console Header Component
+  Parameters:
+  - tenant: tenant object with name field (required)
+-->
+<header class="app-header">
+    <div class="header-content">
+        <div class="logo-area">
+            <div class="logo-icon">
+                <img src="/publics/console/images/logo.png" alt="MarkdownBrain Logo" class="w-8 h-8 object-contain">
+            </div>
+            <div class="logo-text">
+                <h1>{{tenant.name}}</h1>
+                <p>MarkdownBrain</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <div class="vault-actions">
+                <button type="button" class="btn" onclick="toggleActionMenu(this)">
+                    {{ lucide_icon("user", "icon-sm") }}
+                    <span>Account</span>
+                    {{ lucide_icon("chevron-down", "icon-sm") }}
+                </button>
+                <div class="action-menu">
+                    <button
+                        type="button"
+                        onclick="openChangePasswordModal(); toggleActionMenu(this.closest('.vault-actions').querySelector('button'))"
+                    >
+                        {{ lucide_icon("key", "icon-xs") }}
+                        <span>Change password</span>
+                    </button>
+                    <button
+                        type="button"
+                        hx-post="/console/logout"
+                        hx-swap="none"
+                        hx-on::after-request="window.location.href='/console/login'"
+                        onclick="toggleActionMenu(this.closest('.vault-actions').querySelector('button'))"
+                    >
+                        {{ lucide_icon("log-out", "icon-xs") }}
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>

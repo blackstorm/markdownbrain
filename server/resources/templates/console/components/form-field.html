@@ -1,0 +1,30 @@
+<!-- Form Field Component
+  Parameters:
+  - id: input ID (required)
+  - name: input name (required)
+  - label: field label (required)
+  - type: input type (default: "text")
+  - placeholder: input placeholder (optional)
+  - hint: help text below input (optional)
+  - required: make field required (default: false)
+  - autocomplete: autocomplete attribute (optional)
+  - value: default value (optional)
+  - minlength: minimum length (optional)
+  - autofocus: autofocus field (default: false)
+-->
+<div class="form-field">
+    <label class="form-label" for="{{id}}">{{label}}</label>
+    <input type="{{type|default:"text"}}"
+           id="{{id}}"
+           name="{{name}}"
+           class="form-input"
+           {% if placeholder %}placeholder="{{placeholder}}"{% endif %}
+           {% if autocomplete %}autocomplete="{{autocomplete}}"{% endif %}
+           {% if value %}value="{{value}}"{% endif %}
+           {% if minlength %}minlength="{{minlength}}"{% endif %}
+           {% if required %}required{% endif %}
+           {% if autofocus %}autofocus{% endif %}>
+    {% if hint %}
+    <span class="form-hint">{{hint}}</span>
+    {% endif %}
+</div>

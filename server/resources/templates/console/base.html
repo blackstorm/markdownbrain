@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{csrf-token}}">
+    <title>{% block title %}console - MarkdownBrain{% endblock %}</title>
+    <link rel="icon" type="image/png" href="/publics/shared/images/favicon.png">
+
+    {# console CSS - Tailwind 构建产物 #}
+    <link rel="stylesheet" href="/publics/console/css/console.css">
+
+    {# HTMX - 动态交互 #}
+    <script src="/publics/shared/htmx.min.js"></script>
+
+    {# console JS #}
+    <script src="/publics/console/js/console.js"></script>
+</head>
+<body class="antialiased bg-[#fafafa] min-h-screen" hx-headers='{"X-CSRF-Token":"{{csrf-token}}"}'>
+    <script>
+      // Handle HTMX errors gracefully
+      document.body.addEventListener('htmx:responseError', (event) => {
+        if (typeof showNotification !== 'undefined') {
+          showNotification('Operation failed. Please try again.', 'error');
+        }
+      });
+    </script>
+
+    <!-- Notification container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50"></div>
+
+    {% block content %}{% endblock %}
+</body>
+</html>

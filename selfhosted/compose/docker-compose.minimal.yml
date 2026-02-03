@@ -1,0 +1,17 @@
+services:
+  markdownbrain:
+    image: ${MARKDOWNBRAIN_IMAGE:-ghcr.io/blackstorm/markdownbrain:latest}
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - markdownbrain:/app/data
+    environment:
+      - STORAGE_TYPE=local
+      - DATA_PATH=${DATA_PATH:-/app/data}
+      - MARKDOWNBRAIN_LOG_LEVEL=${MARKDOWNBRAIN_LOG_LEVEL:-INFO}
+      - JAVA_OPTS=${JAVA_OPTS:-}
+    restart: unless-stopped
+
+volumes:
+  markdownbrain:

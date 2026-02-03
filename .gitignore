@@ -1,3 +1,38 @@
-bin/
+# MarkdownBrain
+
+# Data directory (database, local storage, secrets)
+data/
+server/data/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+*.log
+markdownbrain.db
+
+# Clojure
+.nrepl-port
+.cpcache/
+.lsp/
+.clj-kondo/
+server/.cpcache/
+server/target/
+
+# Node.js
 node_modules/
-dist/
+server/node_modules/
+obsidian-plugin/node_modules/
+
+# Build artifacts
+target/
+
+# Shadow-cljs
+.shadow-cljs/
+
+# System files
+.DS_Store
+
+vaults/**/.obsidian/
+
+.env

@@ -1,0 +1,44 @@
+services:
+  markdownbrain:
+    image: ${MARKDOWNBRAIN_IMAGE:-ghcr.io/blackstorm/markdownbrain:latest}
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    volumes:
+      - markdownbrain:/app/data
+    environment:
+      - STORAGE_TYPE=local
+      - DATA_PATH=${DATA_PATH:-/app/data}
+      - MARKDOWNBRAIN_LOG_LEVEL=${MARKDOWNBRAIN_LOG_LEVEL:-INFO}
+      - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
+      - JAVA_OPTS=${JAVA_OPTS:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ../caddy/caddy-entrypoint.sh:/entrypoint.sh:ro
+      - ../caddy/Caddyfile.on-demand-tls:/etc/caddy/Caddyfile.on-demand-tls:ro
+      - ../caddy/Caddyfile.simple:/etc/caddy/Caddyfile.simple:ro
+      - caddy:/data
+    environment:
+      - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
+    entrypoint: ["/entrypoint.sh"]
+    depends_on:
+      markdownbrain:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  markdownbrain:
+  caddy:

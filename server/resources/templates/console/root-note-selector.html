@@ -1,0 +1,42 @@
+{% if notes|not-empty %}
+<div class="note-selector" id="note-selector-{{vault-id}}">
+  <div class="note-selector-trigger" onclick="toggleNoteSelector('{{vault-id}}')">
+    <span class="note-selector-value">
+      {% if root-note-id %}
+        {% for note in notes %}{% if note.client-id = root-note-id %}{{note.path}}{% endif %}{% endfor %}
+    {% else %}
+        Select note
+      {% endif %}
+    </span>
+    {{ lucide_icon("chevron-down", "icon-xs note-selector-arrow") }}
+  </div>
+  <div class="note-selector-dropdown">
+    <input type="text"
+           class="note-search-input"
+           placeholder="Search notes..."
+           oninput="filterNotes('{{vault-id}}', this.value)">
+    <div class="note-list">
+      {% for note in notes %}
+      <div class="note-item {% if note.client-id = root-note-id %}selected{% endif %}"
+           data-client-id="{{note.client-id}}"
+           data-path="{{note.path|lower}}"
+           data-display="{{note.path}}"
+           hx-put="/console/vaults/{{vault-id}}/root-note"
+           hx-vals='{"rootNoteId": "{{note.client-id}}"}'
+           hx-swap="none"
+           hx-on::after-request="handleNoteSelect('{{vault-id}}', this, event)">
+        <span class="note-path">{{note.path}}</span>
+        {% if note.client-id = root-note-id %}
+        {{ lucide_icon("check", "icon-xs note-check") }}
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="warning-box">
+  {{ lucide_icon("alert-triangle", "icon-xs shrink-0") }}
+  <span>No notes synced yet. Please use the Obsidian plugin to sync files before setting a homepage.</span>
+</div>
+{% endif %}
