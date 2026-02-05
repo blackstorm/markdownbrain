@@ -7,7 +7,7 @@
 server/target
 server/.cpcache
 server/node_modules
-server/markdownbrain.db
+server/mdbrain.db
 server/.nrepl-port
 
 obsidian-plugin

@@ -52,4 +52,4 @@ jobs:
         with:
           generate_release_notes: true
           files: |
-            obsidian-plugin/markdownbrain-plugin.zip
+            obsidian-plugin/mdbrain-plugin.zip

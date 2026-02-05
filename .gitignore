@@ -1,4 +1,4 @@
-# MarkdownBrain
+# mdbrain
 
 # Data directory (database, local storage, secrets)
 data/
@@ -9,7 +9,7 @@ server/data/
 *.db-shm
 *.db-wal
 *.log
-markdownbrain.db
+mdbrain.db
 
 # Clojure
 .nrepl-port

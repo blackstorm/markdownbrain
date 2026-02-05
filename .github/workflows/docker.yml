@@ -93,8 +93,8 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=registry,ref=${{ steps.meta.outputs.image }}:buildcache
-          cache-to: type=registry,ref=${{ steps.meta.outputs.image }}:buildcache,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build (PR)
         if: ${{ github.event_name == 'pull_request' }}
@@ -108,3 +108,4 @@ jobs:
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
