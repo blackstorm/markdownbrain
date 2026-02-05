@@ -1,4 +1,4 @@
-// MarkdownBrain Frontend Helpers
+// Mdbrain Frontend Helpers
 
 function escapeHtmlAttr(value) {
   return String(value)
@@ -160,7 +160,7 @@ function getHtmxJsonResponse(event) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('MarkdownBrain console initialized');
+  console.log('Mdbrain console initialized');
   renderLocalDatetimes(document);
 });
 

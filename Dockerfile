@@ -27,24 +27,24 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
 
 RUN set -eux; \
-    getent group markdownbrain >/dev/null || groupadd -r markdownbrain; \
-    id -u markdownbrain >/dev/null 2>&1 || useradd -r -m -g markdownbrain -s /bin/sh markdownbrain; \
+    getent group mdbrain >/dev/null || groupadd -r mdbrain; \
+    id -u mdbrain >/dev/null 2>&1 || useradd -r -m -g mdbrain -s /bin/sh mdbrain; \
     mkdir -p /app/data; \
-    chown -R markdownbrain:markdownbrain /app
+    chown -R mdbrain:mdbrain /app
 
-COPY --from=backend-builder --chown=markdownbrain:markdownbrain /app/server/target/server-standalone.jar ./app.jar
+COPY --from=backend-builder --chown=mdbrain:mdbrain /app/server/target/server-standalone.jar ./app.jar
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 COPY docker-healthcheck.sh ./healthcheck.sh
 RUN chmod +x ./docker-entrypoint.sh ./healthcheck.sh
 
-USER markdownbrain
+USER mdbrain
 
 ENV APP_PORT=8080
 ENV CONSOLE_PORT=9090
 ENV DATA_PATH=/app/data
 ENV ENVIRONMENT=production
 ENV JAVA_OPTS=""
-ENV MARKDOWNBRAIN_LOG_LEVEL=INFO
+ENV MDBRAIN_LOG_LEVEL=INFO
 
 EXPOSE 8080 9090
 

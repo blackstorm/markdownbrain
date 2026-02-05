@@ -1,6 +1,6 @@
 # 测试指南
 
-本目录包含 MarkdownBrain 的后端测试与少量 App 测试入口。
+本目录包含 Mdbrain 的后端测试与少量 App 测试入口。
 
 ## 目录
 
@@ -14,7 +14,7 @@
 
 ```
 server/test/
-├── markdownbrain/                 # 后端测试（Clojure）
+├── mdbrain/                 # 后端测试（Clojure）
 └── app/test.html                  # App 脚本测试（手动）
 ```
 
@@ -40,8 +40,8 @@ clojure -M:test
 ```bash
 cd server
 
-clojure -X:test :patterns '["markdownbrain.db-test"]'
-clojure -X:test :patterns '["markdownbrain.handlers.*"]'
+clojure -X:test :patterns '["mdbrain.db-test"]'
+clojure -X:test :patterns '["mdbrain.handlers.*"]'
 ```
 
 <a id="toc-app-tests"></a>

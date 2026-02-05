@@ -1,4 +1,4 @@
-# 自托管 MarkdownBrain
+# 自托管 Mdbrain
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
@@ -12,7 +12,7 @@
 - [前置条件](#toc-prerequisites)
 - [环境变量](#toc-environment-variables)
   - [Compose 变量](#toc-compose-vars)
-  - [MarkdownBrain 服务端变量](#toc-server-vars)
+  - [Mdbrain 服务端变量](#toc-server-vars)
   - [Docker 运行时变量](#toc-docker-runtime-vars)
   - [Compose 默认会设置的变量](#toc-compose-defaults)
 - [快速开始（推荐：Caddy）](#toc-quickstart-caddy)
@@ -28,7 +28,7 @@
 <a id="toc-overview"></a>
 ## 概览
 
-MarkdownBrain 在容器内提供两个端口：
+Mdbrain 在容器内提供两个端口：
 
 - App：`8080`（公开站点）
 - Console：`9090`（管理后台与发布 API，`/obsidian/*`）
@@ -46,7 +46,7 @@ MarkdownBrain 在容器内提供两个端口：
 用于快速试用（不含反向代理、本地存储），执行：
 
 ```bash
-docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/markdownbrain:latest
+docker run -d --name mdbrain --restart unless-stopped -p 8080:8080 -p 9090:9090 -v mdbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/mdbrain:latest
 ```
 
 - 公开站点：`http://<你的服务器>:8080/`
@@ -57,11 +57,11 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 9090
 <a id="toc-choose-deployment"></a>
 ## 选择部署方式
 
-- `minimal`（仅 MarkdownBrain）
+- `minimal`（仅 Mdbrain）
   - Compose 文件：`selfhosted/compose/docker-compose.minimal.yml`
-- `caddy`（MarkdownBrain + Caddy）（推荐）
+- `caddy`（Mdbrain + Caddy）（推荐）
   - Compose 文件：`selfhosted/compose/docker-compose.caddy.yml`
-- `s3`（MarkdownBrain + Caddy + RustFS）
+- `s3`（Mdbrain + Caddy + RustFS）
   - Compose 文件：`selfhosted/compose/docker-compose.s3.yml`
 
 <a id="toc-prerequisites"></a>
@@ -79,7 +79,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 这里存在两层变量：
 
 - Compose 变量：由 Docker Compose 使用（镜像标签、端口等）。
-- MarkdownBrain 变量：注入到 `markdownbrain` 容器中（服务端读取并生效）。
+- Mdbrain 变量：注入到 `mdbrain` 容器中（服务端读取并生效）。
 
 概览表见 [../README.zh-cn.md](../README.zh-cn.md#toc-configuration)。
 
@@ -88,11 +88,11 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 
 | 变量名 | 说明 | 默认值或示例 | 必填 |
 |---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/markdownbrain:latest` | 是 |
+| `MDBRAIN_IMAGE` | 要运行的 Docker 镜像标签 | `ghcr.io/blackstorm/mdbrain:latest` | 是 |
 | `S3_PUBLIC_PORT` | 内置 RustFS 的宿主机端口（仅 S3 模式） | `9000` | 否 |
 
 <a id="toc-server-vars"></a>
-### MarkdownBrain 服务端变量
+### Mdbrain 服务端变量
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |---|---|---|---|
@@ -108,15 +108,15 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 | `S3_ACCESS_KEY` | `STORAGE_TYPE=s3` 时的 S3 Access Key | - | 是（S3） |
 | `S3_SECRET_KEY` | `STORAGE_TYPE=s3` 时的 S3 Secret Key | - | 是（S3） |
 | `S3_REGION` | S3 Region | `us-east-1` | 否 |
-| `S3_BUCKET` | S3 Bucket 名称 | `markdownbrain` | 否 |
+| `S3_BUCKET` | S3 Bucket 名称 | `mdbrain` | 否 |
 | `S3_PUBLIC_URL` | 浏览器加载资源的 base URL | - | 是（S3） |
 | `CADDY_ON_DEMAND_TLS_ENABLED` | 为 Caddy 按需 TLS 启用 `/console/domain-check` | `false` | 否 |
-| `MARKDOWNBRAIN_LOG_LEVEL` | 应用日志级别（Logback） | `INFO`（Docker 镜像） | 否 |
+| `MDBRAIN_LOG_LEVEL` | 应用日志级别（Logback） | `INFO`（Docker 镜像） | 否 |
 
 说明：
 
-- 数据库默认路径为 `${DATA_PATH}/markdownbrain.db`。
-- 如果未设置 `SESSION_SECRET`，MarkdownBrain 会自动生成，并保存在 `${DATA_PATH}/.secrets.edn` 中。
+- 数据库默认路径为 `${DATA_PATH}/mdbrain.db`。
+- 如果未设置 `SESSION_SECRET`，Mdbrain 会自动生成，并保存在 `${DATA_PATH}/.secrets.edn` 中。
 - Docker 镜像默认以 `ENVIRONMENT=production` 运行（Console 的安全 Cookie 默认开启）。
   若通过纯 HTTP 访问 Console，登录可能不可靠；建议为 Console 提供 HTTPS 访问方式。
 
@@ -130,7 +130,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 <a id="toc-compose-defaults"></a>
 ### Compose 默认会设置的变量
 
-本仓库提供的 compose 文件已经设置了关键的 MarkdownBrain 变量：
+本仓库提供的 compose 文件已经设置了关键的 Mdbrain 变量：
 
 - `compose/docker-compose.caddy.yml` 与 `compose/docker-compose.minimal.yml`
   - `STORAGE_TYPE=local`
@@ -146,7 +146,7 @@ Compose 会从 `selfhosted/.env` 读取环境变量（参考 `selfhosted/.env.ex
 
 通常不需要额外设置 `DATA_PATH` 或 `LOCAL_STORAGE_PATH`。因为容器会持久化 `/app/data`，而默认值本来就在这个目录中：
 
-- 默认数据库：`/app/data/markdownbrain.db`
+- 默认数据库：`/app/data/mdbrain.db`
 - 默认本地存储：`/app/data/storage`
 
 <a id="toc-quickstart-caddy"></a>
@@ -160,7 +160,7 @@ cp selfhosted/.env.example selfhosted/.env
 
 2. 修改 `selfhosted/.env`。
 
-- 生产环境建议固定版本：`MARKDOWNBRAIN_IMAGE=...:X.Y.Z`
+- 生产环境建议固定版本：`MDBRAIN_IMAGE=...:X.Y.Z`
 - 需要自动证书时设置：`CADDY_ON_DEMAND_TLS_ENABLED=true`
 
 3. 启动。
@@ -214,26 +214,26 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.s
 Caddy 相关文件在 `selfhosted/caddy/`：
 
 - `selfhosted/compose/docker-compose.caddy.yml`
-  - 启动 MarkdownBrain + Caddy，并配置端口与路由。
+  - 启动 Mdbrain + Caddy，并配置端口与路由。
 - `selfhosted/caddy/Caddyfile.simple`
   - 适合你通过 Cloudflare / nginx / 负载均衡器等方式在外部管理 TLS 的场景。
   - 监听 `:80`，并反向代理：
-    - `/obsidian/*` → `markdownbrain:9090`
-    - 其它路径 → `markdownbrain:8080`
+    - `/obsidian/*` → `mdbrain:9090`
+    - 其它路径 → `mdbrain:8080`
 - `selfhosted/caddy/Caddyfile.on-demand-tls`
   - 适合你希望 Caddy 自动为域名签发证书的场景。
   - 需要设置 `CADDY_ON_DEMAND_TLS_ENABLED=true`，并放行 `80/443`。
-  - 使用 `ask http://markdownbrain:9090/console/domain-check`：只有在 Console 中登记过的域名才会签发证书。
+  - 使用 `ask http://mdbrain:9090/console/domain-check`：只有在 Console 中登记过的域名才会签发证书。
 - `selfhosted/caddy/caddy-entrypoint.sh`
   - 根据 `CADDY_ON_DEMAND_TLS_ENABLED` 自动选择 `Caddyfile.simple` 或 `Caddyfile.on-demand-tls`。
 
 <a id="toc-on-demand-tls"></a>
 ## 按需 TLS 的工作方式
 
-当 `CADDY_ON_DEMAND_TLS_ENABLED=true` 时，Caddy 只会为已在 MarkdownBrain 中登记的域名签发证书：
+当 `CADDY_ON_DEMAND_TLS_ENABLED=true` 时，Caddy 只会为已在 Mdbrain 中登记的域名签发证书：
 
-- Caddy 调用 `http://markdownbrain:9090/console/domain-check?domain=...`
-- 只有当域名存在于 Vault 列表中时，MarkdownBrain 才返回 `200`
+- Caddy 调用 `http://mdbrain:9090/console/domain-check?domain=...`
+- 只有当域名存在于 Vault 列表中时，Mdbrain 才返回 `200`
 
 <a id="toc-cloudflare"></a>
 ### Cloudflare 说明（按需 TLS 场景）
@@ -266,7 +266,7 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.c
 
 至少备份：
 
-- SQLite：`markdownbrain.db`
+- SQLite：`mdbrain.db`
 - Secrets：`.secrets.edn`
 
 <a id="toc-troubleshooting"></a>

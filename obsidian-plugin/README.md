@@ -1,8 +1,8 @@
-# MarkdownBrain Obsidian Plugin
+# Mdbrain Obsidian Plugin
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-Publish your Obsidian vault to a MarkdownBrain server.
+Publish your Obsidian vault to a Mdbrain server.
 
 ## Table of contents
 
@@ -16,20 +16,20 @@ Publish your Obsidian vault to a MarkdownBrain server.
 <a id="toc-install"></a>
 ## Install (from release ZIP)
 
-1. Download `markdownbrain-plugin.zip` from GitHub Releases.
-2. Unzip into your vault: `.obsidian/plugins/markdownbrain/`.
+1. Download `mdbrain-plugin.zip` from GitHub Releases.
+2. Unzip into your vault: `.obsidian/plugins/mdbrain/`.
 3. Enable the plugin in Obsidian.
 
 <a id="toc-configure"></a>
 ## Configure
 
-Obsidian → Settings → Community plugins → MarkdownBrain:
+Obsidian → Settings → Community plugins → Mdbrain:
 
 - Publish URL: your published site base URL (for example `https://notes.example.com`)
-- Publish Key: copy from MarkdownBrain Console → your vault card
+- Publish Key: copy from Mdbrain Console → your vault card
 - Auto publish: publish on file changes
 
-The plugin calls `${publishUrl}/obsidian/...` endpoints. Your Publish URL must route `/obsidian/*` to the MarkdownBrain Console port (`9090`).
+The plugin calls `${publishUrl}/obsidian/...` endpoints. Your Publish URL must route `/obsidian/*` to the Mdbrain Console port (`9090`).
 For self-hosting, use a reverse proxy that routes `/obsidian/*` → `9090` and everything else → `8080` (see [selfhosted/README.md](../selfhosted/README.md)).
 
 <a id="toc-commands"></a>
@@ -56,7 +56,7 @@ pnpm install
 pnpm dev
 ```
 
-Dev builds output to `../vaults/test/.obsidian/plugins/markdownbrain/` with source maps.
+Dev builds output to `../vaults/test/.obsidian/plugins/mdbrain/` with source maps.
 
 <a id="toc-scripts"></a>
 ## Scripts
@@ -66,5 +66,5 @@ pnpm dev        # watch build into vaults/test
 pnpm build      # production build to dist/
 pnpm test       # vitest
 pnpm check      # biome check
-pnpm package    # build + create markdownbrain-plugin.zip
+pnpm package    # build + create mdbrain-plugin.zip
 ```

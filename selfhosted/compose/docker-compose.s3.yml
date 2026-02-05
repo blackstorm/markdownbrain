@@ -1,22 +1,22 @@
 services:
-  markdownbrain:
-    image: ${MARKDOWNBRAIN_IMAGE:-ghcr.io/blackstorm/markdownbrain:latest}
+  mdbrain:
+    image: ${MDBRAIN_IMAGE:-ghcr.io/blackstorm/mdbrain:latest}
     ports:
       - "8080:8080"
       - "9090:9090"
     volumes:
-      - markdownbrain:/app/data
+      - mdbrain:/app/data
     environment:
       - STORAGE_TYPE=s3
       - DATA_PATH=${DATA_PATH:-/app/data}
-      - MARKDOWNBRAIN_LOG_LEVEL=${MARKDOWNBRAIN_LOG_LEVEL:-INFO}
+      - MDBRAIN_LOG_LEVEL=${MDBRAIN_LOG_LEVEL:-INFO}
       - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
       - JAVA_OPTS=${JAVA_OPTS:-}
       - S3_ENDPOINT=http://rustfs:9000
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-rustfsadmin}
       - S3_SECRET_KEY=${S3_SECRET_KEY:-rustfsadmin}
       - S3_REGION=us-east-1
-      - S3_BUCKET=${S3_BUCKET:-markdownbrain}
+      - S3_BUCKET=${S3_BUCKET:-mdbrain}
       - S3_PUBLIC_URL=${S3_PUBLIC_URL}
     depends_on:
       rustfs:
@@ -64,11 +64,11 @@ services:
       - CADDY_ON_DEMAND_TLS_ENABLED=${CADDY_ON_DEMAND_TLS_ENABLED:-false}
     entrypoint: ["/entrypoint.sh"]
     depends_on:
-      markdownbrain:
+      mdbrain:
         condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  markdownbrain:
+  mdbrain:
   caddy:
   rustfs:

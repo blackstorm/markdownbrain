@@ -1,7 +1,7 @@
 {
-  "name": "markdownbrain-app",
+  "name": "mdbrain-app",
   "version": "0.2.0",
-  "description": "MarkdownBrain app assets",
+  "description": "Mdbrain app assets",
   "scripts": {
     "build:console": "tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --minify",
     "watch:console": "tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css && tailwindcss -i ./console.css -o ./resources/publics/console/css/console.css --watch",

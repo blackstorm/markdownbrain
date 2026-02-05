@@ -1,13 +1,13 @@
 {
-  "name": "markdownbrain",
+  "name": "mdbrain",
   "version": "0.2.0",
-  "description": "MarkdownBrain Obsidian plugin",
+  "description": "Mdbrain Obsidian plugin",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production && npm run copy-files",
     "copy-files": "mkdir -p dist && cp manifest.json dist/ && cp LICENSE dist/ && cp styles.css dist/ 2>/dev/null || true",
-    "package": "npm run build && cd dist && zip -r ../markdownbrain-plugin.zip .",
+    "package": "npm run build && cd dist && zip -r ../mdbrain-plugin.zip .",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -34,7 +34,7 @@
     "vitest": "^4.0.17"
   },
   "scripts-description": {
-    "dev": "Build and watch to ../vaults/test/.obsidian/plugins/markdownbrain for integration testing",
+    "dev": "Build and watch to ../vaults/test/.obsidian/plugins/mdbrain for integration testing",
     "build": "Build production version to dist/",
     "package": "Create distribution zip file"
   }

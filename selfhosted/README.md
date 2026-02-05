@@ -1,4 +1,4 @@
-# Self-hosting MarkdownBrain
+# Self-hosting Mdbrain
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
@@ -12,7 +12,7 @@ This directory provides production-ready Docker Compose setups.
 - [Prerequisites](#toc-prerequisites)
 - [Environment variables](#toc-environment-variables)
   - [Compose variables](#toc-compose-vars)
-  - [MarkdownBrain server variables](#toc-server-vars)
+  - [Mdbrain server variables](#toc-server-vars)
   - [Docker runtime variables](#toc-docker-runtime-vars)
   - [What Compose sets by default](#toc-compose-defaults)
 - [Quickstart (recommended: Caddy)](#toc-quickstart-caddy)
@@ -28,7 +28,7 @@ This directory provides production-ready Docker Compose setups.
 <a id="toc-overview"></a>
 ## Overview
 
-MarkdownBrain exposes two HTTP ports inside the container:
+Mdbrain exposes two HTTP ports inside the container:
 
 - App: `8080` (public site)
 - Console: `9090` (admin UI + publish API under `/obsidian/*`)
@@ -46,7 +46,7 @@ Security model (recommended):
 For a quick trial (no reverse proxy, local storage), run:
 
 ```bash
-docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 9090:9090 -v markdownbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/markdownbrain:latest
+docker run -d --name mdbrain --restart unless-stopped -p 8080:8080 -p 9090:9090 -v mdbrain:/app/data -e STORAGE_TYPE=local ghcr.io/blackstorm/mdbrain:latest
 ```
 
 - Public site: `http://<your-server>:8080/`
@@ -57,11 +57,11 @@ docker run -d --name markdownbrain --restart unless-stopped -p 8080:8080 -p 9090
 <a id="toc-choose-deployment"></a>
 ## Choose a deployment
 
-- `minimal` (MarkdownBrain only)
+- `minimal` (Mdbrain only)
   - Compose file: `selfhosted/compose/docker-compose.minimal.yml`
-- `caddy` (MarkdownBrain + Caddy) (recommended)
+- `caddy` (Mdbrain + Caddy) (recommended)
   - Compose file: `selfhosted/compose/docker-compose.caddy.yml`
-- `s3` (MarkdownBrain + Caddy + RustFS)
+- `s3` (Mdbrain + Caddy + RustFS)
   - Compose file: `selfhosted/compose/docker-compose.s3.yml`
 
 <a id="toc-prerequisites"></a>
@@ -79,7 +79,7 @@ Compose reads variables from `selfhosted/.env` (see `selfhosted/.env.example`).
 There are two “layers” of variables:
 
 - Compose variables: used by Docker Compose itself (image tags, ports).
-- MarkdownBrain variables: passed into the `markdownbrain` container (the server reads them).
+- Mdbrain variables: passed into the `mdbrain` container (the server reads them).
 
 For a short overview table, see [../README.md](../README.md#toc-configuration).
 
@@ -88,11 +88,11 @@ For a short overview table, see [../README.md](../README.md#toc-configuration).
 
 | Name | Description | Default / example | Required |
 |---|---|---|---|
-| `MARKDOWNBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/blackstorm/markdownbrain:latest` | Yes |
+| `MDBRAIN_IMAGE` | Docker image tag to run | `ghcr.io/blackstorm/mdbrain:latest` | Yes |
 | `S3_PUBLIC_PORT` | Host port for bundled RustFS (S3 mode only) | `9000` | No |
 
 <a id="toc-server-vars"></a>
-### MarkdownBrain server variables
+### Mdbrain server variables
 
 | Name | Description | Default | Required |
 |---|---|---|---|
@@ -108,15 +108,15 @@ For a short overview table, see [../README.md](../README.md#toc-configuration).
 | `S3_ACCESS_KEY` | S3 access key when `STORAGE_TYPE=s3` | - | Yes (S3) |
 | `S3_SECRET_KEY` | S3 secret key when `STORAGE_TYPE=s3` | - | Yes (S3) |
 | `S3_REGION` | S3 region | `us-east-1` | No |
-| `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
+| `S3_BUCKET` | S3 bucket name | `mdbrain` | No |
 | `S3_PUBLIC_URL` | Public base URL for browsers to fetch assets | - | Yes (S3) |
 | `CADDY_ON_DEMAND_TLS_ENABLED` | Enable `/console/domain-check` for Caddy on-demand TLS | `false` | No |
-| `MARKDOWNBRAIN_LOG_LEVEL` | App log level (Logback) | `INFO` (Docker image) | No |
+| `MDBRAIN_LOG_LEVEL` | App log level (Logback) | `INFO` (Docker image) | No |
 
 Notes:
 
-- Default DB path is `${DATA_PATH}/markdownbrain.db`.
-- If `SESSION_SECRET` is omitted, MarkdownBrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
+- Default DB path is `${DATA_PATH}/mdbrain.db`.
+- If `SESSION_SECRET` is omitted, Mdbrain generates one and stores it in `${DATA_PATH}/.secrets.edn`.
 - The Docker image runs in `ENVIRONMENT=production` by default (secure cookies enabled for Console sessions).
   If you access Console over plain HTTP, login can be unreliable; prefer HTTPS access for Console.
 
@@ -130,7 +130,7 @@ Notes:
 <a id="toc-compose-defaults"></a>
 ### What Compose sets by default
 
-The provided compose files already set key MarkdownBrain variables:
+The provided compose files already set key Mdbrain variables:
 
 - `compose/docker-compose.caddy.yml` and `compose/docker-compose.minimal.yml`
   - `STORAGE_TYPE=local`
@@ -146,7 +146,7 @@ These correspond to:
 
 You usually do not need to set `DATA_PATH` or `LOCAL_STORAGE_PATH` because the container persists `/app/data` and the defaults already live there:
 
-- Default DB: `/app/data/markdownbrain.db`
+- Default DB: `/app/data/mdbrain.db`
 - Default local storage: `/app/data/storage`
 
 <a id="toc-quickstart-caddy"></a>
@@ -160,7 +160,7 @@ cp selfhosted/.env.example selfhosted/.env
 
 2. Edit `selfhosted/.env`.
 
-- Pin a version for production (recommended): `MARKDOWNBRAIN_IMAGE=...:X.Y.Z`
+- Pin a version for production (recommended): `MDBRAIN_IMAGE=...:X.Y.Z`
 - Enable Caddy on-demand TLS if you want automatic certs: `CADDY_ON_DEMAND_TLS_ENABLED=true`
 
 3. Start.
@@ -214,26 +214,26 @@ docker compose --env-file selfhosted/.env -f selfhosted/compose/docker-compose.s
 The Caddy setup lives in `selfhosted/caddy/`:
 
 - `selfhosted/compose/docker-compose.caddy.yml`
-  - Runs MarkdownBrain + Caddy and wires ports/routes.
+  - Runs Mdbrain + Caddy and wires ports/routes.
 - `selfhosted/caddy/Caddyfile.simple`
   - Use when you manage TLS externally (Cloudflare / nginx / a load balancer).
   - Listens on `:80` and reverse-proxies:
-    - `/obsidian/*` → `markdownbrain:9090`
-    - everything else → `markdownbrain:8080`
+    - `/obsidian/*` → `mdbrain:9090`
+    - everything else → `mdbrain:8080`
 - `selfhosted/caddy/Caddyfile.on-demand-tls`
   - Use when you want Caddy to obtain certificates automatically per domain.
   - Requires `CADDY_ON_DEMAND_TLS_ENABLED=true` and ports `80/443` open.
-  - Uses `ask http://markdownbrain:9090/console/domain-check` so only domains registered in Console can get certs.
+  - Uses `ask http://mdbrain:9090/console/domain-check` so only domains registered in Console can get certs.
 - `selfhosted/caddy/caddy-entrypoint.sh`
   - Small wrapper that selects `Caddyfile.simple` vs `Caddyfile.on-demand-tls` based on `CADDY_ON_DEMAND_TLS_ENABLED`.
 
 <a id="toc-on-demand-tls"></a>
 ## How on-demand TLS works
 
-When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy will only issue a certificate if MarkdownBrain confirms the domain:
+When `CADDY_ON_DEMAND_TLS_ENABLED=true`, Caddy will only issue a certificate if Mdbrain confirms the domain:
 
-- Caddy calls `http://markdownbrain:9090/console/domain-check?domain=...`
-- MarkdownBrain returns `200` only if the domain exists in your vault list
+- Caddy calls `http://mdbrain:9090/console/domain-check?domain=...`
+- Mdbrain returns `200` only if the domain exists in your vault list
 
 <a id="toc-cloudflare"></a>
 ### Cloudflare notes (when using on-demand TLS)
@@ -266,7 +266,7 @@ Persisted data is stored in the Docker volume mounted at `/app/data`.
 
 At minimum, back up:
 
-- SQLite DB: `markdownbrain.db`
+- SQLite DB: `mdbrain.db`
 - Secrets file: `.secrets.edn`
 
 <a id="toc-troubleshooting"></a>

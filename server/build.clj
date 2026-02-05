@@ -1,7 +1,7 @@
 (ns build
   (:require [clojure.tools.build.api :as b]))
 
-(def lib 'com.markdownbrain/server)
+(def lib 'com.mdbrain/server)
 (def version "0.2.0")
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
@@ -15,9 +15,9 @@
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
   (b/compile-clj {:basis basis
-                  :ns-compile '[markdownbrain.core]
+                  :ns-compile '[mdbrain.core]
                   :class-dir class-dir})
   (b/uber {:class-dir class-dir
            :uber-file uber-file
            :basis basis
-           :main 'markdownbrain.core}))
+           :main 'mdbrain.core}))

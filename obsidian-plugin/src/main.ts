@@ -1,13 +1,13 @@
 /**
- * MarkdownBrain Obsidian Plugin - Snapshot Sync
+ * Mdbrain Obsidian Plugin - Snapshot Sync
  */
 
 import { type App, Notice, Plugin, type PluginManifest, TFile } from "obsidian";
 import { ObsidianHttpClient } from "./api";
 import { SyncApiClient, type SyncSnapshotEntry } from "./api/sync-api";
 import { ensureClientId, getClientId } from "./core/client-id";
-import { DEFAULT_SETTINGS, type MarkdownBrainSettings } from "./domain/types";
-import { MarkdownBrainSettingTab, registerFileEvents } from "./plugin";
+import { DEFAULT_SETTINGS, type MdbrainSettings } from "./domain/types";
+import { MdbrainSettingTab, registerFileEvents } from "./plugin";
 import {
   type CachedMetadataLike,
   DebounceService,
@@ -18,8 +18,8 @@ import {
 import { getContentType, hashString, isAssetFile, md5Hash } from "./utils";
 import { extractAssetPaths, extractNotePaths } from "./utils/asset-links";
 
-export default class MarkdownBrainPlugin extends Plugin {
-  settings!: MarkdownBrainSettings;
+export default class MdbrainPlugin extends Plugin {
+  settings!: MdbrainSettings;
   syncClient!: SyncApiClient;
   private debounceService: DebounceService;
   private referenceIndex: ReferenceIndex;
@@ -33,7 +33,7 @@ export default class MarkdownBrainPlugin extends Plugin {
   }
 
   async onload() {
-    console.log("[MarkdownBrain] Plugin loading (snapshot publish)...");
+    console.log("[Mdbrain] Plugin loading (snapshot publish)...");
     await this.loadSettings();
 
     const httpClient = new ObsidianHttpClient();
@@ -45,7 +45,7 @@ export default class MarkdownBrainPlugin extends Plugin {
       httpClient,
     );
 
-    this.addSettingTab(new MarkdownBrainSettingTab(this.app, this));
+    this.addSettingTab(new MdbrainSettingTab(this.app, this));
 
     this.addCommand({
       id: "sync-current-file",
@@ -84,7 +84,7 @@ export default class MarkdownBrainPlugin extends Plugin {
           (event) => this.registerEvent(event),
         );
 
-        console.log("[MarkdownBrain] ✓ Plugin loaded");
+        console.log("[Mdbrain] ✓ Plugin loaded");
       })();
     });
   }
@@ -127,7 +127,7 @@ export default class MarkdownBrainPlugin extends Plugin {
       }
     }
     if (assigned > 0) {
-      console.log(`[MarkdownBrain] Assigned IDs to ${assigned} notes`);
+      console.log(`[Mdbrain] Assigned IDs to ${assigned} notes`);
     }
   }
 
@@ -147,7 +147,7 @@ export default class MarkdownBrainPlugin extends Plugin {
       indexed++;
     }
     this.referenceIndexReady = true;
-    console.log(`[MarkdownBrain] Reference index: ${indexed}/${files.length}`);
+    console.log(`[Mdbrain] Reference index: ${indexed}/${files.length}`);
   }
 
   // =========================================================================
@@ -607,7 +607,7 @@ export default class MarkdownBrainPlugin extends Plugin {
   }
 
   onunload() {
-    console.log("[MarkdownBrain] Plugin unloading");
+    console.log("[Mdbrain] Plugin unloading");
     this.debounceService.clearAll();
   }
 }

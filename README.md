@@ -1,16 +1,16 @@
-# MarkdownBrain
+# Mdbrain
 
-[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
+[![License](https://img.shields.io/github/license/blackstorm/mdbrain)](https://github.com/blackstorm/mdbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/mdbrain)](https://github.com/blackstorm/mdbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/mdbrain)](https://github.com/blackstorm/mdbrain)
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-**MarkdownBrain is a complete self-hosted solution for publishing [Obsidian](https://obsidian.md/) notes as websites.**
+**Mdbrain is a complete self-hosted solution for publishing [Obsidian](https://obsidian.md/) notes as websites.**
 
 It supports multiple vaults, automatic incremental publishing, link parsing, and backlink display—designed to deliver a seamless publishing experience for digital gardens, blogs, documentation, and tutorial sites.
 
 Built with `Clojure` and `HTMX` for a simple, fast, and maintainable architecture.
 
-## Why MarkdownBrain
+## Why Mdbrain
 
 - **Truly self-hosted** — No SaaS or third-party platform dependencies; you own your data
 - **Obsidian-native** — Full support for internal links, backlinks, and wiki-style references
@@ -34,13 +34,13 @@ Built with `Clojure` and `HTMX` for a simple, fast, and maintainable architectur
 
 ```bash
 docker run -d \
-  --name markdownbrain \
+  --name mdbrain \
   --restart unless-stopped \
   -p 8080:8080 \
   -p 9090:9090 \
-  -v markdownbrain:/app/data \
+  -v mdbrain:/app/data \
   -e STORAGE_TYPE=local \
-  ghcr.io/blackstorm/markdownbrain:latest
+  ghcr.io/blackstorm/mdbrain:latest
 ```
 
 - Public site: `http://<your-server>:8080`
@@ -52,8 +52,8 @@ Security note: the Docker image runs in `ENVIRONMENT=production` by default. Con
 
 ```bash
 # 1. Clone and configure
-git clone https://github.com/blackstorm/markdownbrain.git
-cd markdownbrain
+git clone https://github.com/blackstorm/mdbrain.git
+cd mdbrain
 cp selfhosted/.env.example selfhosted/.env
 
 # 2. Start services
@@ -71,7 +71,7 @@ Full deployment guide: [selfhosted/README.md](selfhosted/README.md)
 
 ## Configuration
 
-MarkdownBrain reads configuration from environment variables.
+Mdbrain reads configuration from environment variables.
 
 | Name | Description | Default | Required |
 |---|---|---|---|
@@ -81,7 +81,7 @@ MarkdownBrain reads configuration from environment variables.
 | `S3_ENDPOINT` | S3 endpoint URL | — | Yes (S3) |
 | `S3_ACCESS_KEY` | S3 access key | — | Yes (S3) |
 | `S3_SECRET_KEY` | S3 secret key | — | Yes (S3) |
-| `S3_BUCKET` | S3 bucket name | `markdownbrain` | No |
+| `S3_BUCKET` | S3 bucket name | `mdbrain` | No |
 | `S3_PUBLIC_URL` | Public URL for browser asset loading | — | Yes (S3) |
 
 Full reference: [selfhosted/README.md](selfhosted/README.md#toc-environment-variables)
@@ -94,7 +94,7 @@ Local filesystem storage and any S3-compatible object storage (AWS S3, MinIO, Ru
 
 **Does it support backlinks?**
 
-Yes. MarkdownBrain automatically parses Obsidian internal links (`[[note]]`) and displays backlinks on each published page.
+Yes. Mdbrain automatically parses Obsidian internal links (`[[note]]`) and displays backlinks on each published page.
 
 **How are images and attachments handled?**
 
@@ -120,12 +120,12 @@ make dev
 
 ### Docker image
 
-- Image: `ghcr.io/blackstorm/markdownbrain`
+- Image: `ghcr.io/blackstorm/mdbrain`
 - Tags: `latest`, `X.Y.Z`, `edge` (main branch)
 
 ### Obsidian plugin
 
-Download `markdownbrain-plugin.zip` from [GitHub Releases](https://github.com/blackstorm/markdownbrain/releases) and extract to `.obsidian/plugins/markdownbrain/`.
+Download `mdbrain-plugin.zip` from [GitHub Releases](https://github.com/blackstorm/mdbrain/releases) and extract to `.obsidian/plugins/mdbrain/`.
 
 ## Contributing
 

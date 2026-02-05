@@ -1,16 +1,16 @@
-# MarkdownBrain
+# Mdbrain
 
-[![License](https://img.shields.io/github/license/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/markdownbrain)](https://github.com/blackstorm/markdownbrain)
+[![License](https://img.shields.io/github/license/blackstorm/mdbrain)](https://github.com/blackstorm/mdbrain/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/blackstorm/mdbrain)](https://github.com/blackstorm/mdbrain/releases) [![GitHub Stars](https://img.shields.io/github/stars/blackstorm/mdbrain)](https://github.com/blackstorm/mdbrain)
 
 [English](README.md) | [简体中文](README.zh-cn.md)
 
-**MarkdownBrain 是一套将 [Obsidian](https://obsidian.md/) 笔记发布为可自托管网站的完整解决方案。**
+**Mdbrain 是一套将 [Obsidian](https://obsidian.md/) 笔记发布为可自托管网站的完整解决方案。**
 
 支持多 Vault 发布、自动增量发布、链接解析、反向链接展示等功能，旨在为数字花园、博客、文档和教程站点提供无缝发布体验。
 
 采用 `Clojure` 和 `HTMX` 构建，架构简洁、高效且易于维护。
 
-## 为什么选择 MarkdownBrain
+## 为什么选择 Mdbrain
 
 - **真正自托管** — 不依赖 SaaS 或第三方平台，数据完全由你掌控
 - **Obsidian 原生支持** — 完整支持内部链接、反向链接和 Wiki 风格引用
@@ -34,13 +34,13 @@
 
 ```bash
 docker run -d \
-  --name markdownbrain \
+  --name mdbrain \
   --restart unless-stopped \
   -p 8080:8080 \
   -p 9090:9090 \
-  -v markdownbrain:/app/data \
+  -v mdbrain:/app/data \
   -e STORAGE_TYPE=local \
-  ghcr.io/blackstorm/markdownbrain:latest
+  ghcr.io/blackstorm/mdbrain:latest
 ```
 
 - 公开站点：`http://<你的服务器>:8080`
@@ -52,8 +52,8 @@ docker run -d \
 
 ```bash
 # 1. 克隆并配置
-git clone https://github.com/blackstorm/markdownbrain.git
-cd markdownbrain
+git clone https://github.com/blackstorm/mdbrain.git
+cd mdbrain
 cp selfhosted/.env.example selfhosted/.env
 
 # 2. 启动服务
@@ -71,7 +71,7 @@ docker compose --env-file selfhosted/.env \
 
 ## 配置
 
-MarkdownBrain 通过环境变量读取配置。
+Mdbrain 通过环境变量读取配置。
 
 | 变量名 | 说明 | 默认值 | 必填 |
 |---|---|---|---|
@@ -81,7 +81,7 @@ MarkdownBrain 通过环境变量读取配置。
 | `S3_ENDPOINT` | S3 端点地址 | — | 是（S3） |
 | `S3_ACCESS_KEY` | S3 访问密钥 | — | 是（S3） |
 | `S3_SECRET_KEY` | S3 私有密钥 | — | 是（S3） |
-| `S3_BUCKET` | S3 存储桶名称 | `markdownbrain` | 否 |
+| `S3_BUCKET` | S3 存储桶名称 | `mdbrain` | 否 |
 | `S3_PUBLIC_URL` | 浏览器加载资源的公开 URL | — | 是（S3） |
 
 完整参考：[selfhosted/README.zh-cn.md](selfhosted/README.zh-cn.md#toc-environment-variables)
@@ -94,7 +94,7 @@ MarkdownBrain 通过环境变量读取配置。
 
 **是否支持反向链接？**
 
-支持。MarkdownBrain 自动解析 Obsidian 内部链接（`[[笔记]]`），并在每个页面展示反向链接。
+支持。Mdbrain 自动解析 Obsidian 内部链接（`[[笔记]]`），并在每个页面展示反向链接。
 
 **图片和附件如何处理？**
 
@@ -120,12 +120,12 @@ make dev
 
 ### Docker 镜像
 
-- 镜像：`ghcr.io/blackstorm/markdownbrain`
+- 镜像：`ghcr.io/blackstorm/mdbrain`
 - 标签：`latest`、`X.Y.Z`、`edge`（main 分支）
 
 ### Obsidian 插件
 
-从 [GitHub Releases](https://github.com/blackstorm/markdownbrain/releases) 下载 `markdownbrain-plugin.zip`，解压到 `.obsidian/plugins/markdownbrain/`。
+从 [GitHub Releases](https://github.com/blackstorm/mdbrain/releases) 下载 `mdbrain-plugin.zip`，解压到 `.obsidian/plugins/mdbrain/`。
 
 ## 贡献
 

@@ -2,7 +2,7 @@ import type { App, PluginManifest } from "obsidian";
 import { TFile } from "obsidian";
 import { describe, expect, test, vi } from "vitest";
 import { DEFAULT_SETTINGS } from "./domain/types";
-import MarkdownBrainPlugin from "./main";
+import MdbrainPlugin from "./main";
 
 const createPlugin = (appOverrides?: Partial<App>) => {
   const app = {
@@ -12,20 +12,20 @@ const createPlugin = (appOverrides?: Partial<App>) => {
     ...appOverrides,
   } as unknown as App;
   const manifest: PluginManifest = {
-    id: "markdownbrain",
-    name: "MarkdownBrain",
+    id: "mdbrain",
+    name: "Mdbrain",
     version: "0.0.0",
     minAppVersion: "0.0.0",
     description: "",
     author: "",
     isDesktopOnly: false,
   };
-  const plugin = new MarkdownBrainPlugin(app, manifest);
+  const plugin = new MdbrainPlugin(app, manifest);
   plugin.settings = { ...DEFAULT_SETTINGS };
   return plugin;
 };
 
-describe("MarkdownBrainPlugin.handleAssetChange", () => {
+describe("MdbrainPlugin.handleAssetChange", () => {
   test("does nothing when autoSync is disabled", async () => {
     const plugin = createPlugin();
     const file = new TFile("assets/image.png", "image", "png");
@@ -101,7 +101,7 @@ describe("MarkdownBrainPlugin.handleAssetChange", () => {
   });
 });
 
-describe("MarkdownBrainPlugin.collectReferencedAssetFiles", () => {
+describe("MdbrainPlugin.collectReferencedAssetFiles", () => {
   test("deduplicates referenced assets across notes", async () => {
     const assets = new Map<string, TFile>();
 
@@ -161,7 +161,7 @@ describe("MarkdownBrainPlugin.collectReferencedAssetFiles", () => {
   });
 });
 
-describe("MarkdownBrainPlugin.handleFileRename", () => {
+describe("MdbrainPlugin.handleFileRename", () => {
   test("renames reference index and syncs note", async () => {
     const plugin = createPlugin({
       metadataCache: { getFileCache: () => null } as never,
@@ -212,7 +212,7 @@ describe("MarkdownBrainPlugin.handleFileRename", () => {
   });
 });
 
-describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
+describe("MdbrainPlugin.handleMarkdownCacheChanged", () => {
   test("removing the last image embed only syncs the note (does not full sync)", async () => {
     const note = new TFile("notes/a.md");
     const asset = new TFile("assets/image.png", "image", "png");
@@ -226,7 +226,7 @@ describe("MarkdownBrainPlugin.handleMarkdownCacheChanged", () => {
       },
     };
     const metadataCache = {
-      getFileCache: (_file: TFile) => ({ frontmatter: { "markdownbrain-id": "note-a" } }),
+      getFileCache: (_file: TFile) => ({ frontmatter: { "mdbrain-id": "note-a" } }),
       getFirstLinkpathDest: (linkpath: string) => {
         if (linkpath === asset.path) return asset;
         return null;

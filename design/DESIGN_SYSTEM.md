@@ -1,10 +1,10 @@
-# MarkdownBrain Design System
+# Mdbrain Design System
 
 > A clean, line-based design system focused on simplicity, clarity, and excellent user experience.
 
 ## Philosophy
 
-MarkdownBrain's design follows these core principles:
+Mdbrain's design follows these core principles:
 
 1. **Simple Lines** - Clean 1px borders, no large rounded corners or heavy shadows
 2. **Rule-Based Layout** - Precise grid systems with consistent spacing
@@ -660,7 +660,7 @@ document.addEventListener('keydown', function(e) {
 ```html
 {% extends "base.html" %}
 
-{% block title %}Page Title - MarkdownBrain{% endblock %}
+{% block title %}Page Title - Mdbrain{% endblock %}
 
 {% block content %}
 <style>
@@ -802,4 +802,4 @@ When adding new components or pages:
 
 **Version:** 1.0
 **Last Updated:** 2025-12-23
-**Maintainer:** MarkdownBrain Team
+**Maintainer:** Mdbrain Team

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}MarkdownBrain{% endblock %}</title>
+  <title>{% block title %}Mdbrain{% endblock %}</title>
   {% if description %}<meta name="description" content="{{ description }}">{% endif %}
   {% if vault.favicon-version %}
   <link rel="icon" href="/favicon.ico?v={{ vault.favicon-version }}">
@@ -21,11 +21,11 @@
         <div class="navbar-left">
           <a href="/" class="navbar-logo">
             {% if vault.logo-url %}<img src="{{ vault.logo-url }}" alt="{{ vault.name }}" class="navbar-logo-img">{% endif %}
-            <span>{{ vault.name|default:"MarkdownBrain" }}</span>
+            <span>{{ vault.name|default:"Mdbrain" }}</span>
           </a>
         </div>
         <div class="navbar-right">
-          <small class="navbar-link">Powered by <a href="https://github.com/blackstorm/markdownbrain" target="_blank">MarkdownBrain</a></small>
+          <small class="navbar-link">Powered by <a href="https://github.com/blackstorm/mdbrain" target="_blank">Mdbrain</a></small>
         </div>
       </div>
     </header>

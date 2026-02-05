@@ -5,10 +5,10 @@
 :80 {
 	@obsidian path /obsidian/*
 	handle @obsidian {
-		reverse_proxy markdownbrain:9090
+		reverse_proxy mdbrain:9090
 	}
 
 	handle {
-		reverse_proxy markdownbrain:8080
+		reverse_proxy mdbrain:8080
 	}
 }

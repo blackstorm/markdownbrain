@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-This project bundles third-party fonts and JavaScript libraries. These components are licensed separately from the MarkdownBrain project. Their licenses and attribution are listed below. All third-party notices are consolidated in this file.
+This project bundles third-party fonts and JavaScript libraries. These components are licensed separately from the Mdbrain project. Their licenses and attribution are listed below. All third-party notices are consolidated in this file.
 
 ## Fonts
 

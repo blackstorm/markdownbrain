@@ -1,4 +1,4 @@
--- MarkdownBrain Database Schema (MVP)
+-- Mdbrain Database Schema (MVP)
 -- Initial schema migration (squashed)
 
 -- Tenants table (one per user/organization)

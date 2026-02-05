@@ -1,6 +1,6 @@
 import type { LoggerPort } from "../domain/types";
 
-const PREFIX = "[MarkdownBrain]";
+const PREFIX = "[Mdbrain]";
 
 export class ConsoleLoggerAdapter implements LoggerPort {
   info(message: string, data?: Record<string, unknown>): void {

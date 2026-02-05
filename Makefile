@@ -8,7 +8,7 @@
 	clean
 
 help:
-	@echo "MarkdownBrain - Developer commands"
+	@echo "Mdbrain - Developer commands"
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev                           Start backend + app/console watch (APP_PORT/CONSOLE_PORT)"
@@ -21,7 +21,7 @@ help:
 	@echo "  make backend-build                 Build backend uberjar"
 	@echo "  make assets-build                  Build Tailwind CSS (console + app)"
 	@echo "  make plugin-build                  Build Obsidian plugin to dist/"
-	@echo "  make plugin-package                Package plugin zip (markdownbrain-plugin.zip)"
+	@echo "  make plugin-package                Package plugin zip (mdbrain-plugin.zip)"
 	@echo ""
 	@echo "Test:"
 	@echo "  make test                          Run backend + plugin tests"
@@ -65,7 +65,7 @@ dev:
 	@echo "Use Ctrl+C to stop all processes"
 	@set -e; \
 	cd server; \
-	APP_PORT=$(APP_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev & \
+	APP_PORT=$(APP_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MDBRAIN_LOG_LEVEL=DEBUG clojure -M:dev & \
 	BACKEND_PID=$$!; \
 	npm run watch:console & \
 	CONSOLE_WATCH_PID=$$!; \
@@ -77,7 +77,7 @@ dev:
 backend-dev:
 	@echo "Starting backend development server..."
 	@echo "App Port: $(APP_PORT), Console Port: $(CONSOLE_PORT)"
-	@cd server && APP_PORT=$(APP_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MARKDOWNBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
+	@cd server && APP_PORT=$(APP_PORT) CONSOLE_PORT=$(CONSOLE_PORT) MDBRAIN_LOG_LEVEL=DEBUG clojure -M:dev
 
 backend-repl:
 	@echo "Starting backend REPL..."
@@ -113,7 +113,7 @@ plugin-build:
 plugin-package:
 	@echo "Packaging Obsidian plugin..."
 	@cd obsidian-plugin && pnpm package
-	@echo "Plugin packaged: obsidian-plugin/markdownbrain-plugin.zip"
+	@echo "Plugin packaged: obsidian-plugin/mdbrain-plugin.zip"
 
 test: backend-test plugin-test
 
@@ -128,21 +128,21 @@ plugin-test:
 # Database
 db-migrate:
 	@echo "Running database migrations..."
-	@cd server && clojure -M -m markdownbrain.migrations migrate
+	@cd server && clojure -M -m mdbrain.migrations migrate
 
 db-reset:
 	@echo "Resetting database..."
-	@rm -f data/markdownbrain.db data/.secrets.edn
-	@cd server && clojure -M -m markdownbrain.migrations migrate
+	@rm -f data/mdbrain.db data/.secrets.edn
+	@cd server && clojure -M -m mdbrain.migrations migrate
 	@echo "Database reset complete"
 
 db-pending:
 	@echo "Checking pending migrations..."
-	@cd server && clojure -M -m markdownbrain.migrations pending
+	@cd server && clojure -M -m mdbrain.migrations pending
 
 db-create-migration:
 	@echo "Creating new migration..."
-	@cd server && clojure -M -m markdownbrain.migrations create $(NAME)
+	@cd server && clojure -M -m mdbrain.migrations create $(NAME)
 
 clean:
 	@echo "Cleaning build artifacts..."

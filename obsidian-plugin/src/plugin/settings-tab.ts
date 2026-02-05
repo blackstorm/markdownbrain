@@ -1,10 +1,10 @@
 import { type App, Notice, PluginSettingTab, Setting } from "obsidian";
-import type MarkdownBrainPlugin from "../main";
+import type MdbrainPlugin from "../main";
 
-export class MarkdownBrainSettingTab extends PluginSettingTab {
-  plugin: MarkdownBrainPlugin;
+export class MdbrainSettingTab extends PluginSettingTab {
+  plugin: MdbrainPlugin;
 
-  constructor(app: App, plugin: MarkdownBrainPlugin) {
+  constructor(app: App, plugin: MdbrainPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -13,11 +13,11 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
     const { containerEl } = this;
 
     containerEl.empty();
-    containerEl.createEl("h2", { text: "MarkdownBrain Settings" });
+    containerEl.createEl("h2", { text: "Mdbrain Settings" });
 
     new Setting(containerEl)
       .setName("Publish URL")
-      .setDesc("Your MarkdownBrain publish URL (must route /obsidian/* to Console)")
+      .setDesc("Your Mdbrain publish URL (must route /obsidian/* to Console)")
       .addText((text) =>
         text
           .setPlaceholder("https://notes.example.com")
@@ -30,7 +30,7 @@ export class MarkdownBrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Publish Key")
-      .setDesc("Publish Key from MarkdownBrain Console")
+      .setDesc("Publish Key from Mdbrain Console")
       .addText((text) =>
         text
           .setPlaceholder("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")

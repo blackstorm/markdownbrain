@@ -1,2 +1,2 @@
 export { type EventHandlers, registerFileEvents } from "./events";
-export { MarkdownBrainSettingTab } from "./settings-tab";
+export { MdbrainSettingTab } from "./settings-tab";

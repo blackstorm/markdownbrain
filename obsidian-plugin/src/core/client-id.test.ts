@@ -16,10 +16,10 @@ describe("getOrCreateClientId", () => {
     file = mockFile as unknown as TFile;
   });
 
-  describe("File with existing frontmatter markdownbrain-id", () => {
+  describe("File with existing frontmatter mdbrain-id", () => {
     test("should return existing UUID from frontmatter", async () => {
       const content = `---
-markdownbrain-id: abc-123-def
+mdbrain-id: abc-123-def
 ---
 # Content`;
 
@@ -32,7 +32,7 @@ markdownbrain-id: abc-123-def
 
     test("should return existing UUID with different format", async () => {
       const content = `---
-markdownbrain-id: 550e8400-e29b-41d4-a716-446655440000
+mdbrain-id: 550e8400-e29b-41d4-a716-446655440000
 ---
 # Content`;
 
@@ -55,7 +55,7 @@ markdownbrain-id: 550e8400-e29b-41d4-a716-446655440000
       expect(fileId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 
       const updatedContent = await mockApp.vault.read(mockFile);
-      expect(updatedContent).toContain("markdownbrain-id:");
+      expect(updatedContent).toContain("mdbrain-id:");
       expect(updatedContent).toContain(fileId);
     });
 
@@ -68,12 +68,12 @@ markdownbrain-id: 550e8400-e29b-41d4-a716-446655440000
       const updatedContent = await mockApp.vault.read(mockFile);
       expect(updatedContent).toContain("# Hello World");
       expect(updatedContent).toContain("This is content.");
-      expect(updatedContent).toContain("markdownbrain-id:");
+      expect(updatedContent).toContain("mdbrain-id:");
     });
   });
 
-  describe("File with frontmatter but no markdownbrain-id", () => {
-    test("should add markdownbrain-id field to existing frontmatter", async () => {
+  describe("File with frontmatter but no mdbrain-id", () => {
+    test("should add mdbrain-id field to existing frontmatter", async () => {
       const content = `---
 title: Test
 tags:
@@ -89,10 +89,10 @@ tags:
 
       const updatedContent = await mockApp.vault.read(mockFile);
       expect(updatedContent).toContain("title: Test");
-      expect(updatedContent).toContain(`markdownbrain-id: ${fileId}`);
+      expect(updatedContent).toContain(`mdbrain-id: ${fileId}`);
     });
 
-    test("should add markdownbrain-id to frontmatter with arrays", async () => {
+    test("should add mdbrain-id to frontmatter with arrays", async () => {
       const content = `---
 tags:
   - test
@@ -108,7 +108,7 @@ tags:
 
       const updatedContent = await mockApp.vault.read(mockFile);
       expect(updatedContent).toContain("tags:");
-      expect(updatedContent).toContain(`markdownbrain-id: ${fileId}`);
+      expect(updatedContent).toContain(`mdbrain-id: ${fileId}`);
     });
   });
 
@@ -123,7 +123,7 @@ tags:
       expect(id1).toBe(id2);
     });
 
-    test("should not add multiple markdownbrain-id fields on repeated calls", async () => {
+    test("should not add multiple mdbrain-id fields on repeated calls", async () => {
       const content = "# Content";
       mockApp.vault.setFileContent("test.md", content);
 
@@ -131,7 +131,7 @@ tags:
       await getOrCreateClientId(file, content, app);
 
       const updatedContent = await mockApp.vault.read(mockFile);
-      const matches = updatedContent.match(/markdownbrain-id:/g);
+      const matches = updatedContent.match(/mdbrain-id:/g);
       expect(matches?.length).toBe(1);
     });
   });
@@ -141,7 +141,7 @@ tags:
       const oldFile = new MockTFile("old.md");
       const newFile = new MockTFile("new.md");
       const content = `---
-markdownbrain-id: preserved-uuid
+mdbrain-id: preserved-uuid
 ---
 # Content`;
 
@@ -166,12 +166,12 @@ markdownbrain-id: preserved-uuid
 
       expect(fileId).toBeDefined();
       const updatedContent = await mockApp.vault.read(mockFile);
-      expect(updatedContent).toContain("markdownbrain-id:");
+      expect(updatedContent).toContain("mdbrain-id:");
     });
 
-    test("should handle markdownbrain-id field with extra spaces", async () => {
+    test("should handle mdbrain-id field with extra spaces", async () => {
       const content = `---
-markdownbrain-id:    abc-123-with-spaces
+mdbrain-id:    abc-123-with-spaces
 ---
 # Content`;
 
@@ -199,12 +199,12 @@ describe("getClientId", () => {
 
   test("returns existing ID from cache", async () => {
     const content = `---
-markdownbrain-id: existing-id
+mdbrain-id: existing-id
 ---
 # Content`;
     mockApp.vault.setFileContent("test.md", content);
     mockApp.metadataCache.setFileCache("test.md", {
-      frontmatter: { "markdownbrain-id": "existing-id" },
+      frontmatter: { "mdbrain-id": "existing-id" },
     });
 
     const id = await getClientId(file, app);
@@ -213,7 +213,7 @@ markdownbrain-id: existing-id
 
   test("returns existing ID from content when cache is empty", async () => {
     const content = `---
-markdownbrain-id: content-id
+mdbrain-id: content-id
 ---
 # Content`;
     mockApp.vault.setFileContent("test.md", content);
@@ -248,7 +248,7 @@ title: Test
 
     const afterContent = await mockApp.vault.read(mockFile);
     expect(afterContent).toBe(content);
-    expect(afterContent).not.toContain("markdownbrain-id");
+    expect(afterContent).not.toContain("mdbrain-id");
   });
 });
 
@@ -267,7 +267,7 @@ describe("ensureClientId", () => {
 
   test("returns existing ID without writing", async () => {
     const content = `---
-markdownbrain-id: existing-id
+mdbrain-id: existing-id
 ---
 # Content`;
     mockApp.vault.setFileContent("test.md", content);
@@ -286,7 +286,7 @@ markdownbrain-id: existing-id
 
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
     const afterContent = await mockApp.vault.read(mockFile);
-    expect(afterContent).toContain(`markdownbrain-id: ${id}`);
+    expect(afterContent).toContain(`mdbrain-id: ${id}`);
   });
 
   test("adds ID to existing frontmatter", async () => {
@@ -300,6 +300,6 @@ title: Test
 
     const afterContent = await mockApp.vault.read(mockFile);
     expect(afterContent).toContain("title: Test");
-    expect(afterContent).toContain(`markdownbrain-id: ${id}`);
+    expect(afterContent).toContain(`mdbrain-id: ${id}`);
   });
 });

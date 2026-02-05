@@ -16,7 +16,7 @@ if you want to view the source, please visit the github repository of this plugi
 const prod = process.argv[2] === "production";
 
 // Development build goes to test vault for integration testing
-const testVaultPath = resolve(__dirname, "../vaults/test/.obsidian/plugins/markdownbrain");
+const testVaultPath = resolve(__dirname, "../vaults/test/.obsidian/plugins/mdbrain");
 const outfile = prod ? "dist/main.js" : `${testVaultPath}/main.js`;
 
 const context = await esbuild.context({

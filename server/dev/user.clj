@@ -18,8 +18,8 @@
     ((:stop @servers)))
   (println "Starting servers...")
   ;; 动态 require 避免编译时依赖
-  (require 'markdownbrain.core :reload)
-  (let [core-ns (find-ns 'markdownbrain.core)
+  (require 'mdbrain.core :reload)
+  (let [core-ns (find-ns 'mdbrain.core)
         start-fn (ns-resolve core-ns 'start-servers)]
     (reset! servers (start-fn))))
 
@@ -75,7 +75,7 @@
 (defn start
   "启动开发环境：双服务器 + 文件监听"
   []
-  (println "=== MarkdownBrain Development Mode ===")
+  (println "=== Mdbrain Development Mode ===")
   (println "Starting servers and file watcher...")
   ;; 禁用 Selmer 模板缓存以支持热重载
   (selmer/cache-off!)
