@@ -17,11 +17,10 @@ export class MdbrainSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Publish URL")
-      .setDesc("Your Mdbrain publish URL (must route /obsidian/* to Console)")
+      .setDesc("Your Mdbrain publish URL")
       .addText((text) =>
         text
-          .setPlaceholder("https://notes.example.com")
-          .setValue(this.plugin.settings.serverUrl)
+          .setPlaceholder("https://console.example.com")
           .onChange(async (value) => {
             this.plugin.settings.serverUrl = value;
             await this.plugin.saveSettings();
@@ -34,7 +33,6 @@ export class MdbrainSettingTab extends PluginSettingTab {
       .addText((text) =>
         text
           .setPlaceholder("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")
-          .setValue(this.plugin.settings.publishKey)
           .onChange(async (value) => {
             this.plugin.settings.publishKey = value;
             await this.plugin.saveSettings();
@@ -64,7 +62,10 @@ export class MdbrainSettingTab extends PluginSettingTab {
               5000,
             );
           } else {
-            new Notice(`Connection failed: ${result.error || "Unknown error"}`, 5000);
+            new Notice(
+              `Connection failed: ${result.error || "Unknown error"}`,
+              5000,
+            );
           }
         }),
       );
@@ -88,10 +89,12 @@ export class MdbrainSettingTab extends PluginSettingTab {
       .setName("Auto publish")
       .setDesc("Automatically publish on file changes")
       .addToggle((toggle) =>
-        toggle.setValue(this.plugin.settings.autoSync).onChange(async (value) => {
-          this.plugin.settings.autoSync = value;
-          await this.plugin.saveSettings();
-        }),
+        toggle
+          .setValue(this.plugin.settings.autoSync)
+          .onChange(async (value) => {
+            this.plugin.settings.autoSync = value;
+            await this.plugin.saveSettings();
+          }),
       );
   }
 }
